@@ -14,6 +14,10 @@ export interface BarsSource {
 /** What the content script knows about the chart, for the popup. Plain data only. */
 export interface Summary {
   updatedAt: number;
+  strategy: string;
+  strategyNote: string;
+  /** In a position whose cost has already been sold back (only the house money is left). */
+  costRecovered: boolean;
   pair: string;
   chain: string;
   dex: string;
@@ -32,12 +36,13 @@ export interface Summary {
 }
 
 export interface Settings {
+  strategy: "breakout" | "quiet";
   showTable: boolean;
   drawMarkers: boolean;
   notify: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { showTable: true, drawMarkers: true, notify: true };
+export const DEFAULT_SETTINGS: Settings = { strategy: "breakout", showTable: true, drawMarkers: true, notify: true };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 // content <-> background (chrome.runtime messaging)

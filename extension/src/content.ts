@@ -4,7 +4,7 @@
 import type { Bar } from "../../src/dexscreener/bars.ts";
 import { toCandles, type Candle } from "../../src/indicators.ts";
 import { runBacktest, type BacktestResult } from "../../src/backtest/engine.ts";
-import { DEFAULT_PARAMS, volumeBreakout } from "../../src/strategy/volumeBreakout.ts";
+import { setupStrategy, type StrategySetup } from "./strategies.ts";
 import {
   CONTENT_TAG,
   DEFAULT_SETTINGS,
@@ -28,7 +28,9 @@ type ChartMode = "searching" | "tradingview" | "unavailable";
 let mode: ChartMode = "searching";
 let chartStatus = "Looking for the TradingView chart…";
 let errorText: string | null = null;
-let last: { source: BarsSource; candles: Candle[]; result: BacktestResult } | null = null;
+let last: { source: BarsSource; candles: Candle[]; result: BacktestResult; setup: StrategySetup } | null = null;
+// Latest bars before the closed-bar filter, so a strategy switch can re-run without waiting.
+let lastInput: { source: BarsSource; candles: Candle[] } | null = null;
 let settings: Settings = { ...DEFAULT_SETTINGS };
 const notified = new Set<string>();
 
@@ -111,14 +113,17 @@ window.addEventListener("resize", positionTable);
 
 function summarize(): Summary | null {
   if (!last) return null;
-  const { source, candles, result } = last;
+  const { source, candles, result, setup } = last;
   const s = result.stats;
-  const strat = volumeBreakout().prepare(candles);
+  const strat = setup.strategy.prepare(candles);
   const i = candles.length - 1;
   const lastTrade = result.trades.at(-1);
   const inPos = lastTrade?.reason === "end";
   return {
     updatedAt: Date.now(),
+    strategy: setup.name,
+    strategyNote: setup.note,
+    costRecovered: inPos && lastTrade!.costBackTime !== undefined,
     pair: document.title.split("|")[0]!.trim(),
     chain: source.chain,
     dex: source.dex,
@@ -146,9 +151,6 @@ function summarize(): Summary | null {
   };
 }
 
-// Short labels for the table; the popup shows the full ones.
-const SHORT_LABELS = ["Breakout", "Volume ×", "Min volume", "Trend EMA", "Not extended"];
-
 function renderTable(): void {
   positionTable();
   const sum = summarize();
@@ -157,12 +159,13 @@ function renderTable(): void {
     return;
   }
   if (!sum) return;
-  $("title").innerHTML = `EA · ${sum.resolution}<span>Volume Breakout</span>`;
+  $("title").innerHTML = `EA · ${sum.resolution}<span>${sum.strategy}</span>`;
+  const shortLabels = last?.setup.shortLabels ?? [];
   const signal =
     sum.signal === "buy"
       ? `<td class="sig pos">▲ BUY</td>`
       : sum.signal === "hold"
-        ? `<td class="sig">● Holding</td>`
+        ? `<td class="sig">● ${sum.costRecovered ? "Free ride" : "Holding"}</td>`
         : `<td class="sig sub">Waiting</td>`;
   const rows = [
     `<tr><td class="sub">Signal</td>${signal}</tr>`,
@@ -174,7 +177,7 @@ function renderTable(): void {
       : []),
     ...sum.conditions.map(
       (c, k) =>
-        `<tr${k === 0 ? ' class="sep"' : ""}><td class="sub">${SHORT_LABELS[k] ?? c.label}</td><td class="${c.ok ? "ok" : "no"}">${c.ok ? "✓" : "✕"} ${c.detail.split(" vs ")[0]}</td></tr>`,
+        `<tr${k === 0 ? ' class="sep"' : ""}><td class="sub">${shortLabels[k] ?? c.label}</td><td class="${c.ok ? "ok" : "no"}">${c.ok ? "✓" : "✕"} ${c.detail.split(" vs ")[0]}</td></tr>`,
     ),
     `<tr class="sep"><td class="sub">Backtest</td><td class="${sum.stats.returnPct >= 0 ? "pos" : "neg"}">${pct(sum.stats.returnPct)}</td></tr>`,
     `<tr><td class="sub">Max DD · Trades</td><td>${sum.stats.maxDdPct.toFixed(1)}% · ${sum.stats.trades}</td></tr>`,
@@ -213,6 +216,9 @@ function drawOnTradingView(): void {
   const payload: DrawPayload = {
     arrows: trades.flatMap((tr) => [
       { time: sec(tr.entryTime), price: below(tr.entryTime), side: "buy" as const, text: "BUY", color: "#2196f3" },
+      ...(tr.costBackTime !== undefined
+        ? [{ time: sec(tr.costBackTime), price: above(tr.costBackTime), side: "sell" as const, text: "COST BACK", color: "#fbbf24" }]
+        : []),
       ...(tr.reason === "end"
         ? []
         : [
@@ -249,12 +255,12 @@ function notifySignals(): void {
     notifySignals.armed = true;
     return;
   }
-  const strat = volumeBreakout().prepare(candles);
+  const strat = last.setup.strategy.prepare(candles);
   const t = result.trades.at(-1);
   const inPos = t?.reason === "end";
   const label = `${source.chain} ${resLabel(source.resolution)} · ${document.title.split("|")[0]!.trim()}`;
   if (!inPos && strat.shouldEnter(candles.length - 1)) {
-    once("buy", "EA BUY signal", `${label}\nClose ${fmt(lastBar.close)} — buy at next bar open`);
+    once("buy", `EA BUY · ${last.setup.name}`, `${label}\nClose ${fmt(lastBar.close)} — buy at next bar open`);
   }
   if (t && t.reason !== "end" && t.exitTime === lastBar.time) {
     once("sell", `EA SELL (${t.reason})`, `${label}\n${pct(t.returnPct, 2)}`);
@@ -280,6 +286,8 @@ function parseResolution(r: string): number {
 }
 
 function analyze(source: BarsSource, all: Candle[]): void {
+  lastInput = { source, candles: all };
+  const setup = setupStrategy(settings.strategy, source.resolution);
   const barMs = source.resolution * 60_000;
   // Drop the still-forming bar: signals are only valid on closed bars.
   const candles = all.filter((c) => c.time + barMs <= Date.now());
@@ -287,17 +295,18 @@ function analyze(source: BarsSource, all: Candle[]): void {
     last &&
     last.source.pairId === source.pairId &&
     last.source.resolution === source.resolution &&
-    last.source.marketCap === source.marketCap;
+    last.source.marketCap === source.marketCap &&
+    last.setup.id === setup.id;
   // Small incremental responses would replace the full history; keep what we have.
   if (sameChart && candles.length < last!.candles.length / 2) return;
-  if (candles.length < DEFAULT_PARAMS.trendEma + 2) {
-    errorText = `Only ${candles.length} closed bars on ${resLabel(source.resolution)} — need ${DEFAULT_PARAMS.trendEma + 2}+. Try a smaller timeframe.`;
+  if (candles.length < setup.minBars) {
+    errorText = `${setup.name} needs ${setup.minBars}+ closed bars on ${resLabel(source.resolution)}, the chart has ${candles.length}. Scroll the chart back to load more, or try a larger timeframe.`;
     publish();
     return;
   }
   errorText = null;
   if (!sameChart) notifySignals.armed = false;
-  last = { source, candles, result: runBacktest(candles, volumeBreakout()) };
+  last = { source, candles, result: runBacktest(candles, setup.strategy, setup.config), setup };
   publish();
   drawOnTradingView();
   notifySignals();
@@ -376,7 +385,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const prev = settings;
   settings = { ...settings, ...Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.newValue])) } as Settings;
   positionTable();
-  if (prev.drawMarkers !== settings.drawMarkers) drawOnTradingView();
+  if (prev.strategy !== settings.strategy && lastInput) {
+    last = null;
+    analyze(lastInput.source, lastInput.candles);
+  } else if (prev.drawMarkers !== settings.drawMarkers) drawOnTradingView();
 });
 
 send({ type: "refresh" });

@@ -53,6 +53,17 @@
   .button-primary:hover { background: #eaeaea; }
   .button-primary:active { background: #d6d6d6; }
   .button-primary:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  /* Strategy picker: the selected option is the white "primary" pill */
+  .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .segmented label { position: relative; cursor: pointer; }
+  .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+  .segmented span { display: block; padding: 8px 12px; border-radius: var(--radius); background: #1a1a1a; border: 1px solid var(--border);
+    font-weight: 600; transition: background-color var(--t), color var(--t); }
+  .segmented span small { display: block; font-weight: 400; font-size: 11px; color: var(--muted); }
+  .segmented label:hover span { background: #262626; }
+  .segmented input:checked + span { background: #fff; color: #000; border-color: #fff; }
+  .segmented input:checked + span small { color: #444; }
+  .segmented input:focus-visible + span { outline: 2px solid #fff; outline-offset: 3px; }
   footer { color: var(--muted); font-size: 11px; padding-top: 8px; }
 
   @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
@@ -61,8 +72,15 @@
 <body>
   <header>
     <img src="icon48.png" alt="">
-    <div><h1>EA Volume Breakout</h1><p id="subtitle">DEX Screener signals</p></div>
+    <div><h1 id="title">EA Signals</h1><p id="subtitle">DEX Screener signals</p></div>
   </header>
+  <section>
+    <h2 id="strategyLabel">Strategy</h2>
+    <div class="segmented" role="radiogroup" aria-labelledby="strategyLabel">
+      <label><input type="radio" name="strategy" value="breakout"><span>Volume Breakout<small>Chase momentum</small></span></label>
+      <label><input type="radio" name="strategy" value="quiet"><span>Quiet Accumulation<small>Buy deep, free ride</small></span></label>
+    </div>
+  </section>
   <main id="main"></main>
   <section>
     <h2>Settings</h2>

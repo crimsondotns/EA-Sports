@@ -15,12 +15,14 @@ function renderEmpty(onDexScreener: boolean): void {
 }
 
 function render(s: Summary): void {
+  $("title").textContent = `EA · ${s.strategy}`;
   $("subtitle").textContent = `${s.pair} · ${s.resolution}`;
   const signal =
     s.signal === "buy"
       ? `<p class="signal pos">▲ BUY signal</p><p class="muted">Buy at the open of the next bar</p>`
       : s.signal === "hold"
-        ? `<p class="signal">● Holding</p>
+        ? `<p class="signal">● ${s.costRecovered ? "Free ride" : "Holding"}</p>
+           ${s.costRecovered ? `<p class="muted">Cost sold back, 10% kept free — the rest trails 35% below the high</p>` : ""}
            <div class="row num"><span>Entry ${s.entryTime ? time(s.entryTime) : ""}</span><span>${s.entryPrice === null ? "–" : fmt(s.entryPrice)}</span></div>
            <div class="row num"><span>Stop</span><span class="neg">${s.stop === null ? "–" : fmt(s.stop)}</span></div>
            <div class="row num"><span>Open P/L</span><span class="${s.openPnlPct! >= 0 ? "pos" : "neg"}">${pct(s.openPnlPct!, 2)}</span></div>`
@@ -35,7 +37,7 @@ function render(s: Summary): void {
         .join("")}
     </section>
     <section>
-      <h2>Backtest · ${st.bars} bars · fee + slippage 0.8% per side</h2>
+      <h2>Backtest · ${st.bars} bars · ${esc(s.strategyNote)}</h2>
       <div class="grid num">
         <div class="stat"><small>Return</small><strong class="${st.returnPct >= 0 ? "pos" : "neg"}">${pct(st.returnPct)}</strong></div>
         <div class="stat"><small>Max DD</small><strong>${st.maxDdPct.toFixed(1)}%</strong></div>
@@ -64,10 +66,16 @@ async function main(): Promise<void> {
   });
 
   const settings = (await chrome.storage.local.get(DEFAULT_SETTINGS)) as Settings;
-  for (const name of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
+  for (const name of ["showTable", "drawMarkers", "notify"] as const) {
     const input = $(name) as HTMLInputElement;
     input.checked = settings[name];
     input.addEventListener("change", () => void chrome.storage.local.set({ [name]: input.checked }));
+  }
+  for (const radio of document.querySelectorAll<HTMLInputElement>('input[name="strategy"]')) {
+    radio.checked = radio.value === settings.strategy;
+    radio.addEventListener("change", () => {
+      if (radio.checked) void chrome.storage.local.set({ strategy: radio.value as Settings["strategy"] });
+    });
   }
 }
 

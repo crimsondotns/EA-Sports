@@ -70,6 +70,9 @@ export interface Trade {
   reason: ExitReason;
   /** Tokens kept after taking the cost back. */
   freeQty?: number;
+  /** With `freeRideKeep`: when and at what price the cost was sold back. */
+  costBackTime?: number;
+  costBackPrice?: number;
 }
 
 export interface BacktestResult {
@@ -112,7 +115,9 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
   const equity: BacktestResult["equity"] = [];
   const stops: BacktestResult["stops"] = [];
   let cash = cfg.initialCapital;
-  let pos: (Position & { qty: number; cost: number; initialQty: number; realized: number; kept: number }) | null = null;
+  let pos:
+    | (Position & { qty: number; cost: number; initialQty: number; realized: number; kept: number; costBack?: { time: number; price: number } })
+    | null = null;
   let pendingEntry: number | null = null; // signal bar index
   let barsInMarket = 0;
   let freeQty = 0;
@@ -134,6 +139,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
       pnl: returned - p.cost,
       reason,
       ...(p.kept ? { freeQty: p.kept } : {}),
+      ...(p.costBack ? { costBackTime: p.costBack.time, costBackPrice: p.costBack.price } : {}),
     });
     pos = null;
   };
@@ -152,6 +158,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
       p.qty -= sellQty + kept;
       p.realized += proceeds;
       p.costRecovered = true;
+      p.costBack = { time: candles[i]!.time, price: exitPrice };
       if (p.qty <= p.initialQty * 1e-9) close(i, rawPrice, "free");
       return;
     }
