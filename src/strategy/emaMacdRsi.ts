@@ -5,7 +5,7 @@
 //   2. MACD line and signal line both below the histogram                      -- selling is
 //      (histogram = line − signal, so this means signal < 0 and line > 2 × signal:  running out
 //      below zero, with the line no longer falling far under the signal)
-//   3. RSI <= `maxRsi` (under 30 or 50, or above 50 by no more than 10)        -- not chased
+//   3. `minRsi` < RSI <= `maxRsi` (30–60): not still in free fall, not chased
 //   4. support, two cases:
 //      a. there is a support zone (`minTouches`+ swing lows) below the price: the bar must
 //         have tested it and closed back above its low -- buy at the support, not above it
@@ -25,6 +25,8 @@ export interface DeepDipParams {
   emaFast: number;
   emaMid: number;
   emaSlow: number;
+  /** RSI must be above this: under 30 the selling usually isn't done yet. */
+  minRsi: number;
   maxRsi: number;
   /** Require the support test when a support exists (case a). Off: rules 1–3 only. */
   useSupport: boolean;
@@ -42,6 +44,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   emaFast: 9,
   emaMid: 21,
   emaSlow: 200,
+  minRsi: 30,
   maxRsi: 60,
   useSupport: true,
   pivotBars: 5,
@@ -112,9 +115,9 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
             detail: `hist ${h > 0 ? "+" : ""}${fmt(h)}`,
           },
           {
-            label: `RSI ≤ ${p.maxRsi}`,
-            ok: rv <= p.maxRsi,
-            detail: `${rv.toFixed(0)}${rv < 30 ? " (< 30)" : rv < 50 ? " (< 50)" : ""}`,
+            label: `RSI ${p.minRsi}–${p.maxRsi}`,
+            ok: rv > p.minRsi && rv <= p.maxRsi,
+            detail: rv.toFixed(0),
           },
         ];
       };
@@ -154,7 +157,7 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         plan(i) {
           if (i < warmup) return null;
           const under = Math.min(e1[i]!, e2[i]!, e3[i]!);
-          const waitFor = `MACD & signal below the histogram, RSI ≤ ${p.maxRsi}`;
+          const waitFor = `MACD & signal below the histogram, RSI ${p.minRsi}–${p.maxRsi}`;
           // Case a: the nearest support below, capped at the EMAs so both rules can hold there.
           const zone = p.useSupport ? supportsBelow(i).sort((a, b) => b.high - a.high)[0] : undefined;
           if (zone) {
