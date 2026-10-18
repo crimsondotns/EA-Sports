@@ -2,11 +2,12 @@
 //
 // Entry (evaluated on bar close, filled at next bar open):
 //   1. close below EMA 9, EMA 21 and EMA 200                                   -- still cheap
+//      (EMA 200 is skipped until it exists, so young pairs can trade: 200 bars is 33 days on 4h)
 //   2. MACD line and signal line both below the histogram                      -- selling is
 //      (histogram = line − signal, so this means signal < 0 and line > 2 × signal:  running out
 //      below zero, with the line no longer falling far under the signal)
 //   3. `minRsi` < RSI <= `maxRsi` (30–60): not still in free fall, not chased
-//      and RSI is at least `rsiBounce` points (20) above its lowest of the last `rsiLowBars` bars
+//      and RSI is at least `rsiBounce` (20%) above its lowest of the last `rsiLowBars` bars
 //   4. support, two cases:
 //      a. there is a support zone (`minTouches`+ swing lows) below the price: the bar must
 //         have tested it and closed back above its low -- buy at the support, not above it
@@ -29,7 +30,8 @@ export interface DeepDipParams {
   /** RSI must be above this: under 30 the selling usually isn't done yet. */
   minRsi: number;
   maxRsi: number;
-  /** RSI must be this many points above its recent low (20: low 25 needs 45); 0 turns the rule off. */
+  /** RSI must be this fraction above its recent low (0.2: low 25 needs 30); 0 turns the rule off.
+   *  +20 points was tried too: it waits until the bounce is mostly over (15m median +17.7% vs +33.1%). */
   rsiBounce: number;
   rsiLowBars: number;
   /** Require the support test when a support exists (case a). Off: rules 1–3 only. */
@@ -61,7 +63,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   emaSlow: 200,
   minRsi: 30,
   maxRsi: 60,
-  rsiBounce: 20,
+  rsiBounce: 0.2,
   rsiLowBars: 96,
   useSupport: true,
   pivotBars: 5,
@@ -96,7 +98,10 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       const m = macd(close);
       const r = rsi(close);
       const lows = pivotLows(c, p.pivotBars);
-      const warmup = p.emaSlow + 1;
+      // MACD's signal line is the slowest series that must exist; EMA 200 joins when it can.
+      const warmup = Math.max(p.emaMid, 26 + 9) + 1;
+      /** The lowest of the EMAs that exist at bar i: the price has to be under it. */
+      const emaFloor = (i: number) => Math.min(e1[i]!, e2[i]!, Number.isFinite(e3[i]!) ? e3[i]! : Infinity);
 
       // Support zones known at the close of bar i (pivots confirmed by then), below its close.
       const cache = new Map<number, Zone[]>();
@@ -126,8 +131,8 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         return [
           {
             label: `Below EMA ${p.emaFast} / ${p.emaMid} / ${p.emaSlow}`,
-            ok: px < e1[i]! && px < e2[i]! && px < e3[i]!,
-            detail: `${fmt(px)} vs ${fmt(Math.min(e1[i]!, e2[i]!, e3[i]!))}`,
+            ok: px < emaFloor(i),
+            detail: `${fmt(px)} vs ${fmt(emaFloor(i))}${Number.isFinite(e3[i]!) ? "" : ` (no EMA ${p.emaSlow} yet)`}`,
           },
           {
             label: "MACD & signal below histogram",
@@ -145,9 +150,9 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
                 for (let k = Math.max(0, i - p.rsiLowBars + 1); k <= i; k++) if (Number.isFinite(r[k])) low = Math.min(low, r[k]!);
                 return [
                   {
-                    label: `RSI +${p.rsiBounce} off its low`,
-                    ok: rv >= low + p.rsiBounce,
-                    detail: `${low.toFixed(0)} → ${rv.toFixed(0)} (+${(rv - low).toFixed(0)})`,
+                    label: `RSI +${p.rsiBounce * 100}% off its low`,
+                    ok: rv >= low * (1 + p.rsiBounce),
+                    detail: `${low.toFixed(0)} → ${rv.toFixed(0)} (+${((rv / low - 1) * 100).toFixed(0)}%)`,
                   },
                 ];
               })()
@@ -201,7 +206,7 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         },
         plan(i) {
           if (i < warmup) return null;
-          const under = Math.min(e1[i]!, e2[i]!, e3[i]!);
+          const under = emaFloor(i);
           const waitFor = `MACD & signal below the histogram, RSI ${p.minRsi}–${p.maxRsi}`;
           // Case a: the nearest support below, capped at the EMAs so both rules can hold there.
           const zone = p.useSupport ? supportsBelow(i).sort((a, b) => b.high - a.high)[0] : undefined;
