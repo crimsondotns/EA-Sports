@@ -11,10 +11,16 @@ interface TvChart {
   createStudy?(name: string, forceOverlay: boolean, lock?: boolean): Promise<unknown> | unknown;
   getAllStudies?(): { id: unknown; name: string }[];
   getStudyById?(id: unknown): TvStudy;
+  getPanes?(): TvPane[];
   exportData?(opts: object): Promise<{ schema: ExportField[]; data: ArrayLike<number>[] }>;
   resolution?(): string;
   onIntervalChanged?(): { subscribe(ctx: null, cb: () => void): void };
   onSymbolChanged?(): { subscribe(ctx: null, cb: () => void): void };
+}
+
+interface TvPane {
+  getHeight(): number;
+  setHeight(height: number): void;
 }
 
 interface TvStudy {
@@ -242,6 +248,33 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
     } catch (e) {
       console.warn("[EA] could not add study", spec.name, e);
     }
+  }
+  if (specs.length) fitPanes(chart);
+}
+
+/**
+ * New indicator panes get as much height as the price pane, which squeezes the chart. Shrink
+ * any indicator pane taller than ~14% of the chart and give the room back to the price pane.
+ * Panes the user made smaller are left alone.
+ */
+function fitPanes(chart: TvChart): void {
+  try {
+    const panes = chart.getPanes?.();
+    if (!panes || panes.length < 2) return;
+    const heights = panes.map((p) => p.getHeight());
+    const total = heights.reduce((a, b) => a + b, 0);
+    const target = Math.max(70, Math.round(total * 0.14));
+    let changed = false;
+    for (let k = 1; k < panes.length; k++) {
+      if (heights[k]! > target * 1.3) {
+        heights[k] = target;
+        panes[k]!.setHeight(target);
+        changed = true;
+      }
+    }
+    if (changed) panes[0]!.setHeight(total - heights.slice(1).reduce((a, b) => a + b, 0));
+  } catch (e) {
+    console.debug("[EA] could not resize panes", e);
   }
 }
 
