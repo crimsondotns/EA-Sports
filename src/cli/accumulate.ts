@@ -14,7 +14,7 @@ const sizeIdx = args.indexOf("--size");
 const size = sizeIdx >= 0 ? Number(args[sizeIdx + 1]) : 0.1;
 
 // Bar counts scale with the timeframe so "48 bars" means about the same time span.
-const perDay: Record<number, number> = { 15: 96, 60: 24, 240: 6 };
+const perDay: Record<number, number> = { 5: 288, 15: 96, 60: 24, 240: 6 };
 
 /** Highest price reached after each free-ride exit, as a multiple of the entry. */
 function freeBagPeaks(candles: Candle[], trades: ReturnType<typeof runBacktest>["trades"]): number[] {
@@ -29,6 +29,7 @@ function freeBagPeaks(candles: Candle[], trades: ReturnType<typeof runBacktest>[
 
 const rows: Record<string, string | number>[] = [];
 for (const resolution of [15, 60, 240] as Resolution[]) {
+  if (args.includes("--short") && resolution === 240) continue;
   const bars = await loadBarsHistory({ ...pair, resolution }, `data/${pair.chain}-${pair.pairId.slice(0, 10)}-${resolution}.json`);
   const candles = toCandles(bars);
   const d = perDay[resolution]!;
@@ -37,19 +38,19 @@ for (const resolution of [15, 60, 240] as Resolution[]) {
   const runs: { style: string; strategy: ReturnType<typeof volumeBreakout>; cfg: BacktestConfig }[] = [
     { style: "Breakout scalp (all-in)", strategy: volumeBreakout(), cfg: DEFAULT_CONFIG },
   ];
-  for (const minDrawdown of [0.7, 0.85]) {
-    for (const [freeRideAt, keep] of [[1, undefined], [1, 0.1], [2, 0.1]] as const) {
+  for (const minDrawdown of [0.3, 0.4, 0.6]) {
+    for (const freeRideAt of [1, 2]) {
       const params: Partial<QuietAccumulationParams> = {
         minDrawdown,
         volFast: d,
-        volSlow: d * 10,
-        baseBars: d * 2,
+        volSlow: d * 5,
+        srLookback: d * 30,
         maxHoldBars: d * 30,
       };
       runs.push({
-        style: `Quiet -${minDrawdown * 100}% · cost @ ${freeRideAt + 1}x · keep ${keep === undefined ? "all" : `${keep * 100}%`}`,
+        style: `Quiet -${minDrawdown * 100}% · cost @ ${freeRideAt + 1}x · keep 10%`,
         strategy: quietAccumulation(params),
-        cfg: { ...DEFAULT_CONFIG, positionSize: size, freeRideAt, freeRideKeep: keep },
+        cfg: { ...DEFAULT_CONFIG, positionSize: size, freeRideAt, freeRideKeep: 0.1 },
       });
     }
   }

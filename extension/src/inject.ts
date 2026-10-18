@@ -211,6 +211,20 @@ async function draw(p: DrawPayload): Promise<void> {
       ),
     );
   }
+  for (const l of p.levels ?? []) {
+    const color = l.kind === "support" ? "#4ade80" : "#f87171";
+    await add("horizontal_ray", () =>
+      chart.createShape(
+        { time: l.time, price: l.price },
+        {
+          ...opts,
+          shape: "horizontal_ray",
+          text: `${l.kind === "support" ? "S" : "R"} ×${l.touches}`,
+          overrides: { linecolor: color, linewidth: 1, linestyle: 2, showLabel: true, textcolor: color, horzLabelsAlign: "right" },
+        },
+      ),
+    );
+  }
   if (p.stop !== null) {
     const last = p.arrows.at(-1)?.time ?? Math.floor(Date.now() / 1000);
     await add("horizontal_line", () =>

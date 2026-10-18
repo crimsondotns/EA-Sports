@@ -1,18 +1,21 @@
-// Quiet Accumulation — buy deep and quiet, let the free ride do the work.
+// Quiet Accumulation — buy a held support after a deep drop, let the free ride do the work.
+//
+// Support / resistance come from swing pivots: lows (highs) that are the lowest (highest) of
+// `pivotBars` bars on each side, grouped into zones when they sit within `zoneTol` of each
+// other. A pivot only counts once `pivotBars` bars have closed after it (no look-ahead).
 //
 // Entry (evaluated on bar close, filled at next bar open):
-//   1. close is at least `minDrawdown` below the all-time high so far   -- buy low
-//   2. recent volume has dried up: SMA(vol, fast) <= `dryRatio` x SMA(vol, slow) -- nobody cares
-//   3. no new low for `baseBars` bars: the low of the last `baseBars` bars is above the
-//      low of the `baseBars` before that                               -- selling has stopped
-//   4. close > EMA(`turnEma`)                                           -- first sign of a turn
+//   1. close is at least `minDrawdown` below the all-time high so far        -- buy low
+//   2. the bar tested a support zone touched >= `minTouches` times and closed back above it
+//   3. reversal candle: green and closing above the previous bar's high      -- buyers step in
+//   4. selling has faded: SMA(vol, fast) <= `dryRatio` x SMA(vol, slow)        -- quiet
 // Exit:
-//   - pair with the engine's `freeRideAt` (e.g. 1 = sell the cost back at 2x, keep the rest)
-//   - hard stop at `stopPct` below entry
+//   - stop just under the support zone (`stopAtr` x ATR below its low)
+//   - pair with the engine's `freeRideAt` / `freeRideKeep` for the cost back and free tokens
 //   - once the cost is back, the tokens still traded trail `trailPct` below the highest close
-//   - time stop after `maxHoldBars` if neither happened
+//   - time stop after `maxHoldBars` if the cost never came back
 
-import { ema, sma, type Candle } from "../indicators.ts";
+import { atr, clusterZones, pivotHighs, pivotLows, sma, type Candle, type Pivot, type Zone } from "../indicators.ts";
 import type { Strategy } from "../backtest/engine.ts";
 
 export interface QuietAccumulationParams {
@@ -20,22 +23,28 @@ export interface QuietAccumulationParams {
   volFast: number;
   volSlow: number;
   dryRatio: number;
-  baseBars: number;
-  turnEma: number;
-  stopPct: number;
-  /** After the cost is back: trail the rest this far below the highest close (never below entry). */
+  pivotBars: number;
+  zoneTol: number;
+  minTouches: number;
+  /** Only pivots from the last this-many bars form zones. */
+  srLookback: number;
+  atrPeriod: number;
+  stopAtr: number;
   trailPct: number;
   maxHoldBars: number;
 }
 
 export const QUIET_DEFAULTS: QuietAccumulationParams = {
-  minDrawdown: 0.7,
+  minDrawdown: 0.4,
   volFast: 24,
-  volSlow: 240,
-  dryRatio: 0.5,
-  baseBars: 48,
-  turnEma: 20,
-  stopPct: 0.5,
+  volSlow: 120,
+  dryRatio: 0.8,
+  pivotBars: 5,
+  zoneTol: 0.04,
+  minTouches: 2,
+  srLookback: 720,
+  atrPeriod: 14,
+  stopAtr: 0.5,
   trailPct: 0.35,
   maxHoldBars: 720,
 };
@@ -53,41 +62,69 @@ export function quietAccumulation(params: Partial<QuietAccumulationParams> = {})
   return {
     name: "Quiet Accumulation",
     prepare(c: Candle[]) {
-      const closes = c.map((x) => x.close);
       const vols = c.map((x) => x.volumeUsd);
       const volFast = sma(vols, p.volFast);
       const volSlow = sma(vols, p.volSlow);
-      const turn = ema(closes, p.turnEma);
+      const atrs = atr(c, p.atrPeriod);
       const ath: number[] = [];
       for (let i = 0, m = -Infinity; i < c.length; i++) ath.push((m = Math.max(m, c[i]!.high)));
-      const lowest = (from: number, to: number) => {
-        let m = Infinity;
-        for (let j = Math.max(0, from); j < to; j++) m = Math.min(m, c[j]!.low);
-        return m;
+      const lows = pivotLows(c, p.pivotBars);
+      const highs = pivotHighs(c, p.pivotBars);
+      const warmup = Math.max(p.volSlow, p.atrPeriod, p.pivotBars * 4);
+
+      // Zones known at the close of bar i: pivots confirmed by then, within the lookback.
+      const known = (pivots: Pivot[], i: number) =>
+        pivots.filter((x) => x.index + p.pivotBars <= i && x.index >= i - p.srLookback);
+      const cache = new Map<number, { supports: Zone[]; resistances: Zone[] }>();
+      const zonesAt = (i: number) => {
+        let z = cache.get(i);
+        if (!z) {
+          z = {
+            supports: clusterZones(known(lows, i), p.zoneTol).filter((x) => x.touches >= p.minTouches),
+            resistances: clusterZones(known(highs, i), p.zoneTol).filter((x) => x.touches >= p.minTouches),
+          };
+          cache.set(i, z);
+        }
+        return z;
       };
-      const warmup = Math.max(p.volSlow, p.baseBars * 2);
+      /** The support this bar tested and held: low reached into it, close stayed above its low. */
+      const testedSupport = (i: number) => {
+        const bar = c[i]!;
+        return zonesAt(i)
+          .supports.filter((z) => bar.low <= z.high * (1 + p.zoneTol) && bar.close >= z.low)
+          .sort((a, b) => b.touches - a.touches || b.high - a.high)[0];
+      };
 
       const checks = (i: number) => {
         const bar = c[i]!;
+        const prev = c[i - 1]!;
         const dd = 1 - bar.close / ath[i]!;
-        const dry = volFast[i]! / volSlow[i]!;
-        const recentLow = lowest(i - p.baseBars + 1, i + 1);
-        const priorLow = lowest(i - 2 * p.baseBars + 1, i - p.baseBars + 1);
+        const zone = testedSupport(i);
+        const dry = volFast[i - 1]! / volSlow[i - 1]!;
         return [
           { label: `≥ ${p.minDrawdown * 100}% below ATH`, ok: dd >= p.minDrawdown, detail: `-${(dd * 100).toFixed(0)}%` },
-          { label: `Volume dried up (≤ ${p.dryRatio}x)`, ok: dry <= p.dryRatio, detail: `${dry.toFixed(2)}x` },
-          { label: `No new low in ${p.baseBars} bars`, ok: recentLow > priorLow, detail: `${fmt(recentLow)} vs ${fmt(priorLow)}` },
-          { label: `Close > EMA${p.turnEma}`, ok: bar.close > turn[i]!, detail: `${fmt(bar.close)} vs ${fmt(turn[i]!)}` },
+          {
+            label: `Held support (${p.minTouches}+ touches)`,
+            ok: !!zone,
+            detail: zone ? `${fmt(zone.low)}–${fmt(zone.high)} ×${zone.touches}` : "none",
+          },
+          {
+            label: "Reversal candle",
+            ok: bar.close > bar.open && bar.close > prev.high,
+            detail: `${fmt(bar.close)} vs ${fmt(prev.high)}`,
+          },
+          { label: `Selling faded (≤ ${p.dryRatio}x)`, ok: dry <= p.dryRatio, detail: `${dry.toFixed(2)}x` },
         ];
       };
 
       return {
-        indicators: [{ name: `EMA${p.turnEma}`, values: turn, color: "#f5a623", pane: "price" }],
         shouldEnter(i) {
           return i >= warmup && checks(i).every((x) => x.ok);
         },
-        initialStop(_i, entryPrice) {
-          return entryPrice * (1 - p.stopPct);
+        initialStop(i, entryPrice) {
+          const zone = testedSupport(i);
+          const stop = zone ? zone.low - p.stopAtr * atrs[i]! : entryPrice * 0.7;
+          return Math.min(stop, entryPrice * 0.97);
         },
         updateStop(_i, pos) {
           if (!pos.costRecovered) return pos.stop;
@@ -99,6 +136,17 @@ export function quietAccumulation(params: Partial<QuietAccumulationParams> = {})
         },
         conditions(i) {
           return i >= warmup ? checks(i) : [];
+        },
+        levels(i) {
+          const { supports, resistances } = zonesAt(i);
+          const price = c[i]!.close;
+          // Nearest few on each side of the current price.
+          const sup = supports.filter((z) => z.low <= price).sort((a, b) => b.high - a.high).slice(0, 3);
+          const res = resistances.filter((z) => z.high >= price).sort((a, b) => a.low - b.low).slice(0, 3);
+          return [
+            ...sup.map((z) => ({ kind: "support" as const, price: (z.low + z.high) / 2, touches: z.touches, from: z.from })),
+            ...res.map((z) => ({ kind: "resistance" as const, price: (z.low + z.high) / 2, touches: z.touches, from: z.from })),
+          ];
         },
       };
     },

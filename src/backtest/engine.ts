@@ -29,6 +29,8 @@ export interface PreparedStrategy {
   shouldTimeExit(i: number, pos: Position): boolean;
   /** Entry conditions on bar i, for display. */
   conditions?(i: number): { label: string; ok: boolean; detail: string }[];
+  /** Support / resistance levels known at the close of bar i, for display. */
+  levels?(i: number): { kind: "support" | "resistance"; price: number; touches: number; from: number }[];
 }
 
 export interface Strategy {

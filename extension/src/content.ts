@@ -232,6 +232,12 @@ function drawOnTradingView(): void {
           ]),
     ]),
     segments: [],
+    levels: (last.setup.strategy.prepare(candles).levels?.(candles.length - 1) ?? []).map((l) => ({
+      kind: l.kind,
+      price: l.price,
+      touches: l.touches,
+      time: sec(candles[l.from]!.time),
+    })),
     anchors: candles.slice(-300).map((c) => ({ time: sec(c.time), close: c.close })),
     stop: result.trades.at(-1)?.reason === "end" ? (result.stops.at(-1) ?? null) : null,
   };

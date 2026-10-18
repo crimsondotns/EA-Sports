@@ -83,3 +83,56 @@ export function priorHighest(c: Candle[], period: number): number[] {
   }
   return out;
 }
+
+export interface Pivot {
+  index: number;
+  price: number;
+}
+
+/**
+ * Swing lows: bars whose low is the lowest of the `k` bars on each side. A pivot at index p
+ * is only known once bar p + k has closed, so callers must not use it before then.
+ */
+export function pivotLows(c: Candle[], k: number): Pivot[] {
+  const out: Pivot[] = [];
+  for (let i = k; i < c.length - k; i++) {
+    let ok = true;
+    for (let j = i - k; j <= i + k && ok; j++) if (j !== i && c[j]!.low < c[i]!.low) ok = false;
+    if (ok) out.push({ index: i, price: c[i]!.low });
+  }
+  return out;
+}
+
+/** Swing highs, mirror of `pivotLows`. */
+export function pivotHighs(c: Candle[], k: number): Pivot[] {
+  const out: Pivot[] = [];
+  for (let i = k; i < c.length - k; i++) {
+    let ok = true;
+    for (let j = i - k; j <= i + k && ok; j++) if (j !== i && c[j]!.high > c[i]!.high) ok = false;
+    if (ok) out.push({ index: i, price: c[i]!.high });
+  }
+  return out;
+}
+
+export interface Zone {
+  low: number;
+  high: number;
+  touches: number;
+  /** Index of the first pivot in the zone. */
+  from: number;
+}
+
+/** Groups pivot prices that sit within `tol` (fraction) of each other into zones. */
+export function clusterZones(pivots: Pivot[], tol: number): Zone[] {
+  const sorted = [...pivots].sort((a, b) => a.price - b.price);
+  const zones: Zone[] = [];
+  for (const p of sorted) {
+    const z = zones.at(-1);
+    if (z && p.price <= z.low * (1 + tol)) {
+      z.high = Math.max(z.high, p.price);
+      z.touches++;
+      z.from = Math.min(z.from, p.index);
+    } else zones.push({ low: p.price, high: p.price, touches: 1, from: p.index });
+  }
+  return zones;
+}

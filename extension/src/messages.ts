@@ -74,6 +74,8 @@ export interface DrawPayload {
   arrows: { time: number; price: number; side: "buy" | "sell"; text: string; color: string }[];
   segments: { from: { time: number; price: number }; to: { time: number; price: number }; color: string }[];
   stop: number | null;
+  /** Support / resistance levels to draw as rays from where they were first touched. */
+  levels: { kind: "support" | "resistance"; price: number; touches: number; time: number }[];
   /** Recent closed bars (time in seconds), used to line our times up with the chart's bars. */
   anchors: { time: number; close: number }[];
 }

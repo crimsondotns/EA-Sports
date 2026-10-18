@@ -27,16 +27,15 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
   if (id === "quiet") {
     // Quiet Accumulation thinks in days; convert to bars for this timeframe.
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
-    const volSlow = perDay * 10;
-    const baseBars = perDay * 2;
+    const volSlow = perDay * 5;
     return {
       id,
       name: STRATEGY_NAMES.quiet,
-      strategy: quietAccumulation({ volFast: perDay, volSlow, baseBars, maxHoldBars: perDay * 30 }),
+      strategy: quietAccumulation({ volFast: perDay, volSlow, srLookback: perDay * 30, maxHoldBars: perDay * 30 }),
       // Best setting in the backtests: 10% per trade, sell the cost back at 3x, keep 10% free.
       config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1 },
-      minBars: Math.max(volSlow, baseBars * 2) + 2,
-      shortLabels: ["Below ATH", "Volume dry", "No new low", "Above EMA20"],
+      minBars: volSlow + 2,
+      shortLabels: ["Below ATH", "Support", "Reversal", "Selling faded"],
       note: "10% per trade · cost back at 3x · keep 10% free",
     };
   }
