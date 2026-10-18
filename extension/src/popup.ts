@@ -82,7 +82,6 @@ function strategyDropdown(initial: Settings["strategy"], onChange: (value: Setti
     for (const o of options) o.setAttribute("aria-selected", String(o.dataset.value === value));
     const chosen = options.find((o) => o.dataset.value === value) ?? options[0]!;
     $("strategyValue").textContent = chosen.querySelector(".name")!.textContent;
-    $("strategyHint").textContent = `* ${chosen.querySelector(".tip")!.textContent}`;
     if (notify) onChange(chosen.dataset.value as Settings["strategy"]);
   };
   const setActive = (i: number) => {
