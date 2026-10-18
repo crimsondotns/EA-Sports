@@ -71,12 +71,9 @@ async function main(): Promise<void> {
     input.checked = settings[name];
     input.addEventListener("change", () => void chrome.storage.local.set({ [name]: input.checked }));
   }
-  for (const radio of document.querySelectorAll<HTMLInputElement>('input[name="strategy"]')) {
-    radio.checked = radio.value === settings.strategy;
-    radio.addEventListener("change", () => {
-      if (radio.checked) void chrome.storage.local.set({ strategy: radio.value as Settings["strategy"] });
-    });
-  }
+  const select = $("strategy") as HTMLSelectElement;
+  select.value = settings.strategy;
+  select.addEventListener("change", () => void chrome.storage.local.set({ strategy: select.value as Settings["strategy"] }));
 }
 
 void main();

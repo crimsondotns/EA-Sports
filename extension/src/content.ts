@@ -285,6 +285,24 @@ function parseResolution(r: string): number {
   return { "": n, D: n * 1440, W: n * 10080, M: n * 43200 }[m[2]!.toUpperCase()] ?? NaN;
 }
 
+// Timeframes the DEX Screener chart offers, in minutes.
+const TIMEFRAMES = [1, 5, 15, 60, 240, 720, 1440];
+
+/** Says which timeframe to switch to, or that the pair is too young for this strategy. */
+function notEnoughBars(setup: StrategySetup, resolution: number, candles: Candle[]): string {
+  const needDays = (setup.minBars * resolution) / 1440;
+  const ageDays = candles.length ? (Date.now() - candles[0]!.time) / 86_400_000 : 0;
+  // The chart loads roughly the same number of bars on any timeframe (so larger timeframes
+  // reach further back): suggest the smallest one that needs no more bars than are loaded now.
+  const fits = TIMEFRAMES.filter((tf) => tf > resolution).find((tf) => setupStrategy(setup.id, tf).minBars <= Math.max(candles.length, 300));
+  if (fits) return `Not enough bars on ${resLabel(resolution)} for ${setup.name}. Switch the chart to ${resLabel(fits)}.`;
+  // Already on a large timeframe: the loaded history is the pair's real age.
+  if (ageDays < needDays) {
+    return `${setup.name} needs about ${Math.ceil(needDays)} days of history; the chart has ${ageDays.toFixed(1)} days loaded. Scroll the chart back, or the pair may be too new.`;
+  }
+  return `Not enough bars on ${resLabel(resolution)} for ${setup.name}. Scroll the chart back to load more.`;
+}
+
 function analyze(source: BarsSource, all: Candle[]): void {
   // An empty export just means the chart is still loading.
   if (all.length === 0) return;
@@ -302,7 +320,7 @@ function analyze(source: BarsSource, all: Candle[]): void {
   // Small incremental responses would replace the full history; keep what we have.
   if (sameChart && candles.length < last!.candles.length / 2) return;
   if (candles.length < setup.minBars) {
-    errorText = `${setup.name} needs ${setup.minBars}+ bars on ${resLabel(source.resolution)} (chart has ${candles.length}). Scroll back to load more, or use a larger timeframe.`;
+    errorText = notEnoughBars(setup, source.resolution, candles);
     publish();
     return;
   }
