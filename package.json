@@ -13,7 +13,8 @@
     "chart": "node src/cli/chart.ts",
     "compare": "node src/cli/compare.ts",
     "ext:build": "node extension/build.mjs",
-    "ext:watch": "node extension/build.mjs --watch"
+    "ext:watch": "node extension/build.mjs --watch",
+    "accumulate": "node src/cli/accumulate.ts"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",
