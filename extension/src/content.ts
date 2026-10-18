@@ -72,7 +72,7 @@ root.innerHTML = `
   :host { all: initial; }
   table {
     border-collapse: collapse; min-width: 196px; max-width: 260px; pointer-events: auto;
-    background: rgba(0, 0, 0, .62); color: #fff; border: 1px solid #2a2a2a; border-radius: 10px;
+    background: rgba(0, 0, 0, var(--table-opacity, .6)); color: #fff; border: 1px solid #2a2a2a; border-radius: 0;
     font: 11px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-variant-numeric: tabular-nums; overflow: hidden;
   }
@@ -101,6 +101,7 @@ function positionTable(): void {
   // still loading there is no corner to pin to.
   const chartReady = !!r && r.width >= 300 && r.height >= 200 && mode === "tradingview";
   host.style.display = settings.showTable && chartReady && (last || errorText) ? "" : "none";
+  host.style.setProperty("--table-opacity", String(settings.tableOpacity));
   if (!chartReady) return;
   const PRICE_SCALE = 72; // width of the chart's right price axis
   const TOOLBAR = 44; // chart top toolbar

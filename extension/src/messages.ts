@@ -55,9 +55,11 @@ export interface Settings {
   notify: boolean;
   /** Add the active strategy's indicators to the chart. */
   showIndicators: boolean;
+  /** Background opacity of the chart table, 0.2–1. */
+  tableOpacity: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true, showIndicators: true };
+export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true, showIndicators: true, tableOpacity: 0.6 };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 // content <-> background (chrome.runtime messaging)

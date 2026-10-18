@@ -229,6 +229,36 @@ async function main(): Promise<void> {
     input.addEventListener("change", () => void chrome.storage.local.set({ [name]: input.checked }));
   }
   strategyDropdown(settings.strategy, (value) => void chrome.storage.local.set({ strategy: value }));
+
+  // Table opacity: 20–100% in 5% steps; greyed out while the table is hidden.
+  const opacity = $("tableOpacity") as HTMLInputElement;
+  const showTable = $("showTable") as HTMLInputElement;
+  const paintOpacity = () => {
+    const pct = Number(opacity.value);
+    $("tableOpacityValue").textContent = `${pct}%`;
+    opacity.style.setProperty("--fill", `${((pct - 20) / 80) * 100}%`);
+    opacity.disabled = !showTable.checked;
+    $("opacityRow").classList.toggle("disabled", opacity.disabled);
+  };
+  opacity.value = String(Math.round(settings.tableOpacity * 100));
+  paintOpacity();
+  opacity.addEventListener("input", () => {
+    paintOpacity();
+    void chrome.storage.local.set({ tableOpacity: Number(opacity.value) / 100 });
+  });
+  showTable.addEventListener("change", paintOpacity);
+
+  // Settings is its own page inside the popup.
+  const showPage = (settingsOpen: boolean) => {
+    $("homePage").hidden = settingsOpen;
+    $("settingsPage").hidden = !settingsOpen;
+    $(settingsOpen ? "closeSettings" : "openSettings").focus();
+  };
+  $("openSettings").addEventListener("click", () => showPage(true));
+  $("closeSettings").addEventListener("click", () => showPage(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !$("settingsPage").hidden && $("strategyMenu").hidden) showPage(false);
+  });
 }
 
 void main();

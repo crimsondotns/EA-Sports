@@ -96,18 +96,44 @@
   .tooltip[hidden] { display: none; }
 
   @media (hover: hover) and (pointer: fine) {
+    .icon-button:hover { background: var(--hover); }
     .dropdown-trigger:hover { background: #111111; border-color: var(--border-strong); }
     .dropdown-menu li .info:hover { background: var(--border-strong); color: var(--text); }
   }
+  .grow { flex: 1; min-width: 0; }
+  /* Ghost icon button (header) */
+  .icon-button { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    padding: 0; border: 0; border-radius: 999px; background: transparent; color: #e5e5e5; cursor: pointer;
+    transition: background-color var(--t); }
+  .icon-button:active { background: var(--pressed); }
+  .icon-button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  /* Slider */
+  .slider { padding: 8px 0 4px; }
+  .slider-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .slider-label output { color: var(--text-2); font-variant-numeric: tabular-nums; }
+  .slider small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
+  .slider.disabled { opacity: .45; }
+  input[type="range"] { appearance: none; display: block; width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer; }
+  input[type="range"]:disabled { cursor: not-allowed; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 999px;
+    background: linear-gradient(to right, #fff var(--fill, 50%), #333 var(--fill, 50%)); }
+  input[type="range"]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%;
+    background: #fff; border: 0; transition: transform var(--t); }
+  input[type="range"]:focus-visible { outline: none; }
+  input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid #fff; outline-offset: 3px; }
+  input[type="range"]:active::-webkit-slider-thumb { background: #d6d6d6; }
+  #settingsPage header h1 { font-size: 15px; }
   footer { color: var(--muted); font-size: 11px; padding-top: 8px; }
 
   @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
 </style>
 </head>
 <body>
+  <div id="homePage">
   <header>
     <img src="icon48.png" alt="">
-    <div><h1 id="title">EA Signals</h1><p id="subtitle">DEX Screener signals</p></div>
+    <div class="grow"><h1 id="title">EA Signals</h1><p id="subtitle">DEX Screener signals</p></div>
+    <button type="button" class="icon-button" id="openSettings" aria-label="Settings" title="Settings"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z M6.6 1.75h2.8l.4 1.7 1.3.75 1.65-.55 1.4 2.4-1.25 1.2v1.5l1.25 1.2-1.4 2.4-1.65-.55-1.3.75-.4 1.7H6.6l-.4-1.7-1.3-.75-1.65.55-1.4-2.4 1.25-1.2v-1.5L1.85 6.05l1.4-2.4 1.65.55 1.3-.75.4-1.7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>
   </header>
   <section>
     <h2 id="strategyLabel">Strategy</h2>
@@ -142,13 +168,26 @@
     </div>
   </section>
   <main id="main"></main>
-  <section>
-    <h2>Settings</h2>
+  </div>
+
+  <div id="settingsPage" hidden>
+    <header>
+      <button type="button" class="icon-button" id="closeSettings" aria-label="Back"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <h1 class="grow">Settings</h1>
+    </header>
+    <section>
+      <h2>Chart</h2>
     <label class="switch"><span>Table on chart<small>Compact table in the chart's top-right corner</small></span><input type="checkbox" id="showTable"></label>
+      <div class="slider" id="opacityRow">
+        <div class="slider-label"><label for="tableOpacity">Table opacity</label><output id="tableOpacityValue" for="tableOpacity">62%</output></div>
+        <input type="range" id="tableOpacity" min="20" max="100" step="5" aria-describedby="tableOpacityHint">
+        <small id="tableOpacityHint">Background of the table on the chart</small>
+      </div>
     <label class="switch"><span>Buy / sell markers<small>Draw backtest entries and exits on the chart</small></span><input type="checkbox" id="drawMarkers"></label>
     <label class="switch"><span>Strategy indicators<small>Add the EMAs, MACD, RSI or volume the strategy uses</small></span><input type="checkbox" id="showIndicators"></label>
     <label class="switch"><span>Notifications<small>Alert when a new bar closes with a signal</small></span><input type="checkbox" id="notify"></label>
-  </section>
+    </section>
+  </div>
   <div class="tooltip" id="tooltip" aria-hidden="true" hidden></div>
   <footer>Backtest signals only — not financial advice.</footer>
   <script src="dist/popup.js"></script>
