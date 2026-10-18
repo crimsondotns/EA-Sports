@@ -30,6 +30,8 @@ export interface DeepDipParams {
   /** RSI must be above this: under 30 the selling usually isn't done yet. */
   minRsi: number;
   maxRsi: number;
+  /** Wait for EMA 200 to exist before any signal (off: young pairs trade on EMA 9 / 21). */
+  requireSlowEma: boolean;
   /** RSI must be this fraction above its recent low (0.2: low 25 needs 30); 0 turns the rule off.
    *  +20 points was tried too: it waits until the bounce is mostly over (15m median +17.7% vs +33.1%). */
   rsiBounce: number;
@@ -63,6 +65,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   emaSlow: 200,
   minRsi: 30,
   maxRsi: 60,
+  requireSlowEma: false,
   rsiBounce: 0.2,
   rsiLowBars: 96,
   useSupport: true,
@@ -99,7 +102,7 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       const r = rsi(close);
       const lows = pivotLows(c, p.pivotBars);
       // MACD's signal line is the slowest series that must exist; EMA 200 joins when it can.
-      const warmup = Math.max(p.emaMid, 26 + 9) + 1;
+      const warmup = p.requireSlowEma ? p.emaSlow + 1 : Math.max(p.emaMid, 26 + 9) + 1;
       /** The lowest of the EMAs that exist at bar i: the price has to be under it. */
       const emaFloor = (i: number) => Math.min(e1[i]!, e2[i]!, Number.isFinite(e3[i]!) ? e3[i]! : Infinity);
 
