@@ -355,7 +355,25 @@ body {
 }
 ```
 
-## 14. AI Coding Agent Implementation Rules
+## 14. Tooltip Design System
+
+Tooltips must follow the companion specification in `chatgpt-inspired-tooltip-design-system.md`. Reuse the application's shared tooltip primitive rather than creating one-off implementations.
+
+### Core Rules
+
+- Surface: `#171717`; text: `#FFFFFF`; border: `#383838`; radius: `8px`.
+- Typography: `12px` with a `16px` line height; keep copy short and contextual.
+- Default maximum width: `240px`; padding: `6px 9px` for one line or `8px 10px` for multiline content.
+- Show after approximately `500ms` of hover; show promptly on keyboard focus; close after a short `100ms` exit delay.
+- Prefer top placement, but flip/shift based on available viewport space. Prevent clipping inside dialogs, sidebars, and scroll containers.
+- Provide `role="tooltip"`, a stable ID, and an `aria-describedby` relationship. The trigger must still have its own accessible name.
+- Tooltips are non-interactive. Use a popover for links, buttons, forms, or longer help content.
+- Never put essential instructions or the only accessible label in a hover-only tooltip. Provide a touch-friendly alternative when needed.
+- Respect `prefers-reduced-motion`; use only a subtle fade and 2px movement.
+
+See `chatgpt-inspired-tooltip-design-system.md` for the complete token table, behavior, placement, accessibility, CSS reference, and implementation checklist.
+
+## 15. AI Coding Agent Implementation Rules
 
 When implementing or redesigning a page, component, or dialog:
 
@@ -370,7 +388,7 @@ When implementing or redesigning a page, component, or dialog:
 9. **Report the work clearly.** Summarize changed files, behavior preserved, checks run, and any remaining limitations.
 10. **Do not fake verification.** Report a check as passed only if it was actually run and succeeded.
 
-## 15. Definition of Done
+## 16. Definition of Done
 
 - [ ] Main application background is black (`#000000`).
 - [ ] Primary buttons are white with black labels.
@@ -379,5 +397,438 @@ When implementing or redesigning a page, component, or dialog:
 - [ ] Hover, focus-visible, active, disabled, and loading states are implemented where applicable.
 - [ ] Dialogs and forms work on mobile and desktop.
 - [ ] Keyboard accessibility and visible focus styles are preserved.
+- [ ] Tooltips follow the shared dark-theme tooltip specification and work on hover, keyboard focus, and touch alternatives.
+- [ ] Tooltips use accessible names/description wiring and do not contain interactive content.
 - [ ] Existing product behavior has not been unintentionally removed.
 - [ ] Available project checks have been run and their actual results reported.
+
+---
+
+# Appendix: Dropdown, Picker & Hover System
+
+## Dropdown, Picker & Hover System
+
+> A practical UI specification for AI coding agents. Designed for a black canvas, white primary actions, quiet neutral surfaces, and predictable interactions. This is a custom project specification inspired by a restrained conversational UI; it is not an official OpenAI design-system document.
+
+### 1. Purpose and Principles
+
+Use this specification for dropdown menus, select controls, searchable pickers, multi-select pickers, command menus, list-item interactions, and hover states across the application.
+
+- **Dark by default:** the application canvas remains black (`#000000`).
+- **White primary actions:** the most important action uses a white background and black text.
+- **Neutral interaction states:** hover and selection should use subtle gray surfaces, not bright accent colors.
+- **Clear selection:** the current value and selected options must be easy to identify without relying on color alone.
+- **Predictable behavior:** pointer, keyboard, touch, focus, open, selected, disabled, and error states must be consistent.
+- **Accessible by design:** support keyboard operation, visible focus, screen readers, sufficient contrast, and reduced motion.
+- **Use the right component:** use a tooltip for brief non-interactive help, a dropdown for a short action list, a select for choosing a value, and a popover/dialog for richer interactive content.
+
+### 2. Color Tokens
+
+Use semantic CSS variables. Do not scatter raw color values across individual components.
+
+| Token | Value | Usage |
+|---|---|---|
+| `--color-bg` | `#000000` | Main application background |
+| `--color-surface` | `#0A0A0A` | Default panel or inset region |
+| `--color-surface-elevated` | `#171717` | Dropdowns, menus, popovers, picker panels |
+| `--color-surface-hover` | `#202020` | Hovered menu rows and neutral interactive surfaces |
+| `--color-surface-pressed` | `#2A2A2A` | Pressed or actively clicked neutral surfaces |
+| `--color-surface-selected` | `#262626` | Selected option background |
+| `--color-text-primary` | `#FFFFFF` | Primary text |
+| `--color-text-secondary` | `#B4B4B4` | Supporting labels and descriptions |
+| `--color-text-muted` | `#777777` | Placeholder or low-emphasis metadata only |
+| `--color-text-disabled` | `#666666` | Disabled labels |
+| `--color-border` | `#2A2A2A` | Default border and separators |
+| `--color-border-strong` | `#444444` | Hovered or emphasized control border |
+| `--color-focus` | `#FFFFFF` | Keyboard focus ring |
+| `--color-button-primary-bg` | `#FFFFFF` | Primary action background |
+| `--color-button-primary-text` | `#000000` | Primary action label |
+| `--color-button-primary-hover` | `#EAEAEA` | Primary action hover |
+| `--color-danger` | `#F87171` | Error and destructive states |
+
+#### Color rules
+
+- Do not change the black canvas to gray just to make a dropdown stand out. Use an elevated surface, subtle border, and restrained shadow.
+- Dropdown and picker panels use `#171717` by default; menu-row hover uses `#202020`.
+- Selected options use a neutral selected surface plus a checkmark, radio indicator, checkbox, or other explicit state indicator.
+- Do not use white text on the white primary button. Primary button text must be black.
+- Reserve red for errors/destructive actions and status colors for meaningful states. Do not decorate options with arbitrary accent colors.
+- A hover state must remain distinguishable from keyboard focus and selected state.
+
+### 3. Typography
+
+Use the same system font stack as the main design system:
+
+```css
+font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+  "Segoe UI", sans-serif;
+```
+
+| Element | Font size | Weight | Line height |
+|---|---:|---:|---:|
+| Field label | `13–14px` | `500` | `1.4` |
+| Select trigger value | `14px` | `400` | `1.4` |
+| Dropdown option | `14px` | `400` | `1.4` |
+| Option description | `12–13px` | `400` | `1.4` |
+| Group heading | `11–12px` | `600` | `1.3` |
+| Helper / error text | `12–13px` | `400` | `1.4` |
+
+Rules:
+
+- Keep option labels concise and sentence case.
+- Use a secondary text token for descriptions, shortcuts, and metadata.
+- Do not reduce essential labels below `12px` to fit long content.
+- Use tabular numerals for amounts, IDs, and values that need to align.
+
+### 4. Component Selection: Which Pattern to Use
+
+| Pattern | Use it when | Expected behavior |
+|---|---|---|
+| Dropdown menu | The user chooses an action, such as Edit, Duplicate, or Delete | Opens a menu of actions; choosing an action performs it and closes the menu |
+| Single-select picker | The user chooses one value from a list | Shows the current value; choosing an option updates the value and closes the panel |
+| Searchable picker / combobox | The list is long or users may not know the exact label | Supports typing to filter options and clear empty/loading results |
+| Multi-select picker | The user can choose more than one item | Uses checkboxes or equivalent indicators; selected values are clear; offers explicit Apply/Done when immediate commit would be disruptive |
+| Command menu | The user searches for and runs app commands | Supports keyboard navigation, filtering, and clear shortcut hints |
+| Date/time picker | The user chooses a date or time | Uses a dedicated calendar/time interaction with appropriate keyboard and localization behavior |
+| Popover | The content includes controls, explanation, or more than a simple list | Can contain interactive content and must manage focus correctly |
+
+Do not implement every pattern as a custom dropdown. Prefer the platform-native `<select>` when it meets the design and accessibility needs. For custom behavior, use an accessible component primitive or implement the full interaction model rather than styling a non-semantic `div` as a control.
+
+### 5. Select Trigger Design
+
+#### Default appearance
+
+- Background: `#0A0A0A` or transparent against the black canvas.
+- Text: `#FFFFFF` for a selected value; `#777777` for placeholder text.
+- Border: `1px solid #2A2A2A`.
+- Border radius: `10px` by default; use the application's established radius scale if one exists.
+- Height: `40px` standard; `36px` compact only for dense interfaces; `44px` or larger for touch-first layouts.
+- Horizontal padding: `12px`.
+- Icon-label gap: `8px`.
+- Chevron: `16px`, muted white/gray, aligned to the trailing edge.
+- Field label sits above the trigger; helper/error copy sits below it.
+
+#### Trigger states
+
+| State | Visual behavior |
+|---|---|
+| Default | Transparent or `#0A0A0A` fill; subtle `#2A2A2A` border |
+| Hover | Background may shift slightly toward `#111111`; border becomes `#444444` |
+| Focus-visible | Clear `2px` white focus ring with a dark offset where needed; do not rely only on border color |
+| Open | Keep focus styling; chevron may rotate `180deg` over `120–160ms` |
+| Disabled | Muted text and icon, reduced emphasis, no hover treatment; expose the disabled state semantically |
+| Invalid | Use `#F87171` border or error indicator and a linked error message; do not depend on red alone |
+| Placeholder | Use muted text and preserve normal text contrast for actual selected values |
+
+Rules:
+
+- Keep the selected value visually distinct from placeholder text.
+- Do not show a blinking caret in a non-searchable select trigger.
+- Do not make the whole field look clickable when it is disabled.
+- A visible label is preferred over placeholder-only labeling.
+- For long selected values, truncate gracefully but provide an accessible full value; do not let the chevron shrink or overlap text.
+
+### 6. Dropdown / Picker Panel
+
+| Property | Default specification |
+|---|---|
+| Background | `#171717` |
+| Text | `#FFFFFF` |
+| Border | `1px solid #383838` |
+| Radius | `10px` or match the trigger radius |
+| Shadow | `0 8px 24px rgb(0 0 0 / 32%)` |
+| Width | Match trigger width by default; allow wider only when the content requires it |
+| Minimum width | Never narrower than the trigger |
+| Max height | `min(320px, 60vh)`; keep it inside the viewport |
+| Panel padding | `4px` around option rows |
+| Option row height | `36–40px`; aim for `44px` on touch-first layouts |
+| Option horizontal padding | `10–12px` |
+| Option corner radius | `6px` |
+| Group gap | `4–8px` |
+| Z-index | Use the shared overlay layer token; keep above local content but below modal dialogs |
+
+#### Positioning
+
+- Prefer below-start alignment for a field picker.
+- Flip above the trigger when there is insufficient space below.
+- Shift horizontally to remain within the viewport; never clip the panel off-screen.
+- Keep a small gap (`4–6px`) between trigger and panel unless the component intentionally joins them visually.
+- Anchor the panel to the trigger and avoid layout shift when opening.
+- For scrollable panels, keep the trigger visible and ensure the selected option can scroll into view when appropriate.
+- Recalculate placement on viewport resize, scroll, and content-size changes when using a custom overlay.
+
+### 7. Option Row States
+
+Every option row must have consistent hover, focus, selected, disabled, and pressed behavior.
+
+| State | Background | Content / indicator |
+|---|---|---|
+| Default | Transparent | White primary label; optional gray description |
+| Pointer hover | `#202020` | Text stays readable; no scale or bounce |
+| Keyboard active | `#202020` plus visible focus/active distinction | Clear active row; maintain keyboard navigation context |
+| Selected | `#262626` | Checkmark, radio, checkbox, or another explicit selected indicator |
+| Selected + hover | Slightly stronger neutral surface, e.g. `#303030` | Keep selected indicator visible |
+| Pressed | `#2A2A2A` | Brief pressed feedback |
+| Disabled | Transparent | Muted text; no pointer-hover styling; cannot be selected |
+| Destructive action | Neutral row by default; danger text/icon where useful | Confirm irreversible actions when required by product rules |
+
+Rules:
+
+- Hover does not mean selected. Do not show a checkmark only because the pointer is over an option.
+- Selected state must remain visible after pointer movement.
+- Disabled rows must not respond to click, Enter, Space, or type-to-select.
+- Do not use an animation that shifts option labels horizontally or changes row dimensions on hover.
+- If options have descriptions, align all labels and descriptions consistently.
+- If options have icons, use one consistent icon size (`16px`) and a fixed icon column so labels align.
+- Do not use color alone to communicate selection, errors, or disabled status.
+
+### 8. Hover System Across the Application
+
+Apply these rules consistently to interactive elements, not only dropdowns.
+
+| Component | Hover behavior |
+|---|---|
+| Primary white button | Background `#EAEAEA`; text remains `#000000` |
+| Secondary dark button | Background shifts toward `#262626`; retain white text |
+| Text button / link | Increase text emphasis or show a subtle underline when appropriate; avoid bright neon color |
+| Icon button | Neutral circular/square surface such as `#202020`; icon remains legible |
+| Select trigger | Subtle background shift and border to `#444444` |
+| Dropdown option | `#202020` row background |
+| Selected option | Preserve selected indication; use a subtly stronger neutral surface on hover |
+| Navigation item | `#171717` or `#202020` background; keep active/current page state distinct |
+| Table row | Very subtle `#111111` surface only when row interaction is supported |
+| Card / clickable tile | Subtle border/surface change; avoid large elevation jumps |
+| Disabled element | No hover effect; cursor and semantics must reflect the disabled state |
+
+#### Hover behavior rules
+
+- Use `cursor: pointer` only for elements that are genuinely clickable. Use the default cursor for text and disabled controls.
+- Use `120–160ms` transitions for color, border, and background changes. Avoid spring or bounce effects for everyday controls.
+- Do not use `transform: scale()` as a default hover effect. Do not make buttons jump or shift the layout.
+- Keep hover, active/pressed, selected, and focus-visible states independently testable.
+- On touch devices, do not rely on hover to reveal required labels or actions.
+- A hover effect must not reduce text contrast, hide an icon, or change the control's dimensions.
+- Use `@media (hover: hover) and (pointer: fine)` for optional pointer-only hover polish; keyboard and touch interaction must still work without it.
+
+### 9. Open / Close Interaction
+
+| Interaction | Expected behavior |
+|---|---|
+| Click or tap trigger | Toggle panel open/closed |
+| Click outside | Close the panel, unless an explicit multi-step interaction requires preserving it |
+| Escape | Close the panel and return focus to the trigger |
+| Choose a single option | Commit the value, close the panel, and return focus appropriately |
+| Choose a multi-select option | Toggle that option without unexpectedly closing the picker |
+| Enter | Activate the currently focused option or open the picker when the trigger is focused |
+| Arrow keys | Move active option according to the component's documented keyboard pattern |
+| Tab / Shift+Tab | Follow the page's normal focus order; do not trap focus in a simple dropdown |
+| Type-to-select | Support incremental matching for simple, non-searchable lists where appropriate |
+| Search input | Preserve typed query while navigating results; define a clear reset/close behavior |
+| Scroll | Scroll the list without closing the menu or losing the active option |
+
+Additional behavior:
+
+- Open menus on explicit activation, not on hover alone. Hover-only dropdowns are fragile for keyboard users and touch devices.
+- Avoid closing a panel when the pointer travels from its trigger into the panel; treat them as one interaction region.
+- Close the panel on a committed single-select choice, Escape, or outside interaction.
+- For destructive actions inside a menu, close the menu before opening a confirmation dialog where that creates a clearer focus flow.
+- Preserve the last committed value if the user dismisses the picker without applying changes.
+- Do not steal focus from a search input while filtering results.
+
+### 10. Searchable Pickers and Multi-Select
+
+#### Searchable picker
+
+- Place the search field at the top of the panel, with a clear search icon only if it improves recognition.
+- Search field height: `36–40px`; use `12px` horizontal padding.
+- Filter options as the user types and keep keyboard navigation synchronized with the filtered results.
+- Provide clear states for loading, no results, and an unavailable/error result.
+- If a result count is shown, make it secondary metadata and keep it stable while the user navigates.
+- Provide a clear button only when a non-empty query exists, and give it an accessible name.
+- Do not claim that a search is fuzzy, remote, or case-insensitive unless the implementation actually behaves that way.
+
+#### Multi-select picker
+
+- Use checkboxes or a similarly explicit selection marker.
+- Keep the panel open while toggling individual values.
+- Show selected values in the trigger as a short summary (for example, “3 selected”) when a complete list would overflow.
+- For complex or high-impact choices, provide explicit **Apply** and **Cancel** actions. Apply is the white primary button; Cancel is a dark secondary button.
+- Make “Select all” and “Clear all” actions visually secondary to the actual options and scope them clearly to the current result set when searching.
+- Announce selection changes to assistive technology when appropriate.
+- Do not silently apply a partially edited selection when the user presses Escape if the component has explicit Apply/Cancel semantics.
+
+### 11. Loading, Empty, Error, and Group States
+
+- **Loading:** show concise text or a small spinner; avoid replacing the entire menu with a large skeleton. Keep the panel size stable when practical.
+- **Empty list:** show a clear message such as “No options available.” Do not show a disabled-looking fake option that can be selected.
+- **No search results:** say “No results found” and, when useful, suggest changing the query.
+- **Error:** explain that options could not be loaded and provide Retry if retrying is supported.
+- **Groups:** use muted, compact group headings with enough spacing to separate categories. Group headings are not selectable unless intentionally designed as actions.
+- **Dividers:** use `#2A2A2A` sparingly; prefer spacing between groups where that preserves clarity.
+- **Long labels:** wrap only when the pattern supports multiline rows; otherwise truncate and expose the full accessible name.
+- **Large lists:** use virtualization only where needed, and preserve keyboard, screen-reader, and active-option behavior.
+
+### 12. Motion and Reduced Motion
+
+| Motion | Default |
+|---|---|
+| Panel open | `120–160ms` opacity and small `translateY(-2px → 0)` or `translateY(2px → 0)` |
+| Panel close | `100–120ms` opacity fade |
+| Chevron | `120–160ms` rotation |
+| Hover color | `120–160ms` ease-out |
+| Scale/bounce | Do not use by default |
+
+- Use `prefers-reduced-motion: reduce` to remove non-essential movement and shorten or disable transitions.
+- Avoid animating panel height from zero when the content causes layout jank; use a simple opacity/translate transition when appropriate.
+- Do not delay opening a normal dropdown to create a hover-style effect. Activation should feel immediate.
+
+### 13. Accessibility Requirements
+
+- Prefer native `<select>` when it supports the required experience.
+- Use semantic controls and established accessible primitives for custom listboxes, menus, and comboboxes.
+- Select an ARIA pattern appropriate to the component: action menus are not listboxes, and a listbox is not a generic container for interactive buttons or checkboxes.
+- Connect visible labels to form controls using `label` / `htmlFor` or the appropriate accessible naming API.
+- Provide `aria-expanded` and `aria-controls` on custom triggers as appropriate, and use the correct role for the component pattern.
+- Use `aria-selected`, `aria-checked`, `aria-disabled`, and active-descendant patterns only where appropriate for the chosen semantic pattern; do not add roles mechanically.
+- Keep a visible `:focus-visible` indicator. Hover alone is not sufficient.
+- Ensure arrow-key, Enter, Space, Escape, Home/End, and type-ahead behavior follows the selected ARIA interaction pattern.
+- Keep focus order logical and avoid keyboard traps in non-modal dropdowns.
+- Ensure target sizes are comfortable for touch; aim for a minimum `44 × 44px` touch target where practical, even if the visual icon is smaller.
+- Announce loading, no-results, and relevant selection changes when they are not otherwise conveyed to screen readers.
+- Maintain contrast for text and interactive states. Do not use color as the only state indicator.
+- Test at 200% zoom and with keyboard-only navigation.
+
+### 14. CSS Tokens and Example
+
+Use tokens from the primary project design system when available. This standalone component layer may define aliases for consistency:
+
+```css
+:root {
+  --picker-bg: #171717;
+  --picker-text: #ffffff;
+  --picker-text-secondary: #b4b4b4;
+  --picker-text-muted: #777777;
+  --picker-border: #383838;
+  --picker-border-hover: #444444;
+  --picker-option-hover: #202020;
+  --picker-option-selected: #262626;
+  --picker-option-pressed: #2a2a2a;
+  --picker-radius: 10px;
+  --picker-option-radius: 6px;
+  --picker-panel-shadow: 0 8px 24px rgb(0 0 0 / 32%);
+  --picker-option-height: 40px;
+  --picker-transition: 140ms ease-out;
+}
+
+.picker-trigger {
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--color-text-primary, #ffffff);
+  background: var(--color-surface, #0a0a0a);
+  border: 1px solid var(--color-border, #2a2a2a);
+  border-radius: var(--picker-radius);
+  transition:
+    background-color var(--picker-transition),
+    border-color var(--picker-transition);
+}
+
+.picker-trigger:disabled {
+  color: var(--color-text-disabled, #666666);
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .picker-trigger:not(:disabled):hover {
+    background: #111111;
+    border-color: var(--picker-border-hover);
+  }
+}
+
+.picker-trigger:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.picker-panel {
+  color: var(--picker-text);
+  background: var(--picker-bg);
+  border: 1px solid var(--picker-border);
+  border-radius: var(--picker-radius);
+  box-shadow: var(--picker-panel-shadow);
+  padding: 4px;
+}
+
+.picker-option {
+  min-height: var(--picker-option-height);
+  padding: 8px 10px;
+  border-radius: var(--picker-option-radius);
+  color: var(--picker-text);
+  background: transparent;
+  transition: background-color var(--picker-transition);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .picker-option:not([aria-disabled="true"]):hover {
+    background: var(--picker-option-hover);
+  }
+}
+
+.picker-option[aria-selected="true"] {
+  background: var(--picker-option-selected);
+}
+
+.picker-option:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picker-trigger,
+  .picker-option {
+    transition: none;
+  }
+}
+```
+
+> CSS is illustrative. The correct keyboard and ARIA behavior depends on the chosen component semantics and should be implemented with an accessible component primitive where possible. Do not treat these styles alone as a complete accessible picker.
+
+### 15. Responsive and Touch Behavior
+
+- Do not require hover to discover an action or read a label.
+- Make the trigger easy to tap; aim for `44px` minimum height on touch-first layouts.
+- For a long picker on a small screen, consider a bottom sheet or full-screen picker if it provides better usability. Preserve the same color tokens and option states.
+- Ensure the panel remains inside the visual viewport when the mobile keyboard appears.
+- Prevent background scrolling only when the picker is presented as a modal/bottom sheet and the interaction design requires it.
+- Support safe-area insets in full-screen and bottom-sheet layouts.
+
+### 16. Implementation Rules for AI Coding Agents
+
+Before editing the app:
+
+1. Inspect the existing component library, design tokens, Tailwind/CSS conventions, and dropdown/picker implementations. Reuse established patterns when possible.
+2. Identify whether each component is an action menu, single-select, combobox, multi-select, command menu, or date/time picker. Do not force one behavior onto every pattern.
+3. Keep the application's black background and white primary-button system intact. Use elevated dark panels, subtle neutral hover states, and explicit selected indicators.
+4. Implement all states: default, hover, focus-visible, open, active, selected, selected-hover, pressed, disabled, loading, empty, and invalid where relevant.
+5. Ensure keyboard support, appropriate semantics, focus restoration, outside-click behavior, and reduced-motion support.
+6. Avoid introducing a new dependency if the repository already includes an accessible primitive that meets the requirement.
+7. Do not refactor unrelated components or change unrelated business logic.
+8. Test pointer, keyboard-only, touch-sized viewport, long labels, empty results, disabled options, and opening near viewport edges.
+9. Run the project's existing lint, typecheck, and tests when available. Fix regressions caused by the change.
+10. Report the files changed, interaction behavior implemented, and any accessibility or testing limitations honestly.
+
+### 17. Acceptance Checklist
+
+- [ ] Main application background remains `#000000`.
+- [ ] Primary buttons remain white with black labels.
+- [ ] Dropdown/picker panel uses a dark elevated surface with a subtle border.
+- [ ] Hover is neutral, fast, and does not shift layout.
+- [ ] Hover, active, selected, focus, and disabled states are visually distinct.
+- [ ] Selected options show a persistent selection indicator.
+- [ ] Disabled options cannot be activated.
+- [ ] Panel flips/shifts to stay within the viewport.
+- [ ] Escape closes the panel and restores focus appropriately.
+- [ ] Keyboard navigation follows the chosen semantic pattern.
+- [ ] Touch interactions do not depend on hover.
+- [ ] Loading, empty, error, and long-label states are handled.
+- [ ] Reduced-motion settings are respected.
+- [ ] Existing project lint, typecheck, and tests pass, where available.

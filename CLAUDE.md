@@ -50,6 +50,9 @@ All UI in this project (extension panel, HTML reports, any future pages) follows
 - System sans-serif font stack, 4px spacing grid, tabular numerals for prices and figures.
 - No decorative gradients, glows or bright accents. Color only where it carries meaning: in this project that means trading semantics (buy / sell, profit / loss, stop) and success / warning / danger states.
 - Every interactive control has hover, focus-visible, active and disabled states; respect `prefers-reduced-motion`.
+- Tooltips: `#171717` surface, white 12px / 16px text, `#383838` border, 8px radius, max 240px wide. Open after ~500ms hover, promptly on keyboard focus, close after 100ms; prefer top placement and flip to stay in view. `role="tooltip"` + `aria-describedby`, never interactive, never the only place essential info or a label lives.
+- Dropdowns / pickers: panel `#171717`, border `#383838`, shadow `0 8px 24px rgb(0 0 0 / 32%)`, 4px padding, rows 36–40px with 6px radius. Row hover `#202020`, selected `#262626` plus a checkmark, selected + hover `#303030`, pressed `#2A2A2A`. Trigger border `#2A2A2A`, hover `#444444` on `#111111`. Open on click (never hover alone); Escape closes and refocuses the trigger.
+- Hover is neutral and fast (120–160ms), never scales or shifts layout; pointer-only polish goes under `@media (hover: hover) and (pointer: fine)`.
 - Follow the spec's implementation rules and definition of done, and only report checks that were actually run.
 
 The extension icon (`extension/icon.svg`, black and gold EA monogram) is the brand mark and is exempt from the no-gradient rule.
