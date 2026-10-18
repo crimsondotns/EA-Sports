@@ -196,7 +196,7 @@ function renderTable(): void {
       ? sum.plan.kind === "zone"
         ? [
             `<tr class="sep"><td class="sub">Next buy zone</td><td class="${sum.plan.inZone ? "pos" : ""}">${fmt(sum.plan.low)}–${fmt(sum.plan.high)}</td></tr>`,
-            `<tr><td class="sub">${sum.plan.inZone ? "In zone" : "Distance"}</td><td>${sum.plan.inZone ? (sum.strategy === "Deep Dip" ? "wait for MACD turn" : "wait for reversal") : pct(sum.plan.distancePct)}</td></tr>`,
+            `<tr><td class="sub">${sum.plan.inZone ? "In zone" : "Distance"}</td><td>${sum.plan.inZone ? (sum.strategy === "Quiet Accumulation" ? "wait for reversal" : "wait for MACD turn") : pct(sum.plan.distancePct)}</td></tr>`,
             `<tr><td class="sub">Stop · Cost back</td><td>${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}</td></tr>`,
           ]
         : sum.plan.kind === "below"

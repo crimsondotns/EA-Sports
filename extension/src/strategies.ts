@@ -5,7 +5,7 @@ import { quietAccumulation } from "../../src/strategy/quietAccumulation.ts";
 import type { StudySpec } from "./messages.ts";
 import { DEEP_DIP_DEFAULTS, deepDip } from "../../src/strategy/emaMacdRsi.ts";
 
-export type StrategyId = "breakout" | "quiet" | "dip";
+export type StrategyId = "breakout" | "quiet" | "dip" | "launch";
 
 export interface StrategySetup {
   id: StrategyId;
@@ -28,22 +28,28 @@ export const STRATEGY_NAMES: Record<StrategyId, string> = {
   breakout: "Volume Breakout",
   quiet: "Quiet Accumulation",
   dip: "Deep Dip",
+  launch: "New Launch",
 };
 
 export function setupStrategy(id: StrategyId, resolutionMinutes: number): StrategySetup {
-  if (id === "dip") {
+  if (id === "dip" || id === "launch") {
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
+    const launch = id === "launch";
     return {
       id,
-      name: STRATEGY_NAMES.dip,
+      name: STRATEGY_NAMES[id],
       strategy: deepDip({ srLookback: perDay * 30, maxHoldBars: perDay * 30, rsiLowBars: perDay }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
-      config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1, freeLadder: FREE_LADDER },
+      // New Launch: the same rules at half size for a pair's first week, where rugs are likelier.
+      // First 7 days of 34 pairs on 5m: 23 profitable, median +2.5% for the week, worst -17%.
+      config: { ...DEFAULT_CONFIG, positionSize: launch ? 0.05 : 0.1, freeRideAt: 2, freeRideKeep: 0.1, freeLadder: FREE_LADDER },
       // EMA 200 is skipped until it exists, so MACD (26 + 9 bars) sets the minimum.
       minBars: 37,
       shortLabels: ["Under EMAs", "MACD turn", "RSI", "Support"],
-      note: `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x${resolutionMinutes === 15 ? "" : " · best on 15m"}`,
+      note: launch
+        ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
+        : `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x${resolutionMinutes === 15 ? "" : " · best on 15m"}`,
       studies: [
         emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),
         emaStudy(DEEP_DIP_DEFAULTS.emaMid, "#2196f3"),

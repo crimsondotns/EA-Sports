@@ -49,7 +49,7 @@ export interface Summary {
 }
 
 export interface Settings {
-  strategy: "breakout" | "quiet" | "dip";
+  strategy: "breakout" | "quiet" | "dip" | "launch";
   showTable: boolean;
   drawMarkers: boolean;
   notify: boolean;
