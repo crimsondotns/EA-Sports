@@ -48,17 +48,34 @@
   label.switch input:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
   .button-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 18px;
-    border: 1px solid transparent; border-radius: 999px; background: #fff; color: #000; font: 600 14px/1.2 inherit;
+    border: 1px solid transparent; border-radius: 999px; background: #fff; color: #000; font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.2;
     text-decoration: none; cursor: pointer; transition: background-color var(--t); }
   .button-primary:hover { background: #eaeaea; }
   .button-primary:active { background: #d6d6d6; }
   .button-primary:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-  /* Strategy dropdown (design-system text input styling) */
-  select { width: 100%; height: 40px; padding: 0 36px 0 12px; border-radius: var(--radius); border: 1px solid #333;
-    background: #141414 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23b4b4b4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center;
-    color: var(--text); font: 500 13px/1.2 inherit; appearance: none; cursor: pointer; transition: border-color var(--t); }
-  select:hover { border-color: #555; }
-  select:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-color: #888; }
+  /* Strategy dropdown: trigger styled as a text input, menu as an elevated surface.
+     A custom listbox, because a native <select> menu is drawn by the OS and can't follow the spec. */
+  .dropdown { position: relative; }
+  .dropdown-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 40px;
+    padding: 0 12px; border: 1px solid #333; border-radius: var(--radius); background: #141414; color: var(--text);
+    font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1.2; text-align: left; cursor: pointer;
+    transition: border-color var(--t); }
+  .dropdown-trigger:hover { border-color: #555; }
+  .dropdown-trigger:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; border-color: #888; }
+  .dropdown-trigger[aria-expanded="true"] { border-color: #888; }
+  .dropdown-trigger svg { flex: none; color: var(--text-2); transition: transform var(--t); }
+  .dropdown-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+  .dropdown-menu { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px;
+    list-style: none; background: var(--elevated); border: 1px solid #303030; border-radius: var(--radius); }
+  .dropdown-menu[hidden] { display: none; }
+  /* Focus sits on the list; the highlighted row (plus its ring when using the keyboard) shows where it is. */
+  .dropdown-menu:focus { outline: none; }
+  .dropdown-menu:focus-visible li.active { outline: 2px solid var(--text); outline-offset: -2px; }
+  .dropdown-menu li { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  .dropdown-menu li small { display: block; color: var(--muted); font-size: 12px; }
+  .dropdown-menu li .check { flex: none; width: 16px; padding-top: 1px; visibility: hidden; }
+  .dropdown-menu li[aria-selected="true"] .check { visibility: visible; }
+  .dropdown-menu li.active { background: var(--hover); }
   footer { color: var(--muted); font-size: 11px; padding-top: 8px; }
 
   @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
@@ -71,10 +88,23 @@
   </header>
   <section>
     <h2 id="strategyLabel">Strategy</h2>
-    <select id="strategy" aria-labelledby="strategyLabel">
-      <option value="breakout">Volume Breakout — chase momentum</option>
-      <option value="quiet">Quiet Accumulation — buy deep, free ride</option>
-    </select>
+    <div class="dropdown">
+      <button type="button" class="dropdown-trigger" id="strategyTrigger" aria-haspopup="listbox" aria-expanded="false"
+        aria-labelledby="strategyLabel strategyValue">
+        <span id="strategyValue">Volume Breakout</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <ul class="dropdown-menu" id="strategyMenu" role="listbox" aria-labelledby="strategyLabel" tabindex="-1" hidden>
+        <li role="option" id="opt-breakout" data-value="breakout" aria-selected="false">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Volume Breakout<small>Chase momentum after a volume spike</small></span>
+        </li>
+        <li role="option" id="opt-quiet" data-value="quiet" aria-selected="false">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Quiet Accumulation<small>Buy deep and quiet, free ride</small></span>
+        </li>
+      </ul>
+    </div>
   </section>
   <main id="main"></main>
   <section>

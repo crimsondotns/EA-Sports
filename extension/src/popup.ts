@@ -54,6 +54,69 @@ function render(s: Summary): void {
     </section>`;
 }
 
+/** Listbox dropdown: click or Enter/Space/↓ opens it, ↑↓ move, Enter selects, Esc/Tab/outside click close. */
+function strategyDropdown(initial: Settings["strategy"], onChange: (value: Settings["strategy"]) => void): void {
+  const trigger = $("strategyTrigger") as HTMLButtonElement;
+  const menu = $("strategyMenu");
+  const options = [...menu.querySelectorAll<HTMLLIElement>('[role="option"]')];
+  let active = 0;
+
+  const select = (value: string, notify: boolean) => {
+    for (const o of options) o.setAttribute("aria-selected", String(o.dataset.value === value));
+    const chosen = options.find((o) => o.dataset.value === value) ?? options[0]!;
+    $("strategyValue").textContent = chosen.querySelector("span")!.firstChild!.textContent;
+    if (notify) onChange(chosen.dataset.value as Settings["strategy"]);
+  };
+  const setActive = (i: number) => {
+    active = (i + options.length) % options.length;
+    options.forEach((o, k) => o.classList.toggle("active", k === active));
+    menu.setAttribute("aria-activedescendant", options[active]!.id);
+  };
+  const open = () => {
+    menu.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    setActive(Math.max(0, options.findIndex((o) => o.getAttribute("aria-selected") === "true")));
+    menu.focus();
+  };
+  const close = (refocus = true) => {
+    menu.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    if (refocus) trigger.focus();
+  };
+
+  trigger.addEventListener("click", () => (menu.hidden ? open() : close()));
+  trigger.addEventListener("keydown", (e) => {
+    if (["ArrowDown", "ArrowUp", "Enter", " "].includes(e.key)) {
+      e.preventDefault();
+      open();
+    }
+  });
+  menu.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive(active + (e.key === "ArrowDown" ? 1 : -1));
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      select(options[active]!.dataset.value!, true);
+      close();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    } else if (e.key === "Tab") close(false);
+  });
+  options.forEach((o, k) => {
+    o.addEventListener("mousemove", () => setActive(k));
+    o.addEventListener("click", () => {
+      select(o.dataset.value!, true);
+      close();
+    });
+  });
+  document.addEventListener("mousedown", (e) => {
+    if (!menu.hidden && !(e.target as Element).closest(".dropdown")) close(false);
+  });
+  select(initial, false);
+}
+
 async function main(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const onDexScreener = !!tab?.url?.startsWith("https://dexscreener.com/");
@@ -71,9 +134,7 @@ async function main(): Promise<void> {
     input.checked = settings[name];
     input.addEventListener("change", () => void chrome.storage.local.set({ [name]: input.checked }));
   }
-  const select = $("strategy") as HTMLSelectElement;
-  select.value = settings.strategy;
-  select.addEventListener("change", () => void chrome.storage.local.set({ strategy: select.value as Settings["strategy"] }));
+  strategyDropdown(settings.strategy, (value) => void chrome.storage.local.set({ strategy: value }));
 }
 
 void main();
