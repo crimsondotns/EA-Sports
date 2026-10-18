@@ -71,12 +71,61 @@ function render(s: Summary): void {
     </section>`;
 }
 
+/**
+ * Shared tooltip. Opens ~500ms after hover, right away for keyboard focus or a tap, closes after
+ * 100ms. Placed above its anchor, flipped below and shifted sideways to stay inside the popup.
+ */
+function tooltip() {
+  const el = $("tooltip");
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let anchor: Element | null = null;
+  const place = (a: Element) => {
+    const r = a.getBoundingClientRect();
+    const gap = 6;
+    const pad = 8;
+    // Measure at the left edge, so the width isn't squeezed by the previous position.
+    el.style.left = "0px";
+    el.style.top = "0px";
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const below = r.top - gap - h < pad;
+    el.classList.toggle("bottom", below);
+    el.style.top = `${below ? r.bottom + gap : r.top - gap - h}px`;
+    el.style.left = `${Math.min(Math.max(pad, r.left + r.width / 2 - w / 2), document.documentElement.clientWidth - w - pad)}px`;
+  };
+  const show = (a: Element, text: string, delay: number) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      anchor?.classList.remove("open");
+      anchor = a;
+      a.classList.add("open");
+      el.textContent = text;
+      el.hidden = false;
+      place(a);
+      requestAnimationFrame(() => el.classList.add("show"));
+    }, delay);
+  };
+  const hide = (delay = 100) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      anchor?.classList.remove("open");
+      anchor = null;
+      el.classList.remove("show");
+      el.hidden = true;
+    }, delay);
+  };
+  return { show, hide, isOpenOn: (a: Element) => anchor === a };
+}
+
 /** Listbox dropdown: click or Enter/Space/↓ opens it, ↑↓ move, Enter selects, Esc/Tab/outside click close. */
 function strategyDropdown(initial: Settings["strategy"], onChange: (value: Settings["strategy"]) => void): void {
   const trigger = $("strategyTrigger") as HTMLButtonElement;
   const menu = $("strategyMenu");
   const options = [...menu.querySelectorAll<HTMLLIElement>('[role="option"]')];
   let active = 0;
+  const tip = tooltip();
+  const infoOf = (o: HTMLElement) => o.querySelector<HTMLElement>(".info")!;
+  const tipText = (o: HTMLElement) => o.querySelector(".tip")!.textContent ?? "";
 
   const select = (value: string, notify: boolean) => {
     for (const o of options) o.setAttribute("aria-selected", String(o.dataset.value === value));
@@ -88,6 +137,12 @@ function strategyDropdown(initial: Settings["strategy"], onChange: (value: Setti
     active = (i + options.length) % options.length;
     options.forEach((o, k) => o.classList.toggle("active", k === active));
     menu.setAttribute("aria-activedescendant", options[active]!.id);
+    options[active]!.scrollIntoView({ block: "nearest" });
+  };
+  /** Keyboard navigation shows the active option's conditions right away. */
+  const setActiveByKey = (i: number) => {
+    setActive(i);
+    tip.show(infoOf(options[active]!), tipText(options[active]!), 0);
   };
   const open = () => {
     menu.hidden = false;
@@ -98,6 +153,7 @@ function strategyDropdown(initial: Settings["strategy"], onChange: (value: Setti
   const close = (refocus = true) => {
     menu.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
+    tip.hide(0);
     if (refocus) trigger.focus();
   };
 
@@ -111,7 +167,15 @@ function strategyDropdown(initial: Settings["strategy"], onChange: (value: Setti
   menu.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      setActive(active + (e.key === "ArrowDown" ? 1 : -1));
+      setActiveByKey(active + (e.key === "ArrowDown" ? 1 : -1));
+    } else if (e.key === "Home" || e.key === "End") {
+      e.preventDefault();
+      setActiveByKey(e.key === "Home" ? 0 : options.length - 1);
+    } else if (e.key.length === 1 && /\S/.test(e.key)) {
+      // Type-to-select: jump to the next option starting with that letter.
+      const k = options.findIndex((o, n) => n > active && o.textContent!.trim().toLowerCase().startsWith(e.key.toLowerCase()));
+      const first = options.findIndex((o) => o.textContent!.trim().toLowerCase().startsWith(e.key.toLowerCase()));
+      if (k >= 0 || first >= 0) setActiveByKey(k >= 0 ? k : first);
     } else if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       select(options[active]!.dataset.value!, true);
@@ -122,6 +186,19 @@ function strategyDropdown(initial: Settings["strategy"], onChange: (value: Setti
     } else if (e.key === "Tab") close(false);
   });
   options.forEach((o, k) => {
+    const info = infoOf(o);
+    info.addEventListener("pointerenter", (e) => {
+      if (e.pointerType === "mouse") tip.show(info, tipText(o), 500);
+    });
+    info.addEventListener("pointerleave", (e) => {
+      if (e.pointerType === "mouse") tip.hide();
+    });
+    // Touch has no hover: tapping the asterisk toggles the conditions instead of picking the option.
+    info.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (tip.isOpenOn(info)) tip.hide(0);
+      else tip.show(info, tipText(o), 0);
+    });
     o.addEventListener("mousemove", () => setActive(k));
     o.addEventListener("click", () => {
       select(o.dataset.value!, true);

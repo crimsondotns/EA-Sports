@@ -10,7 +10,8 @@
     --text: #ffffff; --text-2: #b4b4b4; --muted: #777777;
     --border: #2a2a2a; --border-strong: #444444;
     --danger: #f87171; --success: #4ade80; --warning: #fbbf24;
-    --radius: 10px; --t: 140ms ease;
+    --radius: 10px; --t: 140ms ease-out;
+    --selected: #262626; --pressed: #2a2a2a; --picker-border: #383838;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--text);
@@ -57,39 +58,47 @@
      A custom listbox, because a native <select> menu is drawn by the OS and can't follow the spec. */
   .dropdown { position: relative; }
   .dropdown-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 40px;
-    padding: 0 12px; border: 1px solid #333; border-radius: var(--radius); background: #141414; color: var(--text);
-    font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1.2; text-align: left; cursor: pointer;
-    transition: border-color var(--t); }
-  .dropdown-trigger:hover { border-color: #555; }
-  .dropdown-trigger:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; border-color: #888; }
-  .dropdown-trigger[aria-expanded="true"] { border-color: #888; }
-  .dropdown-trigger svg { flex: none; color: var(--text-2); transition: transform var(--t); }
+    padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text);
+    font-family: inherit; font-size: 14px; font-weight: 400; line-height: 1.4; text-align: left; cursor: pointer;
+    transition: background-color var(--t), border-color var(--t); }
+  .dropdown-trigger:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .dropdown-trigger svg { flex: none; width: 16px; height: 16px; color: var(--text-2); transition: transform var(--t); }
   .dropdown-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
   .dropdown-menu { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px;
-    list-style: none; background: var(--elevated); border: 1px solid #303030; border-radius: var(--radius); }
+    max-height: min(320px, 60vh); overflow-y: auto; list-style: none; background: var(--elevated);
+    border: 1px solid var(--picker-border); border-radius: var(--radius); box-shadow: 0 8px 24px rgb(0 0 0 / 32%); }
   .dropdown-menu[hidden] { display: none; }
-  /* Focus sits on the list; the highlighted row (plus its ring when using the keyboard) shows where it is. */
+  /* Focus sits on the list; the active row (plus its ring when using the keyboard) shows where it is. */
   .dropdown-menu:focus { outline: none; }
   .dropdown-menu:focus-visible li.active { outline: 2px solid var(--text); outline-offset: -2px; }
-  .dropdown-menu li { position: relative; display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  .dropdown-menu li { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 4px 0 10px;
+    border-radius: 6px; font-size: 14px; line-height: 1.4; cursor: pointer; transition: background-color var(--t); }
   .dropdown-menu li .name { flex: 1; }
-  /* Conditions: an asterisk at the end of each option; its tooltip opens on hover, or on the
-     keyboard-highlighted option */
-  .dropdown-menu li .info { flex: none; width: 20px; height: 20px; margin: -1px -4px 0 0; border-radius: 999px;
-    display: inline-flex; align-items: center; justify-content: center; color: var(--muted);
-    font-size: 15px; font-weight: 600; line-height: 1; cursor: help; transition: background-color var(--t), color var(--t); }
-  .dropdown-menu li .info:hover { background: var(--border-strong); color: var(--text); }
-  .dropdown-menu li .tip { position: absolute; z-index: 1; top: calc(100% - 2px); right: 4px; max-width: 240px; padding: 6px 10px;
-    background: var(--elevated); border: 1px solid var(--border-strong); border-radius: 8px; color: var(--text-2);
-    font-size: 12px; line-height: 1.45; pointer-events: none; opacity: 0; visibility: hidden;
-    transition: opacity var(--t), visibility var(--t); }
-  .dropdown-menu li .info:hover + .tip,
-  .dropdown-menu:focus-visible li.active .tip { opacity: 1; visibility: visible; }
-  /* Last option: open the tooltip upwards so it stays inside the popup */
-  .dropdown-menu li:last-child .tip { top: auto; bottom: calc(100% - 2px); }
-  .dropdown-menu li .check { flex: none; width: 16px; padding-top: 1px; visibility: hidden; }
+  .dropdown-menu li .check { flex: none; width: 16px; height: 16px; visibility: hidden; }
+  .dropdown-menu li[aria-selected="true"] { background: var(--selected); }
   .dropdown-menu li[aria-selected="true"] .check { visibility: visible; }
   .dropdown-menu li.active { background: var(--hover); }
+  .dropdown-menu li[aria-selected="true"].active { background: #303030; }
+  .dropdown-menu li:active { background: var(--pressed); }
+  /* Conditions: an asterisk at the end of each option. The hit area is larger than the glyph. */
+  .dropdown-menu li .info { flex: none; width: 32px; height: 32px; border-radius: 999px; display: inline-flex;
+    align-items: center; justify-content: center; color: var(--text-2); font-size: 16px; font-weight: 600; line-height: 1;
+    cursor: help; transition: background-color var(--t), color var(--t); }
+  .dropdown-menu li .info.open { color: var(--text); }
+  .dropdown-menu li .tip { display: none; } /* text source for aria-describedby; shown via #tooltip */
+
+  /* Shared tooltip: positioned by popup.ts, top placement first, flipped / shifted to stay in view */
+  .tooltip { position: fixed; z-index: 20; max-width: 240px; padding: 8px 10px; background: var(--elevated);
+    border: 1px solid var(--picker-border); border-radius: 8px; color: var(--text); font-size: 12px; line-height: 16px;
+    pointer-events: none; opacity: 0; transform: translateY(2px); transition: opacity var(--t), transform var(--t); }
+  .tooltip.bottom { transform: translateY(-2px); }
+  .tooltip.show { opacity: 1; transform: none; }
+  .tooltip[hidden] { display: none; }
+
+  @media (hover: hover) and (pointer: fine) {
+    .dropdown-trigger:hover { background: #111111; border-color: var(--border-strong); }
+    .dropdown-menu li .info:hover { background: var(--border-strong); color: var(--text); }
+  }
   footer { color: var(--muted); font-size: 11px; padding-top: 8px; }
 
   @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
@@ -103,7 +112,7 @@
   <section>
     <h2 id="strategyLabel">Strategy</h2>
     <div class="dropdown">
-      <button type="button" class="dropdown-trigger" id="strategyTrigger" aria-haspopup="listbox" aria-expanded="false"
+      <button type="button" class="dropdown-trigger" id="strategyTrigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="strategyMenu"
         aria-labelledby="strategyLabel strategyValue">
         <span id="strategyValue">Deep Dip</span>
         <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -135,6 +144,7 @@
     <label class="switch"><span>Strategy indicators<small>Add the EMAs, MACD, RSI or volume the strategy uses</small></span><input type="checkbox" id="showIndicators"></label>
     <label class="switch"><span>Notifications<small>Alert when a new bar closes with a signal</small></span><input type="checkbox" id="notify"></label>
   </section>
+  <div class="tooltip" id="tooltip" aria-hidden="true" hidden></div>
   <footer>Backtest signals only — not financial advice.</footer>
   <script src="dist/popup.js"></script>
 </body>
