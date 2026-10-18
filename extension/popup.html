@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EA Volume Breakout</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #000000; --surface: #0a0a0a; --elevated: #171717; --hover: #202020;
+    --text: #ffffff; --text-2: #b4b4b4; --muted: #777777;
+    --border: #2a2a2a; --border-strong: #444444;
+    --danger: #f87171; --success: #4ade80; --warning: #fbbf24;
+    --radius: 10px; --t: 140ms ease;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { width: 340px; padding: 16px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  header img { width: 32px; height: 32px; border-radius: 8px; }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0; line-height: 1.2; }
+  header p { margin: 0; color: var(--muted); font-size: 12px; }
+  section { padding: 12px 0; border-top: 1px solid var(--border); }
+  h2 { font-size: 12px; font-weight: 600; color: var(--text-2); margin: 0 0 8px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+  .row > span:first-child { color: var(--text-2); }
+  .signal { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .pos, .ok { color: var(--success); } .neg { color: var(--danger); } .muted { color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--surface); border-radius: var(--radius); padding: 8px 10px; }
+  .stat small { display: block; color: var(--muted); font-size: 11px; }
+  .stat strong { font-weight: 600; }
+  .empty { color: var(--text-2); }
+  .empty p { margin: 0 0 12px; }
+
+  /* Switch rows: the whole label is clickable */
+  label.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px;
+    margin: 0 -10px; border-radius: var(--radius); cursor: pointer; transition: background-color var(--t); }
+  label.switch:hover { background: var(--hover); }
+  label.switch small { display: block; color: var(--muted); font-size: 11px; }
+  label.switch input { appearance: none; flex: none; width: 34px; height: 20px; border-radius: 999px; margin: 0;
+    background: #333; position: relative; cursor: pointer; transition: background-color var(--t); }
+  label.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px;
+    border-radius: 50%; background: #777; transition: transform var(--t), background-color var(--t); }
+  label.switch input:checked { background: #fff; }
+  label.switch input:checked::after { transform: translateX(14px); background: #000; }
+  label.switch input:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+  .button-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 18px;
+    border: 1px solid transparent; border-radius: 999px; background: #fff; color: #000; font: 600 14px/1.2 inherit;
+    text-decoration: none; cursor: pointer; transition: background-color var(--t); }
+  .button-primary:hover { background: #eaeaea; }
+  .button-primary:active { background: #d6d6d6; }
+  .button-primary:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+  footer { color: var(--muted); font-size: 11px; padding-top: 8px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+</style>
+</head>
+<body>
+  <header>
+    <img src="icon48.png" alt="">
+    <div><h1>EA Volume Breakout</h1><p id="subtitle">DEX Screener signals</p></div>
+  </header>
+  <main id="main"></main>
+  <section>
+    <h2>Settings</h2>
+    <label class="switch"><span>Table on chart<small>Compact table in the chart's top-right corner</small></span><input type="checkbox" id="showTable"></label>
+    <label class="switch"><span>Buy / sell markers<small>Draw backtest entries and exits on the chart</small></span><input type="checkbox" id="drawMarkers"></label>
+    <label class="switch"><span>Notifications<small>Alert when a new bar closes with a signal</small></span><input type="checkbox" id="notify"></label>
+  </section>
+  <footer>Backtest signals only — not financial advice.</footer>
+  <script src="dist/popup.js"></script>
+</body>
+</html>

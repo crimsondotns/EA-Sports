@@ -1,0 +1,24 @@
+{
+  "name": "ea-meme-trader",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "bars": "node src/cli/bars.ts",
+    "typecheck": "tsc --noEmit",
+    "backtest": "node src/cli/backtest.ts",
+    "chart": "node src/cli/chart.ts",
+    "compare": "node src/cli/compare.ts",
+    "ext:build": "node extension/build.mjs",
+    "ext:watch": "node extension/build.mjs --watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.9.0"
+  }
+}

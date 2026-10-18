@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "EA Volume Breakout for DEX Screener",
+  "version": "0.1.0",
+  "description": "Runs the Volume Breakout strategy on the DEX Screener chart you are viewing and marks entries and exits.",
+  "permissions": [
+    "webRequest",
+    "notifications",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://dexscreener.com/*",
+    "https://io.dexscreener.com/*",
+    "https://feed.dexscreener.com/*"
+  ],
+  "background": {
+    "service_worker": "dist/background.js"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://dexscreener.com/*"
+      ],
+      "js": [
+        "dist/content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://dexscreener.com/*"
+      ],
+      "js": [
+        "dist/inject.js"
+      ],
+      "world": "MAIN",
+      "all_frames": true,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true,
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_title": "EA Volume Breakout",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png"
+    },
+    "default_popup": "popup.html"
+  }
+}

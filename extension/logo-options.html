@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EA Ligature Symmetric</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0b0b0c; --panel:#141416; --line:#26262a; --text:#e8e3d5; --muted:#8d887b; --gold:#d4af37; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system, system-ui, sans-serif; padding:28px 16px 56px; }
+  h1 { font:600 24px/1.2 "Playfair Display", serif; margin:0 0 6px; }
+  h1 span { color:var(--gold); }
+  p.lead { color:var(--muted); margin:0 0 28px; max-width:900px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:18px; max-width:1360px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px; }
+  .card h2 { font:600 16px/1.3 "Playfair Display", serif; margin:0 0 2px; }
+  .card .desc { color:var(--muted); font-size:12px; margin:0 0 16px; min-height:36px; }
+  .row { display:flex; align-items:flex-end; gap:16px; }
+  .big { position:relative; }
+  .big svg { width:136px; height:136px; display:block; }
+  .guides .big::after { content:""; position:absolute; inset:0; background:
+      linear-gradient(90deg, transparent calc(50% - .5px), rgba(255,0,128,.6) calc(50% - .5px), rgba(255,0,128,.6) calc(50% + .5px), transparent calc(50% + .5px)),
+      linear-gradient(0deg, transparent calc(50% - .5px), rgba(255,0,128,.6) calc(50% - .5px), rgba(255,0,128,.6) calc(50% + .5px), transparent calc(50% + .5px));
+    pointer-events:none; }
+  .guides .big::before { content:""; position:absolute; left:0; right:0; top:calc(32/128*100%); height:calc(64/128*100%);
+    border-top:1px solid rgba(0,200,255,.7); border-bottom:1px solid rgba(0,200,255,.7); pointer-events:none; z-index:1; }
+  .sizes { display:flex; flex-direction:column; gap:10px; }
+  .chip { display:flex; gap:8px; align-items:center; padding:6px 8px; border-radius:8px; }
+  .chip.dark { background:#202124; } .chip.light { background:#f1f3f4; }
+  .chip svg { display:block; }
+  .sz { display:flex; align-items:center; gap:8px; }
+  small { color:var(--muted); font-size:11px; }
+  .num { display:inline-block; border:1px solid var(--gold); color:var(--gold); border-radius:6px; padding:0 7px; margin-right:8px; font:600 12px/1.6 -apple-system, sans-serif; }
+  label.toggle { display:inline-flex; gap:8px; align-items:center; color:var(--muted); margin-bottom:20px; cursor:pointer; }
+</style>
+</head>
+<body>
+<h1>EA Interlocked · <span>Equal Height</span></h1>
+<p class="lead">E กับ A สูงเท่ากันพอดี: ขอบบน y=32 ขอบล่าง y=96 ทั้งสองตัว (A ใช้ยอดแบน ไม่มีปลายแหลมโผล่เกิน) · เส้นหนาเท่ากันทุกเส้น · อยู่กึ่งกลาง · แบบ "Joined" แขนของ E วิ่งเข้าไปชนขาของ A เป็นชิ้นเดียวจริง</p>
+<label class="toggle"><input type="checkbox" id="guides"> แสดงเส้นกึ่งกลาง (ชมพู) และเส้นความสูงตัวอักษร (ฟ้า)</label>
+<div class="grid" id="grid"></div>
+
+<script>
+const DEFS = `<defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#fbeec1"/><stop offset=".35" stop-color="#e6c66a"/>
+    <stop offset=".6" stop-color="#b8892b"/><stop offset=".8" stop-color="#e9cf7d"/><stop offset="1" stop-color="#8a6420"/>
+  </linearGradient>
+  <linearGradient id="goldV" gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="100">
+    <stop offset="0" stop-color="#fff2c4"/><stop offset=".45" stop-color="#d9b04a"/><stop offset="1" stop-color="#7d5a17"/>
+  </linearGradient>
+  <radialGradient id="onyx" cx=".35" cy=".25" r="1">
+    <stop offset="0" stop-color="#2a2a2e"/><stop offset=".6" stop-color="#111113"/><stop offset="1" stop-color="#050506"/>
+  </radialGradient>
+</defs>`;
+
+/**
+ * Builds the E+A ligature as filled polygons so every stroke has exactly the same
+ * thickness (diagonals included) and the whole mark is centred on x = 64.
+ *   w: letter width (E and A share it)   gap: space between letters
+ *   s: stroke thickness                  top/bottom: cap height bounds
+ *   mid: E middle-arm ratio (0..1 of E width)   bar: y of the A crossbar centre
+ *   apex: width of the A's flat top
+ */
+function ligature({ w = 38, gap = 8, s = 9, top = 32, bottom = 96, mid = 0.85, bar = 74, apex = 5, join = false, aw = w, midBar = false }) {
+  const h = bottom - top;
+  // The flat top must be at least as wide as a leg, or the legs poke out past each other.
+  apex = Math.max(apex, s * 1.1 + 1);
+  const slope = (aw / 2 - apex / 2) / h; // dx per dy of the A's outer edge
+  const hs = s * Math.sqrt(1 + slope * slope); // horizontal thickness of a diagonal of width s
+  // Joined: the A's left leg starts where the E's stem would end, so E arms run into it.
+  const total = join ? w * 0.55 + aw : w + gap + aw;
+  const eX = 64 - total / 2;
+  const aX = join ? eX + w * 0.55 : eX + w + gap;
+  const r = (x, y, ww, hh) => `M${x} ${y}h${ww}v${hh}h${-ww}Z`;
+  const xl = (y) => aX + slope * (bottom - y); // A outer-left edge at y
+  const xr = (y) => aX + aw - slope * (bottom - y); // A outer-right edge at y
+  // E arm ending: either its own width, or into the middle of the A's left leg.
+  const armEnd = (yTop, len) => (join ? Math.max(xl(yTop), xl(yTop + s)) + hs / 2 : eX + len);
+  const midY = midBar ? bar - s / 2 : top + h / 2 - s / 2;
+  const e = [
+    r(eX, top, s, h),
+    // Joined: the top arm runs on into the A's apex and is cut along its right leg.
+    join ? `M${eX} ${top}L${xr(top)} ${top}L${xr(top + s)} ${top + s}L${eX} ${top + s}Z` : r(eX, top, armEnd(top, w) - eX, s),
+    midBar ? "" : r(eX, midY, (join ? armEnd(midY, w) : eX + w * mid) - eX, s),
+    r(eX, bottom - s, armEnd(bottom - s, w) - eX, s),
+  ].join("");
+  const cx = aX + aw / 2;
+  const legL = `M${xl(bottom)} ${bottom}L${xl(top)} ${top}L${xl(top) + hs} ${top}L${xl(bottom) + hs} ${bottom}Z`;
+  const legR = `M${xr(bottom)} ${bottom}L${xr(top)} ${top}L${xr(top) - hs} ${top}L${xr(bottom) - hs} ${bottom}Z`;
+  const cap = r(xl(top), top, xr(top) - xl(top), s);
+  const by = bar - s / 2;
+  // With midBar the E's middle arm runs straight through as the A's crossbar.
+  const barStart = (y) => (midBar ? eX : xl(y) + hs - 0.5);
+  const crossbar = `M${barStart(by)} ${by}L${xr(by) - hs + 0.5} ${by}L${xr(by + s) - hs + 0.5} ${by + s}L${barStart(by + s)} ${by + s}Z`;
+  return { d: e + legL + legR + cap + crossbar, cx };
+}
+
+// Each part is its own path: overlapping subpaths in one path can cancel out and leave holes.
+const mark = (opts, fill = "url(#goldV)") =>
+  `<g fill="${fill}">${ligature(opts).d.split("Z").filter(Boolean).map((d) => `<path d="${d}Z"/>`).join("")}</g>`;
+const rule = (y, x1 = 30, x2 = 98, op = 0.6) => `<path d="M${x1} ${y}H${x2}" stroke="url(#gold)" stroke-width="1.2" opacity="${op}"/>`;
+
+const BASE = { w: 38, gap: 8, s: 9, top: 32, bottom: 96, mid: 0.85, bar: 74 };
+
+const JOINED = { ...BASE, join: true, aw: 44 };
+
+const logos = [
+  {
+    name: "Interlocked · Equal Height",
+    desc: "แบบเดิมที่ E กับ A สูงเท่ากันพอดี ขอบบนและล่างตรงกัน มีเส้นทองบางด้านล่าง",
+    svg: `<rect width="128" height="128" rx="26" fill="#0a0a0b"/>${mark(BASE)}${rule(110)}`,
+  },
+  {
+    name: "Joined Arms",
+    desc: "แขนทั้งสามของ E วิ่งเข้าไปชนขาซ้ายของ A ใช้ก้านร่วมกันเป็นชิ้นเดียว สูงเท่ากัน",
+    svg: `<rect width="128" height="128" rx="26" fill="#0a0a0b"/>${mark(JOINED)}${rule(110)}`,
+  },
+  {
+    name: "Joined · Through Bar",
+    desc: "แขนกลางของ E ทะลุผ่านเป็นขีดคาดของ A เส้นเดียว เชื่อมกันแน่นที่สุด",
+    svg: `<rect width="128" height="128" rx="26" fill="#0a0a0b"/>${mark({ ...JOINED, aw: 50, s: 8, apex: 4, midBar: true, bar: 70 })}${rule(110)}`,
+  },
+  {
+    name: "Joined · Balanced Rules",
+    desc: "แบบแขนชนขา มีเส้นทองทั้งบนและล่าง ระยะเท่ากัน สมมาตรแนวตั้ง",
+    svg: `<rect width="128" height="128" rx="26" fill="#0a0a0b"/>${mark(JOINED)}${rule(20)}${rule(108)}`,
+  },
+  {
+    name: "Joined · Onyx Frame",
+    desc: "พื้นนิล กรอบทองบางห่างขอบเท่ากันทุกด้าน",
+    svg: `<rect width="128" height="128" rx="26" fill="url(#onyx)"/>
+      <rect x="10" y="10" width="108" height="108" rx="18" fill="none" stroke="url(#gold)" stroke-width="1.5"/>
+      ${mark({ ...JOINED, top: 36, bottom: 92, s: 8 })}`,
+  },
+  {
+    name: "Joined · Gold Tile",
+    desc: "พื้นทอง ตัวอักษรดำ เด่นที่สุดบน toolbar",
+    svg: `<rect width="128" height="128" rx="26" fill="url(#gold)"/>${mark(JOINED, "#0b0b0c")}`,
+  },
+];
+
+let uid = 0;
+const svg = (inner, size) => {
+  const id = `s${uid++}`;
+  const scoped = (DEFS + inner).replace(/id="(gold|goldV|onyx)"/g, `id="$1-${id}"`).replace(/url\(#(gold|goldV|onyx)\)/g, `url(#$1-${id})`);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="${size}" height="${size}">${scoped}</svg>`;
+};
+
+document.getElementById("grid").innerHTML = logos
+  .map(
+    (l, i) => `<div class="card">
+      <h2><span class="num">${i + 1}</span>${l.name}</h2>
+      <p class="desc">${l.desc}</p>
+      <div class="row">
+        <div class="big">${svg(l.svg, 136)}</div>
+        <div class="sizes">
+          <div class="sz"><div class="chip dark">${svg(l.svg, 32)}${svg(l.svg, 16)}</div><small>dark</small></div>
+          <div class="sz"><div class="chip light">${svg(l.svg, 32)}${svg(l.svg, 16)}</div><small>light</small></div>
+        </div>
+      </div>
+    </div>`,
+  )
+  .join("");
+document.getElementById("guides").addEventListener("change", (e) => document.body.classList.toggle("guides", e.target.checked));
+</script>
+</body>
+</html>

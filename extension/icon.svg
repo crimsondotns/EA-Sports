@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#fbeec1"/><stop offset=".35" stop-color="#e6c66a"/>
+    <stop offset=".6" stop-color="#b8892b"/><stop offset=".8" stop-color="#e9cf7d"/><stop offset="1" stop-color="#8a6420"/>
+  </linearGradient>
+  <linearGradient id="goldV" gradientUnits="userSpaceOnUse" x1="0" y1="28" x2="0" y2="100">
+    <stop offset="0" stop-color="#fff2c4"/><stop offset=".45" stop-color="#d9b04a"/><stop offset="1" stop-color="#7d5a17"/>
+  </linearGradient>
+  <radialGradient id="onyx" cx=".35" cy=".25" r="1">
+    <stop offset="0" stop-color="#2a2a2e"/><stop offset=".6" stop-color="#111113"/><stop offset="1" stop-color="#050506"/>
+  </radialGradient>
+</defs><rect width="128" height="128" rx="26" fill="#0a0a0b"/><g fill="url(#goldV)"><path d="M31.549999999999997 32h9v64h-9Z"/><path d="M31.549999999999997 32L79.9 32L82.22734375 41L31.549999999999997 41Z"/><path d="M31.549999999999997 59.5h34.98669642664191v9h-34.98669642664191Z"/><path d="M31.549999999999997 87h27.875368301641913v9h-27.875368301641913Z"/><path d="M52.45 96L69 32L78.29604910328382 32L61.74604910328383 96Z"/><path d="M96.45 96L79.9 32L70.60395089671619 32L87.15395089671617 96Z"/><path d="M69 32h10.900000000000006v9h-10.900000000000006Z"/><path d="M68.09878347828382 69.5L80.80121652171619 69.5L83.12856027171617 78.5L65.77143972828384 78.5Z"/></g><path d="M30 110H98" stroke="url(#gold)" stroke-width="1.2" opacity="0.6"/></svg>
