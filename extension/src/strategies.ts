@@ -1,5 +1,5 @@
 // Strategies the extension can run, with the backtest settings each one is meant to use.
-import { DEFAULT_CONFIG, type BacktestConfig, type Strategy } from "../../src/backtest/engine.ts";
+import { DEFAULT_CONFIG, FREE_LADDER, type BacktestConfig, type Strategy } from "../../src/backtest/engine.ts";
 import { DEFAULT_PARAMS, volumeBreakout } from "../../src/strategy/volumeBreakout.ts";
 import { quietAccumulation } from "../../src/strategy/quietAccumulation.ts";
 import { DEEP_DIP_DEFAULTS, deepDip } from "../../src/strategy/emaMacdRsi.ts";
@@ -32,11 +32,12 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       id,
       name: STRATEGY_NAMES.dip,
       strategy: deepDip({ maxHoldBars: perDay * 30 }),
-      // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable).
-      config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1 },
+      // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
+      // ladder cut the worst drawdown from 99% to 54% there.
+      config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1, freeLadder: FREE_LADDER },
       minBars: DEEP_DIP_DEFAULTS.emaSlow + 2,
       shortLabels: ["Under EMAs", "MACD turn", "RSI"],
-      note: `10% per trade · cost back at 3x · keep 10% free${resolutionMinutes === 15 ? "" : " · best on 15m"}`,
+      note: `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x${resolutionMinutes === 15 ? "" : " · best on 15m"}`,
     };
   }
   if (id === "quiet") {
@@ -48,10 +49,10 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       name: STRATEGY_NAMES.quiet,
       strategy: quietAccumulation({ volFast: perDay, volSlow, srLookback: perDay * 30, maxHoldBars: perDay * 30 }),
       // Best setting in the backtests: 10% per trade, sell the cost back at 3x, keep 10% free.
-      config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1 },
+      config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1, freeLadder: FREE_LADDER },
       minBars: volSlow + 2,
       shortLabels: ["Below ATH", "Support", "Reversal", "Selling faded"],
-      note: "10% per trade · cost back at 3x · keep 10% free",
+      note: "10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x",
     };
   }
   return {

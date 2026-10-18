@@ -72,6 +72,11 @@ export interface BacktestConfig {
    * trading the rest with the strategy's stop. Unset keeps everything left after the cost back.
    */
   freeRideKeep?: number;
+  /**
+   * Exit ladder for the free tokens: when price reaches `at` x the entry price, sell `sell` of
+   * the tokens originally kept free (e.g. [{at: 10, sell: 1/3}, ...]). Unset holds them to the end.
+   */
+  freeLadder?: { at: number; sell: number }[];
 }
 
 export type ExitReason = "stop" | "time" | "end" | "free";
@@ -120,6 +125,13 @@ export interface Stats {
   realizedCash: number;
 }
 
+/** Sell the free tokens a third at a time at 10x, 30x and 100x the entry. */
+export const FREE_LADDER = [
+  { at: 10, sell: 1 / 3 },
+  { at: 30, sell: 1 / 3 },
+  { at: 100, sell: 1 / 3 },
+];
+
 export const DEFAULT_CONFIG: BacktestConfig = {
   initialCapital: 1000,
   positionSize: 1,
@@ -139,6 +151,25 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
   let pendingEntry: number | null = null; // signal bar index
   let barsInMarket = 0;
   let freeQty = 0;
+  // Each trade's free tokens, so the ladder can measure its multiple against that entry.
+  const bags: { entryPrice: number; initial: number; qty: number; step: number }[] = [];
+  const keepFree = (entryPrice: number, qty: number) => {
+    freeQty += qty;
+    if (cfg.freeLadder?.length && qty > 0) bags.push({ entryPrice, initial: qty, qty, step: 0 });
+  };
+  const sellLadder = (bar: Candle) => {
+    for (const b of bags) {
+      for (let rung = cfg.freeLadder![b.step]; rung && b.qty > 0; rung = cfg.freeLadder![b.step]) {
+        const level = b.entryPrice * rung.at;
+        if (bar.high < level) break;
+        const qty = Math.min(b.qty, b.initial * rung.sell);
+        cash += qty * Math.max(bar.open, level) * (1 - cfg.slippage) * (1 - cfg.feeRate);
+        b.qty -= qty;
+        freeQty -= qty;
+        b.step++;
+      }
+    }
+  };
 
   const close = (i: number, rawPrice: number, reason: ExitReason) => {
     const p = pos!;
@@ -171,7 +202,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     if (cfg.freeRideKeep !== undefined) {
       // Keep a slice free, trade the rest on.
       const kept = Math.min(p.qty - sellQty, p.initialQty * cfg.freeRideKeep);
-      freeQty += kept;
+      keepFree(p.entryPrice, kept);
       p.kept = kept;
       p.qty -= sellQty + kept;
       p.realized += proceeds;
@@ -181,7 +212,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
       return;
     }
     const kept = p.qty - sellQty;
-    freeQty += kept;
+    keepFree(p.entryPrice, kept);
     trades.push({
       entryTime: candles[p.entryIndex]!.time,
       exitTime: candles[i]!.time,
@@ -219,6 +250,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     }
     pendingEntry = null;
 
+    if (bags.length) sellLadder(bar);
     stops.push(pos ? pos.stop : null);
     if (pos) {
       barsInMarket++;

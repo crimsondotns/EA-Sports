@@ -1,11 +1,11 @@
 // Every strategy on every pair in src/universe.txt (DEX Screener export rows:
 // chain, dex, quote token, base token, pair), with the free-ride settings the extension uses.
-// Usage: npm run universe -- [--refresh]
+// Usage: npm run universe -- [--refresh] [--detail] [--hold (keep free tokens to the end, no ladder)]
 import { readFileSync } from "node:fs";
 import type { Resolution } from "../dexscreener/bars.ts";
 import { loadBarsHistory } from "../dexscreener/history.ts";
 import { toCandles } from "../indicators.ts";
-import { DEFAULT_CONFIG, runBacktest, type Strategy } from "../backtest/engine.ts";
+import { DEFAULT_CONFIG, FREE_LADDER, runBacktest, type Strategy } from "../backtest/engine.ts";
 import { quietAccumulation } from "../strategy/quietAccumulation.ts";
 import { deepDip } from "../strategy/emaMacdRsi.ts";
 
@@ -16,7 +16,8 @@ const pairs = readFileSync(new URL("../universe.txt", import.meta.url), "utf8")
   .map((l) => l.trim().split(/\s+/))
   .map(([chain, dex, quoteToken, baseToken, pairId]) => ({ chain: chain!, dex: dex!, quoteToken: quoteToken!, baseToken: baseToken!, pairId: pairId! }));
 
-const cfg = { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1 };
+const ladder = !process.argv.includes("--hold");
+const cfg = { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1, ...(ladder ? { freeLadder: FREE_LADDER } : {}) };
 const strategies = (perDay: number): Strategy[] => [
   quietAccumulation({ volFast: perDay, volSlow: perDay * 5, srLookback: perDay * 30, maxHoldBars: perDay * 30 }),
   deepDip({ maxHoldBars: perDay * 30 }),
@@ -58,7 +59,7 @@ const median = (xs: number[]) => {
   const s = [...xs].sort((a, b) => a - b);
   return s.length ? (s[(s.length - 1) >> 1]! + s[s.length >> 1]!) / 2 : NaN;
 };
-console.log(`\n${pairs.length} pairs · 10% per trade · cost back at 3x · keep 10% · fee+slippage 0.8%/side`);
+console.log(`\n${pairs.length} pairs · 10% per trade · cost back at 3x · keep 10% ${ladder ? "(sold at 10x/30x/100x)" : "(held)"} · fee+slippage 0.8%/side`);
 console.table(
   [...results].map(([key, rows]) => ({
     setup: key,
