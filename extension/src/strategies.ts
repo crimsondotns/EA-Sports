@@ -36,12 +36,12 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
     return {
       id,
       name: STRATEGY_NAMES.dip,
-      strategy: deepDip({ maxHoldBars: perDay * 30 }),
+      strategy: deepDip({ srLookback: perDay * 30, maxHoldBars: perDay * 30 }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
       config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1, freeLadder: FREE_LADDER },
       minBars: DEEP_DIP_DEFAULTS.emaSlow + 2,
-      shortLabels: ["Under EMAs", "MACD turn", "RSI"],
+      shortLabels: ["Under EMAs", "MACD turn", "RSI", "Support"],
       note: `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x${resolutionMinutes === 15 ? "" : " · best on 15m"}`,
       studies: [
         emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),

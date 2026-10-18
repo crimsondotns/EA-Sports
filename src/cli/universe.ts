@@ -20,7 +20,7 @@ const ladder = !process.argv.includes("--hold");
 const cfg = { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1, ...(ladder ? { freeLadder: FREE_LADDER } : {}) };
 const strategies = (perDay: number): Strategy[] => [
   quietAccumulation({ volFast: perDay, volSlow: perDay * 5, srLookback: perDay * 30, maxHoldBars: perDay * 30 }),
-  deepDip({ maxHoldBars: perDay * 30 }),
+  deepDip({ srLookback: perDay * 30, maxHoldBars: perDay * 30 }),
 ];
 
 type Row = { coin: string; trades: number; costBacks: number; ret: number; dd: number };

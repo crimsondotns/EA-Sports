@@ -6,7 +6,7 @@ EA (automated trading) tooling for meme coins on DEX Screener: a Volume Breakout
 
 - `src/dexscreener/` — candle data from DEX Screener's unofficial chart endpoint (Avro-encoded; `bars.ts`, `avro.ts`), history paging (`history.ts`)
 - `src/indicators.ts` — SMA / EMA / ATR / breakout high, `toCandles()`
-- `src/strategy/` — `volumeBreakout.ts`, `quietAccumulation.ts` (S/R + reversal), `emaMacdRsi.ts` (Deep Dip: under EMA 9/21/200, MACD turning up, RSI ≤ 60)
+- `src/strategy/` — `volumeBreakout.ts`, `quietAccumulation.ts` (S/R + reversal), `emaMacdRsi.ts` (Deep Dip: at a support if one exists below, under EMA 9/21/200, MACD & signal below the histogram, RSI ≤ 60)
 - `src/universe.txt` — pairs for the multi-coin test (DEX Screener export rows: chain, dex, quote, base, pair)
 - `src/backtest/engine.ts` — backtester (signal on bar close, fill at next open, fees + slippage, optional free ride)
 - `src/report/html.ts` — HTML chart report (lightweight-charts)

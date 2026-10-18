@@ -5,14 +5,20 @@
 //   2. MACD line and signal line both below the histogram                      -- selling is
 //      (histogram = line − signal, so this means signal < 0 and line > 2 × signal:  running out
 //      below zero, with the line no longer falling far under the signal)
-//   3. RSI <= `maxRsi` (under 50, or above it by no more than 10)              -- not chased
+//   3. RSI <= `maxRsi` (under 30 or 50, or above 50 by no more than 10)        -- not chased
+//   4. support, two cases:
+//      a. there is a support zone (`minTouches`+ swing lows) below the price: the bar must
+//         have tested it and closed back above its low -- buy at the support, not above it
+//      b. no support below the price (e.g. a new low): rules 1–3 are enough
 // Exit:
-//   - fixed stop `stopPct` below the entry
+//   - fixed stop `stopPct` below the entry, in both cases. A stop just under the support zone
+//     was tested too: across 40 pairs it got shaken out and re-entered far more often (15m:
+//     3,544 trades vs 1,523, worst pair −60% vs −16%)
 //   - pair with the engine's `freeRideAt` / `freeRideKeep` for the cost back and free tokens
 //   - once the cost is back, the tokens still traded trail `trailPct` below the highest close
 //   - time stop after `maxHoldBars` if the cost never came back
 
-import { ema, macd, rsi, type Candle } from "../indicators.ts";
+import { clusterZones, ema, macd, pivotLows, rsi, type Candle, type Zone } from "../indicators.ts";
 import type { Strategy } from "../backtest/engine.ts";
 
 export interface DeepDipParams {
@@ -20,6 +26,13 @@ export interface DeepDipParams {
   emaMid: number;
   emaSlow: number;
   maxRsi: number;
+  /** Require the support test when a support exists (case a). Off: rules 1–3 only. */
+  useSupport: boolean;
+  pivotBars: number;
+  zoneTol: number;
+  minTouches: number;
+  /** Only swing lows from the last this-many bars form support zones. */
+  srLookback: number;
   stopPct: number;
   trailPct: number;
   maxHoldBars: number;
@@ -30,6 +43,11 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   emaMid: 21,
   emaSlow: 200,
   maxRsi: 60,
+  useSupport: true,
+  pivotBars: 5,
+  zoneTol: 0.04,
+  minTouches: 2,
+  srLookback: 2880,
   stopPct: 0.2,
   trailPct: 0.35,
   maxHoldBars: 2880,
@@ -54,11 +72,34 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       const e3 = ema(close, p.emaSlow);
       const m = macd(close);
       const r = rsi(close);
+      const lows = pivotLows(c, p.pivotBars);
       const warmup = p.emaSlow + 1;
 
-      const checks = (i: number) => {
+      // Support zones known at the close of bar i (pivots confirmed by then), below its close.
+      const cache = new Map<number, Zone[]>();
+      const supportsBelow = (i: number) => {
+        let z = cache.get(i);
+        if (!z) {
+          const known = lows.filter((x) => x.index + p.pivotBars <= i && x.index >= i - p.srLookback);
+          z = clusterZones(known, p.zoneTol).filter((x) => x.touches >= p.minTouches && x.low <= close[i]!);
+          cache.set(i, z);
+        }
+        return z;
+      };
+      /** Case a: the support the bar tested and held. undefined = none tested; null = no support at all. */
+      const support = (i: number): Zone | undefined | null => {
+        const zones = supportsBelow(i);
+        if (!zones.length) return null;
+        const bar = c[i]!;
+        return zones
+          .filter((z) => bar.low <= z.high * (1 + p.zoneTol) && bar.close >= z.low)
+          .sort((a, b) => b.touches - a.touches || b.high - a.high)[0];
+      };
+
+      const indicatorChecks = (i: number) => {
         const px = close[i]!;
         const h = m.hist[i]!;
+        const rv = r[i]!;
         return [
           {
             label: `Below EMA ${p.emaFast} / ${p.emaMid} / ${p.emaSlow}`,
@@ -70,13 +111,32 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
             ok: m.line[i]! < h && m.signal[i]! < h,
             detail: `hist ${h > 0 ? "+" : ""}${fmt(h)}`,
           },
-          { label: `RSI ≤ ${p.maxRsi}`, ok: r[i]! <= p.maxRsi, detail: r[i]!.toFixed(0) },
+          {
+            label: `RSI ≤ ${p.maxRsi}`,
+            ok: rv <= p.maxRsi,
+            detail: `${rv.toFixed(0)}${rv < 30 ? " (< 30)" : rv < 50 ? " (< 50)" : ""}`,
+          },
+        ];
+      };
+      const checks = (i: number) => {
+        const base = indicatorChecks(i);
+        if (!p.useSupport) return base;
+        const z = support(i);
+        return [
+          ...base,
+          {
+            label: "At support (or none below)",
+            ok: z !== undefined,
+            detail: z ? `${fmt(z.low)}–${fmt(z.high)} ×${z.touches}` : z === null ? "no support below" : "not at support",
+          },
         ];
       };
 
       return {
         shouldEnter(i) {
-          return i >= warmup && checks(i).every((x) => x.ok);
+          // Indicators first: the support search is the expensive part.
+          if (i < warmup || !indicatorChecks(i).every((x) => x.ok)) return false;
+          return !p.useSupport || support(i) !== undefined;
         },
         initialStop(_i, entryPrice) {
           return entryPrice * (1 - p.stopPct);
@@ -93,15 +153,24 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         },
         plan(i) {
           if (i < warmup) return null;
-          // Price has to be under the lowest of the three EMAs; then MACD and RSI decide the bar.
-          const high = Math.min(e1[i]!, e2[i]!, e3[i]!);
-          return {
-            kind: "below" as const,
-            low: high,
-            high,
-            stop: high * (1 - p.stopPct),
-            waitFor: `under all EMAs — wait for MACD & signal below the histogram, RSI ≤ ${p.maxRsi}`,
-          };
+          const under = Math.min(e1[i]!, e2[i]!, e3[i]!);
+          const waitFor = `MACD & signal below the histogram, RSI ≤ ${p.maxRsi}`;
+          // Case a: the nearest support below, capped at the EMAs so both rules can hold there.
+          const zone = p.useSupport ? supportsBelow(i).sort((a, b) => b.high - a.high)[0] : undefined;
+          if (zone) {
+            const high = Math.min(zone.high * (1 + p.zoneTol), under, close[i]!);
+            if (high > zone.low) {
+              return {
+                kind: "zone" as const,
+                low: zone.low,
+                high,
+                stop: high * (1 - p.stopPct),
+                waitFor: `support ×${zone.touches} under the EMAs — wait for ${waitFor}`,
+              };
+            }
+          }
+          // Case b: no support below — under the EMAs is enough.
+          return { kind: "below" as const, low: under, high: under, stop: under * (1 - p.stopPct), waitFor: `under all EMAs — wait for ${waitFor}` };
         },
       };
     },
