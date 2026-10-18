@@ -239,16 +239,24 @@ async function draw(p: DrawPayload): Promise<void> {
         ),
       );
     }
-    const line = (price: number, text: string, color: string) =>
+    // horizontal_ray, like the S/R levels, so each price also gets a label on the price scale.
+    const line = (price: number, text: string, color: string, style = 2) =>
       add(text, () =>
-        chart.createMultipointShape(
-          [
-            { time: pl.from, price },
-            { time: pl.to, price },
-          ],
-          { ...opts, shape: "trend_line", text, overrides: { linecolor: color, linewidth: 1, linestyle: 2, showLabel: true, textcolor: color } },
+        chart.createShape(
+          { time: pl.from, price },
+          {
+            ...opts,
+            shape: "horizontal_ray",
+            text,
+            overrides: { linecolor: color, linewidth: 1, linestyle: style, showLabel: !!text, textcolor: color, horzLabelsAlign: "right" },
+          },
         ),
       );
+    // A rectangle has no price-scale label, so mark the zone edges too.
+    if (pl.kind === "zone") {
+      await line(pl.high, "", "#4ade80", 0);
+      await line(pl.low, "", "#4ade80", 0);
+    }
     await line(pl.stop, "PLAN STOP", "#f87171");
     if (pl.target !== null) await line(pl.target, "COST BACK 3x", "#fbbf24");
   }
