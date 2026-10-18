@@ -71,7 +71,7 @@ root.innerHTML = `
 <style>
   :host { all: initial; }
   table {
-    border-collapse: collapse; min-width: 196px; pointer-events: auto;
+    border-collapse: collapse; min-width: 196px; max-width: 260px; pointer-events: auto;
     background: rgba(0, 0, 0, .62); color: #fff; border: 1px solid #2a2a2a; border-radius: 10px;
     font: 11px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-variant-numeric: tabular-nums; overflow: hidden;
@@ -85,6 +85,7 @@ root.innerHTML = `
   .muted { color: #777; } .sub { color: #b4b4b4; }
   .ok { color: #4ade80; } .no { color: #777; } .neg { color: #f87171; } .pos { color: #4ade80; }
   .sig { font-weight: 600; }
+  td.msg { white-space: normal; }
 </style>
 <table aria-label="EA Volume Breakout"><thead><tr><th colspan="2" id="title">EA</th></tr></thead><tbody id="body">
   <tr><td colspan="2" class="muted">Waiting for chart data…</td></tr>
@@ -94,14 +95,13 @@ const $ = (id: string) => root.getElementById(id)!;
 
 /** Pin the table inside the chart's top-right corner, left of the price scale. */
 function positionTable(): void {
-  host.style.display = settings.showTable ? "" : "none";
   const frame = document.querySelector<HTMLIFrameElement>('iframe[id^="tradingview_"]');
   const r = frame?.getBoundingClientRect();
-  if (!r || r.width < 300 || r.height < 200) {
-    host.style.top = "16px";
-    host.style.right = "16px";
-    return;
-  }
+  // Only show once the chart is on screen and there is something to say; while the chart is
+  // still loading there is no corner to pin to.
+  const chartReady = !!r && r.width >= 300 && r.height >= 200 && mode === "tradingview";
+  host.style.display = settings.showTable && chartReady && (last || errorText) ? "" : "none";
+  if (!chartReady) return;
   const PRICE_SCALE = 72; // width of the chart's right price axis
   const TOOLBAR = 44; // chart top toolbar
   const INSET = 16; // keep clear of the chart's edges and its legend buttons
@@ -155,7 +155,7 @@ function renderTable(): void {
   positionTable();
   const sum = summarize();
   if (errorText && !sum) {
-    $("body").innerHTML = `<tr><td colspan="2" class="neg">${errorText}</td></tr>`;
+    $("body").innerHTML = `<tr><td colspan="2" class="neg msg">${errorText}</td></tr>`;
     return;
   }
   if (!sum) return;
@@ -181,7 +181,7 @@ function renderTable(): void {
     ),
     `<tr class="sep"><td class="sub">Backtest</td><td class="${sum.stats.returnPct >= 0 ? "pos" : "neg"}">${pct(sum.stats.returnPct)}</td></tr>`,
     `<tr><td class="sub">Max DD · Trades</td><td>${sum.stats.maxDdPct.toFixed(1)}% · ${sum.stats.trades}</td></tr>`,
-    ...(errorText ? [`<tr class="sep"><td colspan="2" class="neg">${errorText}</td></tr>`] : []),
+    ...(errorText ? [`<tr class="sep"><td colspan="2" class="neg msg">${errorText}</td></tr>`] : []),
   ];
   $("body").innerHTML = rows.join("");
 }
@@ -286,6 +286,8 @@ function parseResolution(r: string): number {
 }
 
 function analyze(source: BarsSource, all: Candle[]): void {
+  // An empty export just means the chart is still loading.
+  if (all.length === 0) return;
   lastInput = { source, candles: all };
   const setup = setupStrategy(settings.strategy, source.resolution);
   const barMs = source.resolution * 60_000;
@@ -300,7 +302,7 @@ function analyze(source: BarsSource, all: Candle[]): void {
   // Small incremental responses would replace the full history; keep what we have.
   if (sameChart && candles.length < last!.candles.length / 2) return;
   if (candles.length < setup.minBars) {
-    errorText = `${setup.name} needs ${setup.minBars}+ closed bars on ${resLabel(source.resolution)}, the chart has ${candles.length}. Scroll the chart back to load more, or try a larger timeframe.`;
+    errorText = `${setup.name} needs ${setup.minBars}+ bars on ${resLabel(source.resolution)} (chart has ${candles.length}). Scroll back to load more, or use a larger timeframe.`;
     publish();
     return;
   }
