@@ -7,7 +7,7 @@
 //      (histogram = line − signal, so this means signal < 0 and line > 2 × signal:  running out
 //      below zero, with the line no longer falling far under the signal)
 //   3. `minRsi` < RSI <= `maxRsi` (30–60): not still in free fall, not chased
-//      and RSI is at least `rsiBounce` (20%) above its lowest of the last `rsiLowBars` bars
+//      (optional, off: RSI at least `rsiBounce` above its lowest of the last `rsiLowBars` bars)
 //   4. support, two cases:
 //      a. there is a support zone (`minTouches`+ swing lows) below the price: the bar must
 //         have tested it and closed back above its low -- buy at the support, not above it
@@ -32,8 +32,9 @@ export interface DeepDipParams {
   maxRsi: number;
   /** Wait for EMA 200 to exist before any signal (off: young pairs trade on EMA 9 / 21). */
   requireSlowEma: boolean;
-  /** RSI must be this fraction above its recent low (0.2: low 25 needs 30); 0 turns the rule off.
-   *  +20 points was tried too: it waits until the bounce is mostly over (15m median +17.7% vs +33.1%). */
+  /** RSI must be this fraction above its recent low (0.2: low 25 needs 30); 0 = off (default).
+   *  Off because across 40 pairs it lowered the median at every timeframe (15m +41.4% vs +44.2%,
+   *  1h +13.1% vs +30.3%, 4h +2.9% vs +18.0%); +20 points instead of +20% was worse still. */
   rsiBounce: number;
   rsiLowBars: number;
   /** Require the support test when a support exists (case a). Off: rules 1–3 only. */
@@ -66,7 +67,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   minRsi: 30,
   maxRsi: 60,
   requireSlowEma: false,
-  rsiBounce: 0.2,
+  rsiBounce: 0,
   rsiLowBars: 96,
   useSupport: true,
   pivotBars: 5,

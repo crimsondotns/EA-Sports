@@ -42,7 +42,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1, freeLadder: FREE_LADDER },
       // EMA 200 is skipped until it exists, so MACD (26 + 9 bars) sets the minimum.
       minBars: 37,
-      shortLabels: ["Under EMAs", "MACD turn", "RSI", "RSI bounce", "Support"],
+      shortLabels: ["Under EMAs", "MACD turn", "RSI", "Support"],
       note: `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x${resolutionMinutes === 15 ? "" : " · best on 15m"}`,
       studies: [
         emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),
