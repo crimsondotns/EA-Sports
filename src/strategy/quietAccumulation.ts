@@ -137,6 +137,24 @@ export function quietAccumulation(params: Partial<QuietAccumulationParams> = {})
         conditions(i) {
           return i >= warmup ? checks(i) : [];
         },
+        plan(i) {
+          if (i < warmup) return null;
+          const close = c[i]!.close;
+          // Deep enough to satisfy the drawdown rule, and below the current price.
+          const maxEntry = ath[i]! * (1 - p.minDrawdown);
+          const zone = zonesAt(i)
+            .supports.filter((z) => z.low <= Math.min(close, maxEntry))
+            .sort((a, b) => b.high - a.high)[0];
+          if (!zone) return null;
+          const high = Math.min(zone.high * (1 + p.zoneTol), maxEntry, close);
+          return {
+            kind: "zone" as const,
+            low: zone.low,
+            high,
+            stop: zone.low - p.stopAtr * atrs[i]!,
+            waitFor: `support ×${zone.touches} — wait for a green candle closing above the previous high`,
+          };
+        },
         levels(i) {
           const { supports, resistances } = zonesAt(i);
           const price = c[i]!.close;

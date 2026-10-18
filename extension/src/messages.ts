@@ -33,6 +33,19 @@ export interface Summary {
   stats: { bars: number; returnPct: number; maxDdPct: number; trades: number; winRate: number; pf: number; avgWin: number; avgLoss: number };
   chartStatus: string;
   error: string | null;
+  /** Next setup to wait for when flat (not a forecast). */
+  plan: {
+    kind: "zone" | "trigger";
+    low: number;
+    high: number;
+    stop: number;
+    /** Price where the cost would be sold back, if the strategy uses the free ride. */
+    target: number | null;
+    waitFor: string;
+    /** How far price has to move to reach the zone / trigger, % of the last close (negative = down). */
+    distancePct: number;
+    inZone: boolean;
+  } | null;
 }
 
 export interface Settings {
@@ -74,6 +87,8 @@ export interface DrawPayload {
   arrows: { time: number; price: number; side: "buy" | "sell"; text: string; color: string }[];
   segments: { from: { time: number; price: number }; to: { time: number; price: number }; color: string }[];
   stop: number | null;
+  /** Next setup: a zone box (or trigger line) projected into the future, with stop and target. */
+  plan: { kind: "zone" | "trigger"; low: number; high: number; stop: number; target: number | null; from: number; to: number } | null;
   /** Support / resistance levels to draw as rays from where they were first touched. */
   levels: { kind: "support" | "resistance"; price: number; touches: number; time: number }[];
   /** Recent closed bars (time in seconds), used to line our times up with the chart's bars. */

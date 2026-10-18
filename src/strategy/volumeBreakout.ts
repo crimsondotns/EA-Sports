@@ -85,6 +85,20 @@ export function volumeBreakout(params: Partial<VolumeBreakoutParams> = {}): Stra
         shouldTimeExit(i, pos) {
           return i - pos.entryIndex >= p.maxHoldBars;
         },
+        plan(i) {
+          if (i < p.trendEma) return null;
+          // The next bar breaks out if it closes above the high of the last `breakoutLookback` bars.
+          let trigger = -Infinity;
+          for (let j = Math.max(0, i - p.breakoutLookback + 1); j <= i; j++) trigger = Math.max(trigger, c[j]!.high);
+          const volAvg = sma(c.map((x) => x.volumeUsd), p.volumeLookback)[i]!;
+          return {
+            kind: "trigger" as const,
+            low: trigger,
+            high: trigger,
+            stop: trigger - p.stopAtr * atrs[i]!,
+            waitFor: `close above with volume ≥ $${Math.max(p.minVolumeUsd, volAvg * p.volumeMultiplier).toFixed(0)}`,
+          };
+        },
         conditions(i) {
           const bar = c[i]!;
           // 7486000 -> "7.486M", 0.00001234 -> "0.00001234"; toPrecision alone gives "7.486e+6".

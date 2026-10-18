@@ -111,6 +111,23 @@ function positionTable(): void {
 setInterval(positionTable, 500);
 window.addEventListener("resize", positionTable);
 
+function currentPlan(): Summary["plan"] {
+  if (!last) return null;
+  const { candles, result, setup } = last;
+  if (result.trades.at(-1)?.reason === "end") return null; // holding: the position matters, not the next setup
+  const i = candles.length - 1;
+  const plan = setup.strategy.prepare(candles).plan?.(i);
+  if (!plan) return null;
+  const close = candles[i]!.close;
+  const entry = plan.kind === "zone" ? plan.high : plan.high;
+  return {
+    ...plan,
+    target: setup.config.freeRideAt === undefined ? null : entry * (1 + setup.config.freeRideAt),
+    distancePct: ((plan.kind === "zone" ? plan.high : plan.high) / close - 1) * 100,
+    inZone: plan.kind === "zone" && close <= plan.high && close >= plan.low,
+  };
+}
+
 function summarize(): Summary | null {
   if (!last) return null;
   const { source, candles, result, setup } = last;
@@ -148,6 +165,7 @@ function summarize(): Summary | null {
     },
     chartStatus,
     error: errorText,
+    plan: currentPlan(),
   };
 }
 
@@ -174,6 +192,18 @@ function renderTable(): void {
           `<tr><td class="sub">Stop</td><td class="neg">${sum.stop === null ? "–" : fmt(sum.stop)}</td></tr>`,
           `<tr><td class="sub">P/L</td><td class="${sum.openPnlPct! >= 0 ? "pos" : "neg"}">${pct(sum.openPnlPct!, 2)}</td></tr>`,
         ]
+      : []),
+    ...(sum.plan
+      ? sum.plan.kind === "zone"
+        ? [
+            `<tr class="sep"><td class="sub">Next buy zone</td><td class="${sum.plan.inZone ? "pos" : ""}">${fmt(sum.plan.low)}–${fmt(sum.plan.high)}</td></tr>`,
+            `<tr><td class="sub">${sum.plan.inZone ? "In zone" : "Distance"}</td><td>${sum.plan.inZone ? "wait for reversal" : pct(sum.plan.distancePct)}</td></tr>`,
+            `<tr><td class="sub">Stop · Cost back</td><td>${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}</td></tr>`,
+          ]
+        : [
+            `<tr class="sep"><td class="sub">Buy above</td><td>${fmt(sum.plan.high)} (${pct(sum.plan.distancePct)})</td></tr>`,
+            `<tr><td class="sub">Stop</td><td>${fmt(sum.plan.stop)}</td></tr>`,
+          ]
       : []),
     ...sum.conditions.map(
       (c, k) =>
@@ -232,6 +262,13 @@ function drawOnTradingView(): void {
           ]),
     ]),
     segments: [],
+    plan: (() => {
+      const pl = currentPlan();
+      if (!pl) return null;
+      const barSec = last.source.resolution * 60;
+      const from = sec(candles.at(-1)!.time);
+      return { kind: pl.kind, low: pl.low, high: pl.high, stop: pl.stop, target: pl.target, from, to: from + barSec * 40 };
+    })(),
     levels: (last.setup.strategy.prepare(candles).levels?.(candles.length - 1) ?? []).map((l) => ({
       kind: l.kind,
       price: l.price,
@@ -267,6 +304,10 @@ function notifySignals(): void {
   const label = `${source.chain} ${resLabel(source.resolution)} · ${document.title.split("|")[0]!.trim()}`;
   if (!inPos && strat.shouldEnter(candles.length - 1)) {
     once("buy", `EA BUY · ${last.setup.name}`, `${label}\nClose ${fmt(lastBar.close)} — buy at next bar open`);
+  }
+  const plan = currentPlan();
+  if (plan?.inZone) {
+    once("zone", `EA · price in buy zone · ${last.setup.name}`, `${label}\n${fmt(plan.low)}–${fmt(plan.high)} — wait for a reversal candle`);
   }
   if (t && t.reason !== "end" && t.exitTime === lastBar.time) {
     once("sell", `EA SELL (${t.reason})`, `${label}\n${pct(t.returnPct, 2)}`);

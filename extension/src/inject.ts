@@ -211,6 +211,47 @@ async function draw(p: DrawPayload): Promise<void> {
       ),
     );
   }
+  if (p.plan) {
+    const pl = p.plan;
+    if (pl.kind === "zone") {
+      await add("rectangle", () =>
+        chart.createMultipointShape(
+          [
+            { time: pl.from, price: pl.high },
+            { time: pl.to, price: pl.low },
+          ],
+          {
+            ...opts,
+            shape: "rectangle",
+            text: "NEXT BUY ZONE",
+            overrides: { color: "#4ade80", linewidth: 1, fillBackground: true, backgroundColor: "rgba(74, 222, 128, 0.14)", showLabel: true, textColor: "#4ade80" },
+          },
+        ),
+      );
+    } else {
+      await add("trigger", () =>
+        chart.createMultipointShape(
+          [
+            { time: pl.from, price: pl.high },
+            { time: pl.to, price: pl.high },
+          ],
+          { ...opts, shape: "trend_line", text: "BUY ABOVE", overrides: { linecolor: "#2196f3", linewidth: 2, linestyle: 0, showLabel: true, textcolor: "#2196f3" } },
+        ),
+      );
+    }
+    const line = (price: number, text: string, color: string) =>
+      add(text, () =>
+        chart.createMultipointShape(
+          [
+            { time: pl.from, price },
+            { time: pl.to, price },
+          ],
+          { ...opts, shape: "trend_line", text, overrides: { linecolor: color, linewidth: 1, linestyle: 2, showLabel: true, textcolor: color } },
+        ),
+      );
+    await line(pl.stop, "PLAN STOP", "#f87171");
+    if (pl.target !== null) await line(pl.target, "COST BACK 3x", "#fbbf24");
+  }
   for (const l of p.levels ?? []) {
     const color = l.kind === "support" ? "#4ade80" : "#f87171";
     await add("horizontal_ray", () =>

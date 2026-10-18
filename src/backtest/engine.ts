@@ -29,8 +29,23 @@ export interface PreparedStrategy {
   shouldTimeExit(i: number, pos: Position): boolean;
   /** Entry conditions on bar i, for display. */
   conditions?(i: number): { label: string; ok: boolean; detail: string }[];
+  /**
+   * The next setup to wait for, as of the close of bar i: a price zone where an entry could
+   * trigger, the stop that would go with it, and what still has to happen. Not a forecast.
+   */
+  plan?(i: number): TradePlan | null;
   /** Support / resistance levels known at the close of bar i, for display. */
   levels?(i: number): { kind: "support" | "resistance"; price: number; touches: number; from: number }[];
+}
+
+export interface TradePlan {
+  /** "zone": wait for price to come into [low, high]; "trigger": wait for a close above `high`. */
+  kind: "zone" | "trigger";
+  low: number;
+  high: number;
+  stop: number;
+  /** What has to happen in or at the zone for the entry to fire. */
+  waitFor: string;
 }
 
 export interface Strategy {

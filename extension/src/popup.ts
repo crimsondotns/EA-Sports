@@ -14,6 +14,20 @@ function renderEmpty(onDexScreener: boolean): void {
   </section>`;
 }
 
+function planHtml(s: Summary): string {
+  const pl = s.plan;
+  if (!pl) return `<p class="muted">No setup yet — no qualifying support below the price.</p>`;
+  const rows =
+    pl.kind === "zone"
+      ? `<div class="row num"><span>Next buy zone</span><span class="${pl.inZone ? "pos" : ""}">${fmt(pl.low)} – ${fmt(pl.high)}</span></div>
+         <div class="row num"><span>${pl.inZone ? "Status" : "Distance"}</span><span>${pl.inZone ? "In zone now" : pct(pl.distancePct)}</span></div>`
+      : `<div class="row num"><span>Buy above</span><span>${fmt(pl.high)}</span></div>
+         <div class="row num"><span>Distance</span><span>${pct(pl.distancePct)}</span></div>`;
+  return `<p class="muted">Next setup — ${esc(pl.waitFor)}</p>${rows}
+    <div class="row num"><span>Stop</span><span class="neg">${fmt(pl.stop)}</span></div>
+    ${pl.target === null ? "" : `<div class="row num"><span>Cost back (3x)</span><span>${fmt(pl.target)}</span></div>`}`;
+}
+
 function render(s: Summary): void {
   $("title").textContent = `EA · ${s.strategy}`;
   $("subtitle").textContent = `${s.pair} · ${s.resolution}`;
@@ -26,7 +40,7 @@ function render(s: Summary): void {
            <div class="row num"><span>Entry ${s.entryTime ? time(s.entryTime) : ""}</span><span>${s.entryPrice === null ? "–" : fmt(s.entryPrice)}</span></div>
            <div class="row num"><span>Stop</span><span class="neg">${s.stop === null ? "–" : fmt(s.stop)}</span></div>
            <div class="row num"><span>Open P/L</span><span class="${s.openPnlPct! >= 0 ? "pos" : "neg"}">${pct(s.openPnlPct!, 2)}</span></div>`
-        : `<p class="signal">Waiting</p><p class="muted">No position — waiting for a breakout</p>`;
+        : `<p class="signal">Waiting</p>${planHtml(s)}`;
   const st = s.stats;
   $("main").innerHTML = `
     <section>${signal}${s.error ? `<p class="neg">${esc(s.error)}</p>` : ""}</section>
