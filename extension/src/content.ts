@@ -231,6 +231,8 @@ function publish(): void {
 
 function drawOnTradingView(): void {
   if (mode !== "tradingview") return;
+  // Sent every time: the chart object is replaced on symbol / timeframe changes.
+  postToFrames({ source: CONTENT_TAG, type: "studies", studies: settings.showIndicators && last ? last.setup.studies : [] });
   if (!settings.drawMarkers || !last) {
     postToFrames({ source: CONTENT_TAG, type: "clear" });
     return;
@@ -460,7 +462,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (prev.strategy !== settings.strategy && lastInput) {
     last = null;
     analyze(lastInput.source, lastInput.candles);
-  } else if (prev.drawMarkers !== settings.drawMarkers) drawOnTradingView();
+  } else if (prev.drawMarkers !== settings.drawMarkers || prev.showIndicators !== settings.showIndicators) drawOnTradingView();
 });
 
 send({ type: "refresh" });

@@ -12,7 +12,7 @@ EA (automated trading) tooling for meme coins on DEX Screener: a Volume Breakout
 - `src/report/html.ts` — HTML chart report (lightweight-charts)
 - `src/cli/` — `bars`, `backtest`, `chart`, `compare` commands
 - `src/pairs.ts` — named pairs for `--pair`
-- `extension/` — Chrome extension (MV3). `src/background.ts` captures the chart's bars requests, `src/inject.ts` runs in the page (MAIN world) and draws via the TradingView API, `src/content.ts` runs the strategy and renders the side panel
+- `extension/` — Chrome extension (MV3). `src/background.ts` captures the chart's bars requests, `src/inject.ts` runs in the page (MAIN world) and draws signals and adds each strategy's indicators (`studies` in `strategies.ts`) via the TradingView API, `src/content.ts` runs the strategy and renders the side panel
 
 ## Commands
 

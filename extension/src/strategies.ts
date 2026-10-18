@@ -2,6 +2,7 @@
 import { DEFAULT_CONFIG, FREE_LADDER, type BacktestConfig, type Strategy } from "../../src/backtest/engine.ts";
 import { DEFAULT_PARAMS, volumeBreakout } from "../../src/strategy/volumeBreakout.ts";
 import { quietAccumulation } from "../../src/strategy/quietAccumulation.ts";
+import type { StudySpec } from "./messages.ts";
 import { DEEP_DIP_DEFAULTS, deepDip } from "../../src/strategy/emaMacdRsi.ts";
 
 export type StrategyId = "breakout" | "quiet" | "dip";
@@ -17,7 +18,11 @@ export interface StrategySetup {
   shortLabels: string[];
   /** One line describing sizing and exits, shown with the backtest numbers. */
   note: string;
+  /** Indicators the strategy reads, added to the chart for the user to see. */
+  studies: StudySpec[];
 }
+
+const emaStudy = (length: number, color: string): StudySpec => ({ name: "Moving Average Exponential", inputs: { length }, color });
 
 export const STRATEGY_NAMES: Record<StrategyId, string> = {
   breakout: "Volume Breakout",
@@ -38,6 +43,13 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       minBars: DEEP_DIP_DEFAULTS.emaSlow + 2,
       shortLabels: ["Under EMAs", "MACD turn", "RSI"],
       note: `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x${resolutionMinutes === 15 ? "" : " · best on 15m"}`,
+      studies: [
+        emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),
+        emaStudy(DEEP_DIP_DEFAULTS.emaMid, "#2196f3"),
+        emaStudy(DEEP_DIP_DEFAULTS.emaSlow, "#ffffff"),
+        { name: "MACD" },
+        { name: "Relative Strength Index", inputs: { length: 14 } },
+      ],
     };
   }
   if (id === "quiet") {
@@ -53,6 +65,8 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       minBars: volSlow + 2,
       shortLabels: ["Below ATH", "Support", "Reversal", "Selling faded"],
       note: "10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x",
+      // Support / resistance are drawn as levels; volume shows the "selling faded" rule.
+      studies: [{ name: "Volume" }],
     };
   }
   return {
@@ -63,5 +77,10 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
     minBars: DEFAULT_PARAMS.trendEma + 2,
     shortLabels: ["Breakout", "Volume ×", "Min volume", "Trend EMA", "Not extended"],
     note: "full position · ATR trailing stop",
+    studies: [
+      emaStudy(DEFAULT_PARAMS.fastEma, "#fbbf24"),
+      emaStudy(DEFAULT_PARAMS.trendEma, "#2196f3"),
+      { name: "Volume" },
+    ],
   };
 }

@@ -1,17 +1,27 @@
 // Runs in the page's MAIN world, in every frame. Looks for the TradingView charting library
 // API in its own window and, if found, draws the signals the content script sends.
-// Indicators are left to the user's own DEX Screener chart setup.
-import { CONTENT_TAG, MAIN_TAG, type ChartBar, type DrawPayload, type FromContent, type FromMain } from "./messages.ts";
+// It also adds the active strategy's indicators (built-in TradingView studies).
+import { CONTENT_TAG, MAIN_TAG, type ChartBar, type DrawPayload, type FromContent, type FromMain, type StudySpec } from "./messages.ts";
 
 // Minimal slice of the TradingView charting library API that we use.
 interface TvChart {
   createShape(point: { time: number; price?: number }, opts: object): Promise<unknown> | unknown;
   createMultipointShape(points: { time: number; price: number }[], opts: object): Promise<unknown> | unknown;
   removeEntity(id: unknown): void;
+  createStudy?(name: string, forceOverlay: boolean, lock?: boolean): Promise<unknown> | unknown;
+  getAllStudies?(): { id: unknown; name: string }[];
+  getStudyById?(id: unknown): TvStudy;
   exportData?(opts: object): Promise<{ schema: ExportField[]; data: ArrayLike<number>[] }>;
   resolution?(): string;
   onIntervalChanged?(): { subscribe(ctx: null, cb: () => void): void };
   onSymbolChanged?(): { subscribe(ctx: null, cb: () => void): void };
+}
+
+interface TvStudy {
+  getInputsInfo(): { id: string; name: string }[];
+  getInputValues(): { id: string; value: unknown }[];
+  setInputValues(values: { id: string; value: unknown }[]): void;
+  applyOverrides?(overrides: object): void;
 }
 
 const LOOKUP_MS = 1000;
@@ -158,6 +168,72 @@ function timeOffset(anchors: DrawPayload["anchors"], bars: TvBar[]): number | nu
   return best && best[1] >= 3 ? best[0] : null;
 }
 
+// ---------- strategy indicators ----------
+
+// Studies this script added, keyed by spec, so a strategy switch removes only ours.
+const ourStudies = new Map<string, unknown>();
+const specKey = (s: StudySpec) => `${s.name}|${JSON.stringify(s.inputs ?? {})}`;
+
+/** Input ids of `study` for each spec input, matched by name ("length" matches "Length"). */
+function inputIds(study: TvStudy, spec: StudySpec): Map<string, string> {
+  const info = study.getInputsInfo();
+  const ids = new Map<string, string>();
+  for (const k of Object.keys(spec.inputs ?? {})) {
+    const hit = info.find((x) => x.name.toLowerCase() === k) ?? info.find((x) => x.name.toLowerCase().includes(k));
+    if (hit) ids.set(k, hit.id);
+  }
+  return ids;
+}
+
+function matches(chart: TvChart, id: unknown, spec: StudySpec): boolean {
+  try {
+    const study = chart.getStudyById!(id);
+    const values = new Map(study.getInputValues().map((v) => [v.id, v.value]));
+    return [...inputIds(study, spec)].every(([k, inputId]) => Number(values.get(inputId)) === spec.inputs![k]);
+  } catch {
+    return false;
+  }
+}
+
+async function applyStudies(specs: StudySpec[]): Promise<void> {
+  const chart = currentChart();
+  if (!chart?.createStudy || !chart.getAllStudies || !chart.getStudyById) return;
+  const wanted = new Set(specs.map(specKey));
+  for (const [key, id] of ourStudies) {
+    if (wanted.has(key)) continue;
+    try {
+      chart.removeEntity(id);
+    } catch {
+      // already gone
+    }
+    ourStudies.delete(key);
+  }
+  const existing = chart.getAllStudies();
+  for (const spec of specs) {
+    const key = specKey(spec);
+    // Reuse a matching study (the user's own, or ours saved with the chart layout).
+    const same = existing.find((s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec));
+    if (same) {
+      if (ourStudies.has(key)) ourStudies.set(key, same.id);
+      continue;
+    }
+    try {
+      const id = await Promise.race([
+        Promise.resolve(chart.createStudy(spec.name, false, false)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), SHAPE_TIMEOUT_MS)),
+      ]);
+      if (id === null || id === undefined) continue;
+      ourStudies.set(key, id);
+      const study = chart.getStudyById(id);
+      const ids = inputIds(study, spec);
+      if (ids.size) study.setInputValues([...ids].map(([k, inputId]) => ({ id: inputId, value: spec.inputs![k] })));
+      if (spec.color) study.applyOverrides?.({ "Plot.color": spec.color, "plot.color": spec.color });
+    } catch (e) {
+      console.warn("[EA] could not add study", spec.name, e);
+    }
+  }
+}
+
 async function draw(p: DrawPayload): Promise<void> {
   const chart = currentChart();
   if (!chart) {
@@ -298,7 +374,9 @@ function onMessage(e: MessageEvent<FromContent>): void {
   if (e.data?.source !== CONTENT_TAG) return;
   const msg = e.data;
   console.debug("[EA] inject got", msg.type, "in", window === window.top ? "top" : location.href, "chart found:", !!found);
-  queue = queue.then(() => (msg.type === "draw" ? draw(msg.payload) : clear())).catch(() => {});
+  queue = queue
+    .then(() => (msg.type === "draw" ? draw(msg.payload) : msg.type === "studies" ? applyStudies(msg.studies) : clear()))
+    .catch(() => {});
 }
 
 // TradingView fills its iframe with document.open()/write(), which removes listeners added

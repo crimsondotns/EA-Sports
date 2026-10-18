@@ -53,9 +53,11 @@ export interface Settings {
   showTable: boolean;
   drawMarkers: boolean;
   notify: boolean;
+  /** Add the active strategy's indicators to the chart. */
+  showIndicators: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true };
+export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true, showIndicators: true };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 // content <-> background (chrome.runtime messaging)
@@ -102,4 +104,12 @@ export type FromMain =
   | { source: typeof MAIN_TAG; type: "drawResult"; ok: number; failed: number; error: string | null; progress?: string; note?: string };
 export type FromContent =
   | { source: typeof CONTENT_TAG; type: "draw"; payload: DrawPayload }
-  | { source: typeof CONTENT_TAG; type: "clear" };
+  | { source: typeof CONTENT_TAG; type: "clear" }
+  | { source: typeof CONTENT_TAG; type: "studies"; studies: StudySpec[] };
+
+/** A built-in TradingView indicator: `inputs` are matched by input name, case-insensitive. */
+export interface StudySpec {
+  name: string;
+  inputs?: Record<string, number>;
+  color?: string;
+}
