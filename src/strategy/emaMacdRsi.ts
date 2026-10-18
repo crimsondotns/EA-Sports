@@ -6,7 +6,7 @@
 //      (histogram = line − signal, so this means signal < 0 and line > 2 × signal:  running out
 //      below zero, with the line no longer falling far under the signal)
 //   3. `minRsi` < RSI <= `maxRsi` (30–60): not still in free fall, not chased
-//      and RSI is at least `rsiBounce` (20%) above its lowest of the last `rsiLowBars` bars
+//      and RSI is at least `rsiBounce` points (20) above its lowest of the last `rsiLowBars` bars
 //   4. support, two cases:
 //      a. there is a support zone (`minTouches`+ swing lows) below the price: the bar must
 //         have tested it and closed back above its low -- buy at the support, not above it
@@ -29,7 +29,7 @@ export interface DeepDipParams {
   /** RSI must be above this: under 30 the selling usually isn't done yet. */
   minRsi: number;
   maxRsi: number;
-  /** RSI must be this fraction above its recent low (0.2 = +20%); 0 turns the rule off. */
+  /** RSI must be this many points above its recent low (20: low 25 needs 45); 0 turns the rule off. */
   rsiBounce: number;
   rsiLowBars: number;
   /** Require the support test when a support exists (case a). Off: rules 1–3 only. */
@@ -61,7 +61,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   emaSlow: 200,
   minRsi: 30,
   maxRsi: 60,
-  rsiBounce: 0.2,
+  rsiBounce: 20,
   rsiLowBars: 96,
   useSupport: true,
   pivotBars: 5,
@@ -145,9 +145,9 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
                 for (let k = Math.max(0, i - p.rsiLowBars + 1); k <= i; k++) if (Number.isFinite(r[k])) low = Math.min(low, r[k]!);
                 return [
                   {
-                    label: `RSI +${p.rsiBounce * 100}% off its low`,
-                    ok: rv >= low * (1 + p.rsiBounce),
-                    detail: `${low.toFixed(0)} → ${rv.toFixed(0)} (+${((rv / low - 1) * 100).toFixed(0)}%)`,
+                    label: `RSI +${p.rsiBounce} off its low`,
+                    ok: rv >= low + p.rsiBounce,
+                    detail: `${low.toFixed(0)} → ${rv.toFixed(0)} (+${(rv - low).toFixed(0)})`,
                   },
                 ];
               })()
