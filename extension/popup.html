@@ -71,8 +71,16 @@
   /* Focus sits on the list; the highlighted row (plus its ring when using the keyboard) shows where it is. */
   .dropdown-menu:focus { outline: none; }
   .dropdown-menu:focus-visible li.active { outline: 2px solid var(--text); outline-offset: -2px; }
-  .dropdown-menu li { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
-  .dropdown-menu li small { display: block; color: var(--muted); font-size: 12px; }
+  .dropdown-menu li { position: relative; display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+  /* Hint: tooltip on the hovered / keyboard-highlighted option */
+  .dropdown-menu li .tip { position: absolute; z-index: 1; top: calc(100% + 4px); left: 34px; right: 8px; padding: 6px 10px;
+    background: var(--hover); border: 1px solid var(--border-strong); border-radius: 8px; color: var(--text-2);
+    font-size: 12px; line-height: 1.45; pointer-events: none; opacity: 0; visibility: hidden;
+    transition: opacity var(--t), visibility var(--t); }
+  .dropdown-menu li.active .tip { opacity: 1; visibility: visible; }
+  /* Last option: open the tooltip upwards so it stays inside the popup */
+  .dropdown-menu li:last-child .tip { top: auto; bottom: calc(100% + 4px); }
+  .hint { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
   .dropdown-menu li .check { flex: none; width: 16px; padding-top: 1px; visibility: hidden; }
   .dropdown-menu li[aria-selected="true"] .check { visibility: visible; }
   .dropdown-menu li.active { background: var(--hover); }
@@ -95,20 +103,21 @@
         <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <ul class="dropdown-menu" id="strategyMenu" role="listbox" aria-labelledby="strategyLabel" tabindex="-1" hidden>
-        <li role="option" id="opt-breakout" data-value="breakout" aria-selected="false">
+        <li role="option" id="opt-breakout" data-value="breakout" aria-selected="false" aria-describedby="tip-breakout">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>Volume Breakout<small>Chase momentum after a volume spike</small></span>
+          <span class="name">Volume Breakout</span><span class="tip" role="tooltip" id="tip-breakout">Chase momentum after a volume spike</span>
         </li>
-        <li role="option" id="opt-quiet" data-value="quiet" aria-selected="false">
+        <li role="option" id="opt-quiet" data-value="quiet" aria-selected="false" aria-describedby="tip-quiet">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>Quiet Accumulation<small>Buy deep and quiet, free ride</small></span>
+          <span class="name">Quiet Accumulation</span><span class="tip" role="tooltip" id="tip-quiet">Buy deep and quiet, free ride</span>
         </li>
-        <li role="option" id="opt-dip" data-value="dip" aria-selected="false">
+        <li role="option" id="opt-dip" data-value="dip" aria-selected="false" aria-describedby="tip-dip">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>Deep Dip<small>Under EMA 9/21/200, MACD turning up · best on 15m</small></span>
+          <span class="name">Deep Dip</span><span class="tip" role="tooltip" id="tip-dip">Under EMA 9/21/200, MACD turning up · best on 15m</span>
         </li>
       </ul>
     </div>
+    <p class="hint" id="strategyHint"></p>
   </section>
   <main id="main"></main>
   <section>
