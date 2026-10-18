@@ -5,6 +5,8 @@ export interface Position {
   entryPrice: number;
   stop: number;
   highestClose: number;
+  /** True once the free ride has sold the cost back; the rest is house money. */
+  costRecovered: boolean;
 }
 
 export interface IndicatorSeries {
@@ -47,6 +49,11 @@ export interface BacktestConfig {
    * to get the cost back after fees and hold the remaining tokens until the end of the data.
    */
   freeRideAt?: number;
+  /**
+   * With `freeRideAt`: keep only this fraction of the original tokens free (e.g. 0.1) and keep
+   * trading the rest with the strategy's stop. Unset keeps everything left after the cost back.
+   */
+  freeRideKeep?: number;
 }
 
 export type ExitReason = "stop" | "time" | "end" | "free";
@@ -105,7 +112,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
   const equity: BacktestResult["equity"] = [];
   const stops: BacktestResult["stops"] = [];
   let cash = cfg.initialCapital;
-  let pos: (Position & { qty: number; cost: number }) | null = null;
+  let pos: (Position & { qty: number; cost: number; initialQty: number; realized: number; kept: number }) | null = null;
   let pendingEntry: number | null = null; // signal bar index
   let barsInMarket = 0;
   let freeQty = 0;
@@ -115,15 +122,18 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     const exitPrice = rawPrice * (1 - cfg.slippage);
     const proceeds = p.qty * exitPrice * (1 - cfg.feeRate);
     cash += proceeds;
+    // Cash returned over the whole trade (cost back + this exit); kept free tokens are not counted.
+    const returned = p.realized + proceeds;
     trades.push({
       entryTime: candles[p.entryIndex]!.time,
       exitTime: candles[i]!.time,
       entryPrice: p.entryPrice,
       exitPrice,
       bars: i - p.entryIndex + 1,
-      returnPct: (proceeds / p.cost - 1) * 100,
-      pnl: proceeds - p.cost,
+      returnPct: (returned / p.cost - 1) * 100,
+      pnl: returned - p.cost,
       reason,
+      ...(p.kept ? { freeQty: p.kept } : {}),
     });
     pos = null;
   };
@@ -132,8 +142,20 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     const p = pos!;
     const exitPrice = rawPrice * (1 - cfg.slippage);
     const sellQty = Math.min(p.qty, p.cost / (exitPrice * (1 - cfg.feeRate)));
+    const proceeds = sellQty * exitPrice * (1 - cfg.feeRate);
+    cash += proceeds;
+    if (cfg.freeRideKeep !== undefined) {
+      // Keep a slice free, trade the rest on.
+      const kept = Math.min(p.qty - sellQty, p.initialQty * cfg.freeRideKeep);
+      freeQty += kept;
+      p.kept = kept;
+      p.qty -= sellQty + kept;
+      p.realized += proceeds;
+      p.costRecovered = true;
+      if (p.qty <= p.initialQty * 1e-9) close(i, rawPrice, "free");
+      return;
+    }
     const kept = p.qty - sellQty;
-    cash += sellQty * exitPrice * (1 - cfg.feeRate);
     freeQty += kept;
     trades.push({
       entryTime: candles[p.entryIndex]!.time,
@@ -162,8 +184,12 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
         entryPrice,
         stop: s.initialStop(pendingEntry, entryPrice),
         highestClose: bar.open,
+        costRecovered: false,
         qty,
         cost,
+        initialQty: qty,
+        realized: 0,
+        kept: 0,
       };
     }
     pendingEntry = null;
@@ -171,12 +197,16 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     stops.push(pos ? pos.stop : null);
     if (pos) {
       barsInMarket++;
-      const target = cfg.freeRideAt === undefined ? Infinity : pos.entryPrice * (1 + cfg.freeRideAt);
+      const target = cfg.freeRideAt === undefined || pos.costRecovered ? Infinity : pos.entryPrice * (1 + cfg.freeRideAt);
       if (bar.low <= pos.stop) {
         // Gap through the stop fills at the open.
         close(i, Math.min(bar.open, pos.stop), "stop");
       } else if (bar.high >= target) {
         takeCostBack(i, Math.max(bar.open, target));
+        if (pos) {
+          pos.highestClose = Math.max(pos.highestClose, bar.close);
+          pos.stop = s.updateStop(i, pos);
+        }
       } else {
         pos.highestClose = Math.max(pos.highestClose, bar.close);
         pos.stop = s.updateStop(i, pos);

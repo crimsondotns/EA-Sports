@@ -19,7 +19,7 @@ const perDay: Record<number, number> = { 15: 96, 60: 24, 240: 6 };
 /** Highest price reached after each free-ride exit, as a multiple of the entry. */
 function freeBagPeaks(candles: Candle[], trades: ReturnType<typeof runBacktest>["trades"]): number[] {
   return trades
-    .filter((t) => t.reason === "free")
+    .filter((t) => t.freeQty)
     .map((t) => {
       let peak = 0;
       for (const c of candles) if (c.time >= t.exitTime) peak = Math.max(peak, c.high);
@@ -37,8 +37,8 @@ for (const resolution of [15, 60, 240] as Resolution[]) {
   const runs: { style: string; strategy: ReturnType<typeof volumeBreakout>; cfg: BacktestConfig }[] = [
     { style: "Breakout scalp (all-in)", strategy: volumeBreakout(), cfg: DEFAULT_CONFIG },
   ];
-  for (const minDrawdown of [0.5, 0.7, 0.85]) {
-    for (const freeRideAt of [1, 2]) {
+  for (const minDrawdown of [0.7, 0.85]) {
+    for (const [freeRideAt, keep] of [[1, undefined], [1, 0.1], [2, 0.1]] as const) {
       const params: Partial<QuietAccumulationParams> = {
         minDrawdown,
         volFast: d,
@@ -47,9 +47,9 @@ for (const resolution of [15, 60, 240] as Resolution[]) {
         maxHoldBars: d * 30,
       };
       runs.push({
-        style: `Quiet -${minDrawdown * 100}% · free @ ${freeRideAt + 1}x`,
+        style: `Quiet -${minDrawdown * 100}% · cost @ ${freeRideAt + 1}x · keep ${keep === undefined ? "all" : `${keep * 100}%`}`,
         strategy: quietAccumulation(params),
-        cfg: { ...DEFAULT_CONFIG, positionSize: size, freeRideAt },
+        cfg: { ...DEFAULT_CONFIG, positionSize: size, freeRideAt, freeRideKeep: keep },
       });
     }
   }

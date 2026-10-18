@@ -9,6 +9,7 @@
 // Exit:
 //   - pair with the engine's `freeRideAt` (e.g. 1 = sell the cost back at 2x, keep the rest)
 //   - hard stop at `stopPct` below entry
+//   - once the cost is back, the tokens still traded trail `trailPct` below the highest close
 //   - time stop after `maxHoldBars` if neither happened
 
 import { ema, sma, type Candle } from "../indicators.ts";
@@ -22,6 +23,8 @@ export interface QuietAccumulationParams {
   baseBars: number;
   turnEma: number;
   stopPct: number;
+  /** After the cost is back: trail the rest this far below the highest close (never below entry). */
+  trailPct: number;
   maxHoldBars: number;
 }
 
@@ -33,6 +36,7 @@ export const QUIET_DEFAULTS: QuietAccumulationParams = {
   baseBars: 48,
   turnEma: 20,
   stopPct: 0.5,
+  trailPct: 0.35,
   maxHoldBars: 720,
 };
 
@@ -86,10 +90,12 @@ export function quietAccumulation(params: Partial<QuietAccumulationParams> = {})
           return entryPrice * (1 - p.stopPct);
         },
         updateStop(_i, pos) {
-          return pos.stop;
+          if (!pos.costRecovered) return pos.stop;
+          return Math.max(pos.stop, pos.entryPrice, pos.highestClose * (1 - p.trailPct));
         },
         shouldTimeExit(i, pos) {
-          return i - pos.entryIndex >= p.maxHoldBars;
+          // House money can run as long as the trail allows.
+          return !pos.costRecovered && i - pos.entryIndex >= p.maxHoldBars;
         },
         conditions(i) {
           return i >= warmup ? checks(i) : [];
