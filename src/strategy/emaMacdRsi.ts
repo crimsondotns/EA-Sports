@@ -35,6 +35,17 @@ export interface DeepDipParams {
   minTouches: number;
   /** Only swing lows from the last this-many bars form support zones. */
   srLookback: number;
+  /**
+   * Re-entry after a failed buy: if an earlier signal within `reentryBars` closed above the
+   * current price (that buy is likely stopped out, the downtrend goes on), only buy again on
+   * a bullish divergence -- a lower price with RSI at least `divergenceRsi` points higher than
+   * at that signal. "off" re-enters on the normal rules.
+   * Off by default: across 40 pairs (15m) every variant cut the median return from +35% to
+   * +13–16%, because many of the big winners are exactly those lower re-entries.
+   */
+  reentry: "off" | "divergence" | "skip";
+  reentryBars: number;
+  divergenceRsi: number;
   stopPct: number;
   trailPct: number;
   maxHoldBars: number;
@@ -51,6 +62,9 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   zoneTol: 0.04,
   minTouches: 2,
   srLookback: 2880,
+  reentry: "off",
+  reentryBars: 2880,
+  divergenceRsi: 3,
   stopPct: 0.2,
   trailPct: 0.35,
   maxHoldBars: 2880,
@@ -135,11 +149,23 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         ];
       };
 
+      // Last bar that signalled; the engine only asks while flat, in time order.
+      let lastSignal = -1;
+      /** Re-entry rule: false when an earlier, higher signal failed and this bar doesn't diverge. */
+      const reentryOk = (i: number) => {
+        if (p.reentry === "off" || lastSignal < 0 || i - lastSignal > p.reentryBars) return true;
+        if (close[i]! >= close[lastSignal]!) return true;
+        return p.reentry === "divergence" && r[i]! >= r[lastSignal]! + p.divergenceRsi;
+      };
+
       return {
         shouldEnter(i) {
           // Indicators first: the support search is the expensive part.
           if (i < warmup || !indicatorChecks(i).every((x) => x.ok)) return false;
-          return !p.useSupport || support(i) !== undefined;
+          if (p.useSupport && support(i) === undefined) return false;
+          if (!reentryOk(i)) return false;
+          lastSignal = i;
+          return true;
         },
         initialStop(_i, entryPrice) {
           return entryPrice * (1 - p.stopPct);
