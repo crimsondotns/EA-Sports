@@ -209,11 +209,21 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
     ourStudies.delete(key);
   }
   const existing = chart.getAllStudies();
+  let lastIndex = -1; // position in getAllStudies (creation order) of the previous spec's study
   for (const spec of specs) {
     const key = specKey(spec);
     // Reuse a matching study (the user's own, or ours saved with the chart layout).
-    const same = existing.find((s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec));
-    if (same) {
+    const idx = existing.findIndex((s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec));
+    const same = existing[idx];
+    // Created before the previous spec, so its pane sits above it: re-create it to move it below.
+    if (same && idx < lastIndex) {
+      try {
+        chart.removeEntity(same.id);
+      } catch {
+        // already gone
+      }
+    } else if (same) {
+      lastIndex = idx;
       if (ourStudies.has(key)) ourStudies.set(key, same.id);
       continue;
     }
@@ -224,6 +234,7 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
       ]);
       if (id === null || id === undefined) continue;
       ourStudies.set(key, id);
+      lastIndex = Infinity;
       const study = chart.getStudyById(id);
       const ids = inputIds(study, spec);
       if (ids.size) study.setInputValues([...ids].map(([k, inputId]) => ({ id: inputId, value: spec.inputs![k] })));

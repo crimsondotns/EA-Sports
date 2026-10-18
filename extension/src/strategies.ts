@@ -47,8 +47,9 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
         emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),
         emaStudy(DEEP_DIP_DEFAULTS.emaMid, "#2196f3"),
         emaStudy(DEEP_DIP_DEFAULTS.emaSlow, "#ffffff"),
-        { name: "MACD" },
+        // New panes stack downwards in creation order: RSI, then MACD under it.
         { name: "Relative Strength Index", inputs: { length: 14 } },
+        { name: "MACD" },
       ],
     };
   }
