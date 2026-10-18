@@ -1,4 +1,5 @@
 import { AvroReader } from "./avro.ts";
+import { toChecksumAddress } from "./checksum.ts";
 
 // Unofficial endpoint used by the dexscreener.com chart. It can change without notice.
 const BASE_URL = "https://io.dexscreener.com/dex/chart/amm/v3";
@@ -76,7 +77,7 @@ export function decodeBars(bytes: Uint8Array): Bar[] {
 }
 
 export async function fetchBars(p: FetchBarsParams): Promise<Bar[]> {
-  const url = new URL(`${BASE_URL}/${p.dex}/bars/${p.chain}/${p.pairId}`);
+  const url = new URL(`${BASE_URL}/${p.dex}/bars/${p.chain}/${toChecksumAddress(p.pairId)}`);
   url.searchParams.set("bbn", p.beforeBlock === undefined ? "" : String(p.beforeBlock));
   url.searchParams.set("res", String(p.resolution));
   url.searchParams.set("cb", String(p.countBack ?? 500));

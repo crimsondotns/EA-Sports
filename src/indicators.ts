@@ -136,3 +136,35 @@ export function clusterZones(pivots: Pivot[], tol: number): Zone[] {
   }
   return zones;
 }
+
+/** Wilder's RSI. */
+export function rsi(values: number[], period = 14): number[] {
+  const out = new Array<number>(values.length).fill(NaN);
+  let gain = 0;
+  let loss = 0;
+  for (let i = 1; i < values.length; i++) {
+    const d = values[i]! - values[i - 1]!;
+    if (i <= period) {
+      gain += Math.max(d, 0) / period;
+      loss += Math.max(-d, 0) / period;
+      if (i < period) continue;
+    } else {
+      gain = (gain * (period - 1) + Math.max(d, 0)) / period;
+      loss = (loss * (period - 1) + Math.max(-d, 0)) / period;
+    }
+    out[i] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+  }
+  return out;
+}
+
+/** MACD line, signal line and histogram (line − signal). */
+export function macd(values: number[], fast = 12, slow = 26, signal = 9): { line: number[]; signal: number[]; hist: number[] } {
+  const f = ema(values, fast);
+  const s = ema(values, slow);
+  const line = values.map((_, i) => f[i]! - s[i]!);
+  // The signal EMA starts once the MACD line exists.
+  const sig = new Array<number>(values.length).fill(NaN);
+  const start = slow - 1;
+  ema(line.slice(start), signal).forEach((v, k) => (sig[start + k] = v));
+  return { line, signal: sig, hist: line.map((v, i) => v - sig[i]!) };
+}

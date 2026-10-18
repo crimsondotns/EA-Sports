@@ -6,7 +6,8 @@ EA (automated trading) tooling for meme coins on DEX Screener: a Volume Breakout
 
 - `src/dexscreener/` — candle data from DEX Screener's unofficial chart endpoint (Avro-encoded; `bars.ts`, `avro.ts`), history paging (`history.ts`)
 - `src/indicators.ts` — SMA / EMA / ATR / breakout high, `toCandles()`
-- `src/strategy/volumeBreakout.ts` — the strategy; params in `DEFAULT_PARAMS`
+- `src/strategy/` — `volumeBreakout.ts`, `quietAccumulation.ts` (S/R + reversal), `emaMacdRsi.ts` (Deep Dip: under EMA 9/21/200, MACD turning up, RSI ≤ 60)
+- `src/universe.txt` — pairs for the multi-coin test (DEX Screener export rows: chain, dex, quote, base, pair)
 - `src/backtest/engine.ts` — backtester (signal on bar close, fill at next open, fees + slippage, optional free ride)
 - `src/report/html.ts` — HTML chart report (lightweight-charts)
 - `src/cli/` — `bars`, `backtest`, `chart`, `compare` commands
@@ -20,6 +21,7 @@ npm run typecheck                         # tsc --noEmit (src + extension)
 npm run backtest -- 5 --pair solana --sweep
 npm run chart -- 5 --pair robinhood       # writes data/report-*.html and opens it
 npm run compare -- --pair robinhood       # scalping vs spot, with/without free ride
+npm run universe -- --detail              # every strategy on every pair in src/universe.txt
 npm run ext:build                         # bundle extension into extension/dist
 ```
 
@@ -27,7 +29,7 @@ Node 24 runs the `.ts` files directly (type stripping), so code must use erasabl
 
 ## Notes
 
-- `io.dexscreener.com` / `feed.dexscreener.com` are unofficial and can change; `decodeBars()` refuses unknown format versions. With `mc=1` the USD fields are market cap.
+- `io.dexscreener.com` / `feed.dexscreener.com` are unofficial and can change; `decodeBars()` refuses unknown format versions. With `mc=1` the USD fields are market cap. EVM pair addresses must be in EIP-55 checksum case or the endpoint returns no bars (`fetchBars` converts them).
 - In the extension, the TradingView chart lives in an iframe that is rewritten with `document.open()`, which drops listeners added earlier; `inject.ts` re-attaches its message listener for that reason.
 - The extension runs the strategy on the chart's own bars (`exportData`), so markers line up with the candles; the captured feed is a fallback and a source of volume.
 - After changing the extension: `npm run ext:build`, reload it in `chrome://extensions`, then refresh the DEX Screener tab.

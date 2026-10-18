@@ -14,7 +14,8 @@
     "compare": "node src/cli/compare.ts",
     "ext:build": "node extension/build.mjs",
     "ext:watch": "node extension/build.mjs --watch",
-    "accumulate": "node src/cli/accumulate.ts"
+    "accumulate": "node src/cli/accumulate.ts",
+    "universe": "node src/cli/universe.ts"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",
