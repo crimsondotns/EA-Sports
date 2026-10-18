@@ -235,7 +235,12 @@ async function draw(p: DrawPayload): Promise<void> {
             { time: pl.from, price: pl.high },
             { time: pl.to, price: pl.high },
           ],
-          { ...opts, shape: "trend_line", text: "BUY ABOVE", overrides: { linecolor: "#2196f3", linewidth: 2, linestyle: 0, showLabel: true, textcolor: "#2196f3" } },
+          {
+            ...opts,
+            shape: "trend_line",
+            text: pl.kind === "below" ? "BUY BELOW" : "BUY ABOVE",
+            overrides: { linecolor: pl.kind === "below" ? "#4ade80" : "#2196f3", linewidth: 2, linestyle: 0, showLabel: true, textcolor: pl.kind === "below" ? "#4ade80" : "#2196f3" },
+          },
         ),
       );
     }

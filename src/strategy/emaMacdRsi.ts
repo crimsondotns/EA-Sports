@@ -3,8 +3,8 @@
 // Entry (evaluated on bar close, filled at next bar open):
 //   1. close below EMA 9, EMA 21 and EMA 200                                   -- still cheap
 //   2. MACD line and signal line both below the histogram                      -- selling is
-//      (with the histogram being line − signal, that means both lines are under    running out
-//      zero and the line has started to pull away above the signal)
+//      (histogram = line − signal, so this means signal < 0 and line > 2 × signal:  running out
+//      below zero, with the line no longer falling far under the signal)
 //   3. RSI <= `maxRsi` (under 50, or above it by no more than 10)              -- not chased
 // Exit:
 //   - fixed stop `stopPct` below the entry
@@ -90,6 +90,18 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         },
         conditions(i) {
           return i >= warmup ? checks(i) : [];
+        },
+        plan(i) {
+          if (i < warmup) return null;
+          // Price has to be under the lowest of the three EMAs; then MACD and RSI decide the bar.
+          const high = Math.min(e1[i]!, e2[i]!, e3[i]!);
+          return {
+            kind: "below" as const,
+            low: high,
+            high,
+            stop: high * (1 - p.stopPct),
+            waitFor: `under all EMAs — wait for MACD & signal below the histogram, RSI ≤ ${p.maxRsi}`,
+          };
         },
       };
     },

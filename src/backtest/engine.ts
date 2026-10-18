@@ -39,8 +39,9 @@ export interface PreparedStrategy {
 }
 
 export interface TradePlan {
-  /** "zone": wait for price to come into [low, high]; "trigger": wait for a close above `high`. */
-  kind: "zone" | "trigger";
+  /** "zone": wait for price to come into [low, high]; "trigger": wait for a close above `high`;
+   *  "below": wait for price under `high`, then for the rest of the conditions. */
+  kind: "zone" | "trigger" | "below";
   low: number;
   high: number;
   stop: number;

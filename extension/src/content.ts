@@ -119,12 +119,11 @@ function currentPlan(): Summary["plan"] {
   const plan = setup.strategy.prepare(candles).plan?.(i);
   if (!plan) return null;
   const close = candles[i]!.close;
-  const entry = plan.kind === "zone" ? plan.high : plan.high;
   return {
     ...plan,
-    target: setup.config.freeRideAt === undefined ? null : entry * (1 + setup.config.freeRideAt),
-    distancePct: ((plan.kind === "zone" ? plan.high : plan.high) / close - 1) * 100,
-    inZone: plan.kind === "zone" && close <= plan.high && close >= plan.low,
+    target: setup.config.freeRideAt === undefined ? null : plan.high * (1 + setup.config.freeRideAt),
+    distancePct: (plan.high / close - 1) * 100,
+    inZone: (plan.kind === "zone" && close <= plan.high && close >= plan.low) || (plan.kind === "below" && close < plan.high),
   };
 }
 
@@ -200,7 +199,13 @@ function renderTable(): void {
             `<tr><td class="sub">${sum.plan.inZone ? "In zone" : "Distance"}</td><td>${sum.plan.inZone ? "wait for reversal" : pct(sum.plan.distancePct)}</td></tr>`,
             `<tr><td class="sub">Stop · Cost back</td><td>${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}</td></tr>`,
           ]
-        : [
+        : sum.plan.kind === "below"
+          ? [
+              `<tr class="sep"><td class="sub">Buy below</td><td class="${sum.plan.inZone ? "pos" : ""}">${fmt(sum.plan.high)}</td></tr>`,
+              `<tr><td class="sub">${sum.plan.inZone ? "Below now" : "Distance"}</td><td>${sum.plan.inZone ? "wait for MACD turn" : pct(sum.plan.distancePct)}</td></tr>`,
+              `<tr><td class="sub">Stop · Cost back</td><td>${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}</td></tr>`,
+            ]
+          : [
             `<tr class="sep"><td class="sub">Buy above</td><td>${fmt(sum.plan.high)} (${pct(sum.plan.distancePct)})</td></tr>`,
             `<tr><td class="sub">Stop</td><td>${fmt(sum.plan.stop)}</td></tr>`,
           ]
@@ -307,7 +312,7 @@ function notifySignals(): void {
   }
   const plan = currentPlan();
   if (plan?.inZone) {
-    once("zone", `EA · price in buy zone · ${last.setup.name}`, `${label}\n${fmt(plan.low)}–${fmt(plan.high)} — wait for a reversal candle`);
+    once("zone", `EA · price in buy zone · ${last.setup.name}`, `${label}\n${plan.kind === "below" ? `under ${fmt(plan.high)}` : `${fmt(plan.low)}–${fmt(plan.high)}`} — ${plan.waitFor}`);
   }
   if (t && t.reason !== "end" && t.exitTime === lastBar.time) {
     once("sell", `EA SELL (${t.reason})`, `${label}\n${pct(t.returnPct, 2)}`);

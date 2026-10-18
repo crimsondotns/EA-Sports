@@ -35,7 +35,7 @@ export interface Summary {
   error: string | null;
   /** Next setup to wait for when flat (not a forecast). */
   plan: {
-    kind: "zone" | "trigger";
+    kind: "zone" | "trigger" | "below";
     low: number;
     high: number;
     stop: number;
@@ -49,13 +49,13 @@ export interface Summary {
 }
 
 export interface Settings {
-  strategy: "breakout" | "quiet";
+  strategy: "breakout" | "quiet" | "dip";
   showTable: boolean;
   drawMarkers: boolean;
   notify: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { strategy: "breakout", showTable: true, drawMarkers: true, notify: true };
+export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 // content <-> background (chrome.runtime messaging)
@@ -88,7 +88,7 @@ export interface DrawPayload {
   segments: { from: { time: number; price: number }; to: { time: number; price: number }; color: string }[];
   stop: number | null;
   /** Next setup: a zone box (or trigger line) projected into the future, with stop and target. */
-  plan: { kind: "zone" | "trigger"; low: number; high: number; stop: number; target: number | null; from: number; to: number } | null;
+  plan: { kind: "zone" | "trigger" | "below"; low: number; high: number; stop: number; target: number | null; from: number; to: number } | null;
   /** Support / resistance levels to draw as rays from where they were first touched. */
   levels: { kind: "support" | "resistance"; price: number; touches: number; time: number }[];
   /** Recent closed bars (time in seconds), used to line our times up with the chart's bars. */

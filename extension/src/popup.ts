@@ -16,12 +16,15 @@ function renderEmpty(onDexScreener: boolean): void {
 
 function planHtml(s: Summary): string {
   const pl = s.plan;
-  if (!pl) return `<p class="muted">No setup yet — no qualifying support below the price.</p>`;
+  if (!pl) return `<p class="muted">No setup yet for this strategy.</p>`;
   const rows =
     pl.kind === "zone"
       ? `<div class="row num"><span>Next buy zone</span><span class="${pl.inZone ? "pos" : ""}">${fmt(pl.low)} – ${fmt(pl.high)}</span></div>
          <div class="row num"><span>${pl.inZone ? "Status" : "Distance"}</span><span>${pl.inZone ? "In zone now" : pct(pl.distancePct)}</span></div>`
-      : `<div class="row num"><span>Buy above</span><span>${fmt(pl.high)}</span></div>
+      : pl.kind === "below"
+        ? `<div class="row num"><span>Buy below</span><span class="${pl.inZone ? "pos" : ""}">${fmt(pl.high)}</span></div>
+           <div class="row num"><span>${pl.inZone ? "Status" : "Distance"}</span><span>${pl.inZone ? "Below now" : pct(pl.distancePct)}</span></div>`
+        : `<div class="row num"><span>Buy above</span><span>${fmt(pl.high)}</span></div>
          <div class="row num"><span>Distance</span><span>${pct(pl.distancePct)}</span></div>`;
   return `<p class="muted">Next setup — ${esc(pl.waitFor)}</p>${rows}
     <div class="row num"><span>Stop</span><span class="neg">${fmt(pl.stop)}</span></div>
