@@ -12,66 +12,22 @@ export interface BarsSource {
 }
 
 /** What the content script knows about the chart, for the popup. Plain data only. */
-export interface Summary {
+export interface Status {
   updatedAt: number;
-  strategy: string;
-  strategyNote: string;
-  /** In a position whose cost has already been sold back (only the house money is left). */
-  costRecovered: boolean;
   pair: string;
-  chain: string;
-  dex: string;
-  resolution: string;
-  dataSource: string;
-  lastClosed: number;
-  signal: "buy" | "hold" | "flat";
-  entryPrice: number | null;
-  entryTime: number | null;
-  stop: number | null;
-  openPnlPct: number | null;
-  conditions: { label: string; ok: boolean; detail: string }[];
-  stats: { bars: number; returnPct: number; maxDdPct: number; trades: number; winRate: number; pf: number; avgWin: number; avgLoss: number };
   chartStatus: string;
+  /** ATH close of the closed daily bars, if known. */
+  athClose: number | null;
   error: string | null;
-  /** Next setup to wait for when flat (not a forecast). */
-  plan: {
-    kind: "zone" | "trigger" | "below";
-    low: number;
-    high: number;
-    stop: number;
-    /** Price where the cost would be sold back, if the strategy uses the free ride. */
-    target: number | null;
-    waitFor: string;
-    /** How far price has to move to reach the zone / trigger, % of the last close (negative = down). */
-    distancePct: number;
-    inZone: boolean;
-  } | null;
 }
 
-export interface Settings {
-  strategy: "breakout" | "quiet" | "dip" | "launch" | "range";
-  showTable: boolean;
-  drawMarkers: boolean;
-  notify: boolean;
-  /** Add the active strategy's indicators to the chart. */
-  showIndicators: boolean;
-  /** Background opacity of the chart table, 0.2–1. */
-  tableOpacity: number;
-  /** Chart table folded down to its header. */
-  tableCollapsed: boolean;
-  /** How far the user dragged the chart table down from its default spot, px. */
-  tableOffsetY: number;
-}
-
-export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true, showIndicators: true, tableOpacity: 0.6, tableCollapsed: false, tableOffsetY: 0 };
-export const summaryKey = (tabId: number) => `summary:${tabId}`;
+export const statusKey = (tabId: number) => `status:${tabId}`;
 
 // content <-> background (chrome.runtime messaging)
 export type ToBackground =
   | { type: "refresh" }
-  | { type: "summary"; summary: Summary }
-  | { type: "barsUrl"; url: string }
-  | { type: "notify"; title: string; message: string };
+  | { type: "status"; status: Status }
+  | { type: "barsUrl"; url: string };
 
 export type ToContent =
   | { type: "bars"; source: BarsSource; bars: Bar[]; daily: Bar[] }
@@ -81,52 +37,19 @@ export type ToContent =
 export const MAIN_TAG = "ea-main";
 export const CONTENT_TAG = "ea-content";
 
-/** A bar exactly as the TradingView chart holds it (time in seconds). */
-export interface ChartBar {
-  time: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number | null;
-}
-
 export interface DrawPayload {
-  arrows: { time: number; price: number; side: "buy" | "sell"; text: string; color: string }[];
-  segments: { from: { time: number; price: number }; to: { time: number; price: number }; color: string }[];
-  stop: number | null;
-  /** Resting limit for the next 10% sell while holding, if the strategy uses one. */
-  sellLimit: number | null;
-  sellLabel: string;
-  /** Lowest low of the strategy's range window; buys outside an uptrend must be near it. */
-  rangeLow: { price: number; uptrend: boolean } | null;
   /** Highest close of a closed daily bar (ATH close) and lines 90% / 95% below it. */
   ath: { close: number; time: number; levels: { pct: number; price: number }[] } | null;
   /** Open of the closed daily bar with the lowest close (ATL), the start of the Fib retracement to the ATH close. */
   atl: { open: number; time: number } | null;
   /** Time (s) of the pair's first daily bar, where the Anchored VWAP starts. */
   firstBar: number | null;
-  /** Next setup: a zone box (or trigger line) projected into the future, with stop and target. */
-  plan: { kind: "zone" | "trigger" | "below"; low: number; high: number; stop: number; target: number | null; from: number; to: number } | null;
-  /** Support / resistance levels to draw as rays from where they were first touched. */
-  levels: { kind: "support" | "resistance"; price: number; touches: number; time: number }[];
-  /** Recent closed bars (time in seconds), used to line our times up with the chart's bars. */
-  anchors: { time: number; close: number }[];
 }
 
 export type FromMain =
   | { source: typeof MAIN_TAG; type: "status"; ready: boolean; detail: string }
   | { source: typeof MAIN_TAG; type: "barsUrl"; url: string }
-  | { source: typeof MAIN_TAG; type: "chartBars"; resolution: string; bars: ChartBar[]; hasVolume: boolean }
-  | { source: typeof MAIN_TAG; type: "drawResult"; ok: number; failed: number; error: string | null; progress?: string; note?: string };
-export type FromContent =
-  | { source: typeof CONTENT_TAG; type: "draw"; payload: DrawPayload }
-  | { source: typeof CONTENT_TAG; type: "clear" }
-  | { source: typeof CONTENT_TAG; type: "studies"; studies: StudySpec[] };
-
-/** A built-in TradingView indicator: `inputs` are matched by input name, case-insensitive. */
-export interface StudySpec {
-  name: string;
-  inputs?: Record<string, number>;
-  color?: string;
-}
+  /** Close of the chart's last bar, in whatever field (USD / quote, price / market cap) the chart shows. */
+  | { source: typeof MAIN_TAG; type: "chartPrice"; close: number }
+  | { source: typeof MAIN_TAG; type: "drawResult"; failed: number; error: string | null };
+export type FromContent = { source: typeof CONTENT_TAG; type: "draw"; payload: DrawPayload };

@@ -1,22 +1,17 @@
 {
   "name": "ea-meme-trader",
   "version": "0.1.0",
+  "description": "EA Drawing: a Chrome extension that draws ATH lines, a Fib retracement and an Anchored VWAP on the DEX Screener chart from daily bars.",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=22.18"
   },
   "scripts": {
-    "bars": "node src/cli/bars.ts",
     "typecheck": "tsc --noEmit",
-    "backtest": "node src/cli/backtest.ts",
-    "chart": "node src/cli/chart.ts",
-    "compare": "node src/cli/compare.ts",
     "ext:build": "node extension/build.mjs",
     "ext:watch": "node extension/build.mjs --watch",
-    "ext:zip": "node extension/package.mjs",
-    "accumulate": "node src/cli/accumulate.ts",
-    "universe": "node src/cli/universe.ts"
+    "ext:zip": "node extension/package.mjs"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.287",

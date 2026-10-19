@@ -2,10 +2,9 @@
   "manifest_version": 3,
   "name": "EA Drawing",
   "version": "0.1.0",
-  "description": "Marks signals on the DEX Screener chart and draws lines 90% and 95% below the ATH close.",
+  "description": "Draws ATH −90% / −95% lines, a Fib retracement and an Anchored VWAP on the DEX Screener chart from daily bars.",
   "permissions": [
     "webRequest",
-    "notifications",
     "storage"
   ],
   "host_permissions": [

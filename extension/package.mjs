@@ -5,7 +5,7 @@ import { mkdirSync, readFileSync, rmSync } from "node:fs";
 
 execFileSync("node", ["extension/build.mjs"], { stdio: "inherit" });
 const { version } = JSON.parse(readFileSync("extension/manifest.json", "utf8"));
-const out = `dist/release/ea-signals-extension-v${version}.zip`;
+const out = `dist/release/ea-drawing-extension-v${version}.zip`;
 mkdirSync("extension/dist/release", { recursive: true });
 rmSync(`extension/${out}`, { force: true });
 const files = ["manifest.json", "popup.html", "icon.svg", "icon16.png", "icon32.png", "icon48.png", "icon128.png", "dist/background.js", "dist/content.js", "dist/inject.js", "dist/popup.js"];
