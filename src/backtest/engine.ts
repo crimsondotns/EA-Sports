@@ -43,6 +43,8 @@ export interface PreparedStrategy {
    * the open if it gaps above). Same free-slice rule as `partialExit`.
    */
   limitSell?(i: number, pos: Position): { price: number; fraction: number } | null;
+  /** Big-picture range low at bar i and whether the market counts as an uptrend, if used. */
+  rangeLow?(i: number): { price: number; uptrend: boolean } | null;
   /** Entry conditions on bar i, for display. */
   conditions?(i: number): { label: string; ok: boolean; detail: string }[];
   /**

@@ -408,6 +408,16 @@ async function draw(p: DrawPayload): Promise<void> {
       ),
     );
   }
+  if (p.rangeLow) {
+    const last = Math.floor(Date.now() / 1000);
+    const text = p.rangeLow.uptrend ? "RANGE LOW · uptrend" : "RANGE LOW · buy zone";
+    await add("range low", () =>
+      chart.createShape(
+        { time: last, price: p.rangeLow!.price },
+        { ...opts, shape: "horizontal_line", text, overrides: { linecolor: "#a855f7", linestyle: p.rangeLow!.uptrend ? 2 : 0, showLabel: true, textcolor: "#a855f7" } },
+      ),
+    );
+  }
   if (p.sellLimit !== null) {
     const last = p.arrows.at(-1)?.time ?? Math.floor(Date.now() / 1000);
     await add("sell limit", () =>

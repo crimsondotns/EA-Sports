@@ -57,6 +57,10 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
         // RSI back above it, instead of buying while RSI is still falling. 41 pairs: 15m median
         // +121% vs +138%, 1h +59% and 32/40 profitable vs +62% and 30/40.
         ...(signalExit ? { rsiSwing: 2, rsiSwingWithin: 6 } : {}),
+        // Big picture: unless EMA 200 is rising (uptrend), only buy within a few % of the lowest
+        // low of the last 7 days. 41 pairs: 15m (+5%, EMA 200 up over 3 days) median +96.6% vs
+        // +121%, worst $880 coin -$122 vs -$145; 1h (+3%, 1 day) +52.6% vs +59.1%, worst -$11 vs -$23.
+        ...(signalExit ? { rangeLowBars: perDay * 7, rangeLowTol: hourly ? 0.03 : 0.05, trendBars: hourly ? perDay : perDay * 3 } : {}),
       }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
@@ -71,7 +75,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       },
       // EMA 200 is skipped until it exists, so MACD (26 + 9 bars) sets the minimum.
       minBars: 37,
-      shortLabels: signalExit ? ["Under EMAs", "MACD turn", "RSI", "RSI swing low", "Support"] : ["Under EMAs", "MACD turn", "RSI", "Support"],
+      shortLabels: signalExit ? ["Under EMAs", "MACD turn", "RSI", "Range low", "RSI swing low", "Support"] : ["Under EMAs", "MACD turn", "RSI", "Support"],
       note: launch
         ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
         : signalExit

@@ -293,6 +293,7 @@ function drawOnTradingView(): void {
     })),
     anchors: candles.slice(-300).map((c) => ({ time: sec(c.time), close: c.close })),
     stop: result.trades.at(-1)?.reason === "end" ? (result.stops.at(-1) ?? null) : null,
+    rangeLow: last.setup.strategy.prepare(candles).rangeLow?.(candles.length - 1) ?? null,
     sellLimit: (() => {
       const open = result.trades.at(-1);
       if (open?.reason !== "end") return null;

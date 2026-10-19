@@ -53,6 +53,13 @@ export interface DeepDipParams {
    *  0 = off. */
   rangeLowBars: number;
   rangeLowTol: number;
+  /** With `trendBars` > 0, the range-low rule applies only outside an uptrend (uptrend = EMA 200
+   *  higher than `trendBars` ago; Deep Dip buys under EMA 200 anyway; no EMA 200 yet counts as
+   *  uptrend). */
+  trendBars: number;
+  /** Range-mode buys: stop this far under the range low instead of `stopPct` under the entry,
+   *  when that is tighter. 0 = always `stopPct`. */
+  rangeStopPct: number;
   /** Also count a support the close has just broken, up to this far under its low (0.1 = 10%).
    *  0 = off. */
   supportBreak: number;
@@ -151,6 +158,8 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   turnUp: "off",
   rangeLowBars: 0,
   rangeLowTol: 0.05,
+  trendBars: 0,
+  rangeStopPct: 0,
   supportBreak: 0,
   useSupport: true,
   pivotBars: 5,
@@ -301,6 +310,13 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           .sort((a, b) => a.low - b.low)[0];
       };
 
+      const rangeLow = (i: number) => {
+        let lo = Infinity;
+        for (let k = Math.max(0, i - p.rangeLowBars); k <= i; k++) lo = Math.min(lo, c[k]!.low);
+        return lo;
+      };
+      const uptrend = (i: number) =>
+        p.trendBars > 0 && (!Number.isFinite(e3[i]!) || (i >= p.trendBars && e3[i]! > e3[i - p.trendBars]!));
       /** The most recent confirmed RSI swing low within `rsiSwingWithin` bars of i, or null. */
       const rsiSwingLow = (i: number): number | null => {
         const k = p.rsiSwing;
@@ -333,13 +349,13 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           },
           ...(p.rangeLowBars > 0
             ? (() => {
-                let lo = Infinity;
-                for (let k = Math.max(0, i - p.rangeLowBars); k <= i; k++) lo = Math.min(lo, c[k]!.low);
+                const lo = rangeLow(i);
+                const up = uptrend(i);
                 return [
                   {
-                    label: "Near the range low",
-                    ok: px <= lo * (1 + p.rangeLowTol),
-                    detail: `${fmt(lo)} (+${((px / lo - 1) * 100).toFixed(1)}%)`,
+                    label: up ? "Uptrend (range low not needed)" : "Near the range low",
+                    ok: up || px <= lo * (1 + p.rangeLowTol),
+                    detail: `${up ? "uptrend · " : ""}${fmt(lo)} (+${((px / lo - 1) * 100).toFixed(1)}%)`,
                   },
                 ];
               })()
@@ -422,8 +438,10 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           lastSignal = i;
           return true;
         },
-        initialStop(_i, entryPrice) {
-          return entryPrice * (1 - p.stopPct);
+        initialStop(i, entryPrice) {
+          const base = entryPrice * (1 - p.stopPct);
+          if (p.rangeStopPct <= 0 || p.rangeLowBars <= 0 || uptrend(i)) return base;
+          return Math.max(base, rangeLow(i) * (1 - p.rangeStopPct));
         },
         updateStop(_i, pos) {
           if (p.exitMode === "signals")
@@ -450,6 +468,9 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         },
         conditions(i) {
           return i >= warmup ? checks(i) : [];
+        },
+        rangeLow(i) {
+          return p.rangeLowBars > 0 && i >= 0 ? { price: rangeLow(i), uptrend: uptrend(i) } : null;
         },
         plan(i) {
           if (i < warmup) return null;
