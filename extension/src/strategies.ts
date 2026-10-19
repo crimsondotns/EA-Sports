@@ -35,21 +35,22 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
   if (id === "dip" || id === "launch") {
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
     const launch = id === "launch";
-    const climaxExit = !launch && resolutionMinutes === 15;
+    // On 15m, sell 10% on each bar that closes with RSI >= 80 ($880 x 15 coins: +$3,944, 11/15
+    // profitable, worst -$87; climax turn made +$4,316 but 9/15 and worst -$308).
+    const rsiCloseExit = !launch && resolutionMinutes === 15;
     // On 1h, a resting limit at the price that would lift RSI to 80 (median +37.6% vs +22.3%).
     const rsiExit = !launch && resolutionMinutes === 60;
-    const signalExit = climaxExit || rsiExit;
+    const signalExit = rsiCloseExit || rsiExit;
     return {
       id,
       name: STRATEGY_NAMES[id],
-      // Deep Dip on 15m sells 10% at each climax turn (15m median +72% vs +37.8% for the cost-back
-      // exit across 41 pairs, same drawdown); on 1h it sells 10% at an RSI-80 limit; 4h and up keep
+      // Deep Dip on 15m sells 10% on each RSI >= 80 close; on 1h it sells 10% at an RSI-80 limit; 4h and up keep
       // the cost-back exit. New Launch keeps cost back too (untested with these exits).
       strategy: deepDip({
         srLookback: perDay * 30,
         maxHoldBars: perDay * 30,
         rsiLowBars: perDay,
-        ...(climaxExit ? { exitMode: "signals" as const, exitSignals: ["climaxTurn" as const], exitNeed: 1 } : {}),
+        ...(rsiCloseExit ? { exitMode: "signals" as const, exitSignals: ["rsiOver" as const], exitNeed: 1, exitRsiOver: 80 } : {}),
         ...(rsiExit ? { exitMode: "signals" as const, exitSignals: [], rsiLimit: 80 } : {}),
       }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
@@ -68,8 +69,8 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       shortLabels: ["Under EMAs", "MACD turn", "RSI", "Support"],
       note: launch
         ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
-        : climaxExit
-          ? "10% per trade · sell 10% at each climax turn · keep 10% free, sold at 10x/30x/100x"
+        : rsiCloseExit
+          ? "10% per trade · sell 10% on each close with RSI ≥ 80 · keep 10% free, sold at 10x/30x/100x"
           : rsiExit
           ? "10% per trade · sell 10% when RSI reaches 80 (limit) · keep 10% free, sold at 10x/30x/100x"
           : `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x · best on 15m`,

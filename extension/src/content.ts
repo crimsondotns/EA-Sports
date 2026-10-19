@@ -257,7 +257,7 @@ function drawOnTradingView(): void {
       ...(tr.costBackTime !== undefined && !tr.partials
         ? [{ time: sec(tr.costBackTime), price: above(tr.costBackTime), side: "sell" as const, text: "COST BACK", color: "#fbbf24" }]
         : []),
-      // Partial sells (climax-turn exit): one marker per 10% sold.
+      // Partial sells (10% signal exits): one marker per 10% sold.
       ...(tr.partials ?? []).map((ps) => ({
         time: sec(ps.time),
         price: above(ps.time),
