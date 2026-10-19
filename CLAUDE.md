@@ -34,6 +34,11 @@ Node 24 runs the `.ts` files directly (type stripping), so code must use erasabl
 - The extension runs the strategy on the chart's own bars (`exportData`), so markers line up with the candles; the captured feed is a fallback and a source of volume.
 - After changing the extension: `npm run ext:build`, reload it in `chrome://extensions`, then refresh the DEX Screener tab.
 
+## Reporting strategy work
+
+- **Every time a strategy change or strategy test is finished, explain the confirm point** in the reply: the exact bar on which the entry is confirmed, which conditions must all be true on that bar's close (and any that may already have happened earlier, such as the support test), when the order fills (the next bar's open), and where the stop, cost back and exits sit. Use a concrete example (prices or a chart moment) when one is available.
+- Say which rules are on in the shipped preset and which were only tested.
+
 ## Git workflow
 
 - **Commit after every finished task.** When a change is done and its checks pass (`npm run typecheck`, plus `npm run ext:build` for extension changes), commit it right away. Don't wait to be asked, and don't leave finished work uncommitted.
