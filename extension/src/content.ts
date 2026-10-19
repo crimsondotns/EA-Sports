@@ -337,30 +337,31 @@ function drawOnTradingView(): void {
     anchors: [],
     stop: null,
     rangeLow: null,
-    ath: athClose(candles),
+    ...athAtl(candles),
     sellLabel: "",
     sellLimit: null,
   };
   postToFrames({ source: CONTENT_TAG, type: "draw", payload });
 }
 
-/** Highest close of a closed daily bar, in the price field (USD or quote) that matches the chart. */
-function athClose(candles: Candle[]): DrawPayload["ath"] {
+/** ATH close and ATL open of the closed daily bars, in the price field (USD or quote) that matches the chart. */
+function athAtl(candles: Candle[]): Pick<DrawPayload, "ath" | "atl"> {
   const now = candles.at(-1)?.close;
-  if (!now || !daily.length) return null;
+  if (!now || !daily.length) return { ath: null, atl: null };
   // The open daily bar's close is the current price: use it to pick the field.
   const days = (["usd", "quote"] as const)
     .map((f) => toCandles(daily, f))
     .find((d) => d.length && Math.abs(d.at(-1)!.close / now - 1) < 0.05);
   const closed = days?.filter((d) => d.time + 86_400_000 <= Date.now()) ?? [];
-  if (!closed.length) return null;
+  if (!closed.length) return { ath: null, atl: null };
   const top = closed.reduce((a, c) => (c.close > a.close ? c : a));
-  return { close: top.close, time: top.time / 1000, levels: [0.9, 0.95].map((pct) => ({ pct, price: top.close * (1 - pct) })) };
+  const bottom = closed.reduce((a, c) => (c.open < a.open ? c : a));
+  return {
+    ath: { close: top.close, time: top.time / 1000, levels: [0.9, 0.95].map((pct) => ({ pct, price: top.close * (1 - pct) })) },
+    atl: { open: bottom.open, time: bottom.time / 1000 },
+  };
 }
 
-// ---------- notifications ----------
-
-/** The backtest's open position rebuilt as the strategy sees it, or null when flat. */
 function openPosition(): Position | null {
   if (!last) return null;
   const { candles, result } = last;

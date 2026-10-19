@@ -214,6 +214,37 @@ async function drawAthLines(chart: TvChart, ath: NonNullable<DrawPayload["ath"]>
   }
 }
 
+// Fib retracement from the ATL open to the ATH close, also a real saved drawing. Skipped when a
+// Fib retracement already has both ends within 0.5% of those prices.
+async function drawFib(chart: TvChart, atl: NonNullable<DrawPayload["atl"]>, ath: NonNullable<DrawPayload["ath"]>, errors: string[]): Promise<void> {
+  const near = (a: number, b: number) => Math.abs(a / b - 1) < 0.005;
+  for (const s of chart.getAllShapes?.() ?? []) {
+    if (s.name !== "fib_retracement") continue;
+    try {
+      const [a, b] = chart.getShapeById?.(s.id).getPoints() ?? [];
+      if (a && b && near(a.price, atl.open) && near(b.price, ath.close)) return;
+    } catch {
+      // Shape removed meanwhile.
+    }
+  }
+  try {
+    await Promise.race([
+      Promise.resolve().then(() =>
+        chart.createMultipointShape(
+          [
+            { time: atl.time, price: atl.open },
+            { time: ath.time, price: ath.close },
+          ],
+          { shape: "fib_retracement" },
+        ),
+      ),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timed out")), SHAPE_TIMEOUT_MS)),
+    ]);
+  } catch (e) {
+    errors.push(`fib retracement: ${(e as Error)?.message ?? e}`);
+  }
+}
+
 // Studies this script added, keyed by spec, so a strategy switch removes only ours.
 const ourStudies = new Map<string, unknown>();
 const specKey = (s: StudySpec) => `${s.name}|${JSON.stringify(s.inputs ?? {})}`;
@@ -457,6 +488,7 @@ async function draw(p: DrawPayload): Promise<void> {
     );
   }
   if (p.ath) await drawAthLines(chart, p.ath, errors);
+  if (p.ath && p.atl) await drawFib(chart, p.atl, p.ath, errors);
   if (p.sellLimit !== null) {
     const last = p.arrows.at(-1)?.time ?? Math.floor(Date.now() / 1000);
     await add("sell limit", () =>
