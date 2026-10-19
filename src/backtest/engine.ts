@@ -35,6 +35,12 @@ export interface PreparedStrategy {
    * left, which is then kept free like a cost-back bag.
    */
   partialExit?(i: number, pos: Position): number;
+  /**
+   * Called on the close of bar i while in a position: a resting limit sell for bar i + 1. If
+   * that bar's high reaches `price`, `fraction` of the original tokens sell at the limit (or at
+   * the open if it gaps above). Same free-slice rule as `partialExit`.
+   */
+  limitSell?(i: number, pos: Position): { price: number; fraction: number } | null;
   /** Entry conditions on bar i, for display. */
   conditions?(i: number): { label: string; ok: boolean; detail: string }[];
   /**
@@ -160,6 +166,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     | null = null;
   let pendingEntry: number | null = null; // signal bar index
   let pendingSell = 0; // fraction of the original tokens to sell at the next open
+  let pendingLimit: { price: number; fraction: number } | null = null;
   let barsInMarket = 0;
   let freeQty = 0;
   // Each trade's free tokens, so the ladder can measure its multiple against that entry.
@@ -265,21 +272,27 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     pendingEntry = null;
 
     if (bags.length) sellLadder(bar);
+    let sellAt = bar.open;
+    if (pos && pendingSell === 0 && pendingLimit && bar.high >= pendingLimit.price) {
+      pendingSell = pendingLimit.fraction;
+      sellAt = Math.max(bar.open, pendingLimit.price);
+    }
+    pendingLimit = null;
     if (pos && pendingSell > 0) {
       // Partial exit: sell a slice of the original tokens, never into the kept free slice.
       const p = pos;
       const keep = p.initialQty * (cfg.freeRideKeep ?? 0);
       const qty = Math.min(p.qty - keep, p.initialQty * pendingSell);
       if (qty > 0) {
-        const proceeds = qty * bar.open * (1 - cfg.slippage) * (1 - cfg.feeRate);
+        const proceeds = qty * sellAt * (1 - cfg.slippage) * (1 - cfg.feeRate);
         cash += proceeds;
         p.realized += proceeds;
         p.qty -= qty;
         p.partialsSold++;
-        p.partials.push({ time: bar.time, price: bar.open * (1 - cfg.slippage) });
+        p.partials.push({ time: bar.time, price: sellAt * (1 - cfg.slippage) });
         if (!p.costRecovered && p.realized >= p.cost) {
           p.costRecovered = true;
-          p.costBack = { time: bar.time, price: bar.open * (1 - cfg.slippage) };
+          p.costBack = { time: bar.time, price: sellAt * (1 - cfg.slippage) };
         }
       }
       if (p.qty <= keep * (1 + 1e-9)) {
@@ -287,7 +300,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
         keepFree(p.entryPrice, p.qty);
         p.kept = p.qty;
         p.qty = 0;
-        close(i, bar.open, "free");
+        close(i, sellAt, "free");
       }
     }
     pendingSell = 0;
@@ -308,7 +321,10 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
         pos.highestClose = Math.max(pos.highestClose, bar.close);
         pos.stop = s.updateStop(i, pos);
         if (s.shouldTimeExit(i, pos)) close(i, bar.close, "time");
-        else if (s.partialExit && i < candles.length - 1) pendingSell = s.partialExit(i, pos);
+        else if (i < candles.length - 1) {
+          if (s.partialExit) pendingSell = s.partialExit(i, pos);
+          if (s.limitSell) pendingLimit = s.limitSell(i, pos);
+        }
       }
     } else if (i < candles.length - 1 && s.shouldEnter(i)) {
       pendingEntry = i;

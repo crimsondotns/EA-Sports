@@ -83,6 +83,15 @@ export interface DeepDipParams {
   climaxVol: number;
   climaxRsi: number;
   climaxStretch: number;
+  /**
+   * Sell into strength instead of after the turn: with `limitStretch` > 0, a limit sell for
+   * `sellPct` rests each bar at EMA 21 x (1 + limitStretch) (and at least `limitMinGain` over the
+   * entry), filled during the bar if the high reaches it. Optional `limitRsi`: only while the
+   * previous bar's RSI is at least this.
+   */
+  limitStretch: number;
+  limitMinGain: number;
+  limitRsi: number;
   trailPct: number;
   maxHoldBars: number;
 }
@@ -117,6 +126,9 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   climaxVol: 2.5,
   climaxRsi: 70,
   climaxStretch: 0.04,
+  limitStretch: 0,
+  limitMinGain: 0.3,
+  limitRsi: 0,
   trailPct: 0.35,
   maxHoldBars: 2880,
 };
@@ -269,6 +281,10 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         shouldTimeExit(i, pos) {
           if (p.exitMode === "signals" && pos.partialsSold > 0) return false;
           return !pos.costRecovered && c[i]!.time - c[pos.entryIndex]!.time >= holdMs;
+        },
+        limitSell(i, pos) {
+          if (p.exitMode !== "signals" || p.limitStretch <= 0 || r[i]! < p.limitRsi) return null;
+          return { price: Math.max(e2[i]! * (1 + p.limitStretch), pos.entryPrice * (1 + p.limitMinGain)), fraction: p.sellPct };
         },
         partialExit(i, pos) {
           if (p.exitMode !== "signals" || c[i]!.close <= pos.entryPrice) return 0;
