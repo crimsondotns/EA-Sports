@@ -101,6 +101,8 @@ export interface DeepDipParams {
   /** Signal sells after the first need the close at least this far above the last sell price
    *  (0.2 = +20%), so a run that keeps rising is not sold off bar after bar. */
   sellStep: number;
+  /** Signal sells only start once the close is this far above the entry (0.4 = +40%). */
+  sellMinGain: number;
   rsiLimit: number;
   trailPct: number;
   maxHoldBars: number;
@@ -142,6 +144,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   exitRsiOver: 80,
   rsiOverRearm: 0,
   sellStep: 0,
+  sellMinGain: 0,
   rsiLimit: 0,
   trailPct: 0.35,
   maxHoldBars: 2880,
@@ -326,6 +329,7 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         },
         partialExit(i, pos) {
           if (p.exitMode !== "signals" || c[i]!.close <= pos.entryPrice) return 0;
+          if (pos.partialsSold === 0 && c[i]!.close < pos.entryPrice * (1 + p.sellMinGain)) return 0;
           if (p.sellStep > 0 && pos.lastSellPrice > 0 && c[i]!.close < pos.lastSellPrice * (1 + p.sellStep)) return 0;
           return exitFired(i) ? p.sellPct : 0;
         },
