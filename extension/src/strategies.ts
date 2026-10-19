@@ -91,10 +91,10 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
         // RSI back above it, instead of buying while RSI is still falling. 41 pairs: 15m median
         // +121% vs +138%, 1h +59% and 32/40 profitable vs +62% and 30/40.
         ...(signalExit ? { rsiSwing: 2, rsiSwingWithin: 6 } : {}),
-        // Big picture: unless EMA 200 is rising (uptrend), only buy within a few % of the lowest
-        // low of the last 7 days. 41 pairs: 15m (+5%, EMA 200 up over 3 days) median +96.6% vs
-        // +121%, worst $880 coin -$122 vs -$145; 1h (+3%, 1 day) +52.6% vs +59.1%, worst -$11 vs -$23.
-        ...(signalExit ? { rangeLowBars: perDay * 7, rangeLowTol: hourly ? 0.03 : 0.05, trendBars: hourly ? perDay : perDay * 3 } : {}),
+        // Big picture: only buy within 3% of the lowest low of the last 7 days, in any trend (the
+        // user's RANGE LOW). 41 pairs: 15m median +8.6% (29/41) vs +96.6% when uptrends are exempt,
+        // worst $880 coin -$33 vs -$122; 1h +6.0% (21/40) vs +52.6%.
+        ...(signalExit ? { rangeLowBars: perDay * 7, rangeLowTol: 0.03, trendBars: 0 } : {}),
       }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
