@@ -42,6 +42,9 @@ export interface DeepDipParams {
    *  bars either side of it (confirmed by now), and RSI above that low now. 0 = off. */
   rsiSwing: number;
   rsiSwingWithin: number;
+  /** Buy the price swing low: enter once bar i - `priceSwing` is confirmed as a low under the
+   *  `priceSwing` bars either side, if Deep Dip's checks all held on that low bar. 0 = off. */
+  priceSwing: number;
   /** Require the support test when a support exists (case a). Off: rules 1–3 only. */
   useSupport: boolean;
   pivotBars: number;
@@ -133,6 +136,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   rsiLowBars: 96,
   rsiSwing: 0,
   rsiSwingWithin: 6,
+  priceSwing: 0,
   useSupport: true,
   pivotBars: 5,
   zoneTol: 0.04,
@@ -360,8 +364,16 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       return {
         shouldEnter(i) {
           // Indicators first: the support search is the expensive part.
-          if (i < warmup || !indicatorChecks(i).every((x) => x.ok)) return false;
-          if (p.useSupport && support(i) === undefined) return false;
+          if (p.priceSwing > 0) {
+            const k = p.priceSwing, j = i - k;
+            if (j < warmup) return false;
+            for (let q = j - k; q <= i; q++) if (q !== j && !(c[q]!.low > c[j]!.low)) return false;
+            if (!indicatorChecks(j).every((x) => x.ok)) return false;
+            if (p.useSupport && support(j) === undefined) return false;
+          } else {
+            if (i < warmup || !indicatorChecks(i).every((x) => x.ok)) return false;
+            if (p.useSupport && support(i) === undefined) return false;
+          }
           if (!reentryOk(i)) return false;
           lastSignal = i;
           return true;
