@@ -53,6 +53,10 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
         // +138%, 1h +23% vs +47% across 41 pairs). 1h also counts a support broken by up to 10%.
         ...(signalExit ? { exitMode: "signals" as const, exitSignals: [], hhExit: hourly ? ("close" as const) : ("swing" as const), hhPivot: 2, breakevenAt: null } : {}),
         ...(hourly && !launch ? { supportBreak: 0.1 } : {}),
+        // Wait for an RSI swing low (under the 2 bars either side, within the last 6 bars) and
+        // RSI back above it, instead of buying while RSI is still falling. 41 pairs: 15m median
+        // +121% vs +138%, 1h +59% and 32/40 profitable vs +62% and 30/40.
+        ...(signalExit ? { rsiSwing: 2, rsiSwingWithin: 6 } : {}),
       }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
@@ -67,7 +71,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       },
       // EMA 200 is skipped until it exists, so MACD (26 + 9 bars) sets the minimum.
       minBars: 37,
-      shortLabels: ["Under EMAs", "MACD turn", "RSI", "Support"],
+      shortLabels: signalExit ? ["Under EMAs", "MACD turn", "RSI", "RSI swing low", "Support"] : ["Under EMAs", "MACD turn", "RSI", "Support"],
       note: launch
         ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
         : signalExit

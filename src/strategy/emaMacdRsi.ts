@@ -45,6 +45,9 @@ export interface DeepDipParams {
   /** Buy the price swing low: enter once bar i - `priceSwing` is confirmed as a low under the
    *  `priceSwing` bars either side, if Deep Dip's checks all held on that low bar. 0 = off. */
   priceSwing: number;
+  /** Reversal on the signal bar: "rsi" = RSI above the previous bar's, "green" = close above
+   *  open, "both" = both. "off" buys on any bar that passes the other checks. */
+  turnUp: "off" | "rsi" | "green" | "both";
   /** Also count a support the close has just broken, up to this far under its low (0.1 = 10%).
    *  0 = off. */
   supportBreak: number;
@@ -140,6 +143,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   rsiSwing: 0,
   rsiSwingWithin: 6,
   priceSwing: 0,
+  turnUp: "off",
   supportBreak: 0,
   useSupport: true,
   pivotBars: 5,
@@ -320,6 +324,17 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
             ok: rv > p.minRsi && rv <= p.maxRsi,
             detail: rv.toFixed(0),
           },
+          ...(p.turnUp !== "off"
+            ? [
+                {
+                  label: p.turnUp === "rsi" ? "RSI turning up" : p.turnUp === "green" ? "Green candle" : "RSI up & green candle",
+                  ok:
+                    (p.turnUp === "green" || rv > r[i - 1]!) &&
+                    (p.turnUp === "rsi" || c[i]!.close > c[i]!.open),
+                  detail: `RSI ${r[i - 1]!.toFixed(0)} → ${rv.toFixed(0)}, ${c[i]!.close > c[i]!.open ? "green" : "red"}`,
+                },
+              ]
+            : []),
           ...(p.rsiSwing > 0
             ? (() => {
                 const low = rsiSwingLow(i);
