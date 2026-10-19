@@ -404,7 +404,7 @@ async function draw(p: DrawPayload): Promise<void> {
     await add("horizontal_line", () =>
       chart.createShape(
         { time: last, price: p.stop! },
-        { ...opts, shape: "horizontal_line", text: "EA STOP", overrides: { linecolor: "#ef5350", linestyle: 1, showLabel: true, textcolor: "#ef5350" } },
+        { ...opts, shape: "horizontal_line", text: "STOP", overrides: { linecolor: "#ef5350", linestyle: 1, showLabel: true, textcolor: "#ef5350" } },
       ),
     );
   }
