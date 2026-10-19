@@ -32,7 +32,7 @@ Node 24 runs the `.ts` files directly (type stripping), so code must use erasabl
 
 - `io.dexscreener.com` / `feed.dexscreener.com` are unofficial and can change; `decodeBars()` refuses unknown format versions. With `mc=1` the USD fields are market cap. EVM pair addresses must be in EIP-55 checksum case or the endpoint returns no bars (`fetchBars` converts them).
 - In the extension, the TradingView chart lives in an iframe that is rewritten with `document.open()`, which drops listeners added earlier; `inject.ts` re-attaches its message listener for that reason.
-- The extension runs the strategy on the chart's own bars (`exportData`), so markers line up with the candles; the captured feed is a fallback, a source of volume, and older history: `background.ts` pages back up to 4 requests (~31 days, cached 15 min) and `content.ts` prepends those bars in whichever price field matches the chart.
+- The extension runs the strategy on the chart's own bars (`exportData`), so markers line up with the candles; the captured feed is a fallback, a source of volume, and older history: `background.ts` pages back up to 4 requests (~31 days, cached 15 min) and `content.ts` prepends those bars in whichever price field matches the chart. `analyze()` starts every run at the same point (midnight UTC, ~31 days plus warm-up back), because trades are path dependent and the chart's loaded range changes when the user scrolls.
 - After changing the extension: `npm run ext:build`, reload it in `chrome://extensions`, then refresh the DEX Screener tab.
 
 ## Reporting strategy work

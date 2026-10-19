@@ -388,8 +388,12 @@ function analyze(source: BarsSource, all: Candle[]): void {
   lastInput = { source, candles: all };
   const setup = setupStrategy(settings.strategy, source.resolution);
   const barMs = source.resolution * 60_000;
-  // Drop the still-forming bar: signals are only valid on closed bars.
-  const candles = all.filter((c) => c.time + barMs <= Date.now());
+  // Drop the still-forming bar: signals are only valid on closed bars. Start from a fixed point
+  // (midnight UTC, ~31 days plus warm-up back): trades are path dependent, so starting wherever
+  // the chart's loaded history happens to begin made signals jump when the user scrolled back.
+  const dayMs = 86_400_000;
+  const start = Math.floor(Date.now() / dayMs) * dayMs - (Math.ceil((31 * 1440) / source.resolution) + 250) * barMs;
+  const candles = all.filter((c) => c.time >= start && c.time + barMs <= Date.now());
   const sameChart =
     last &&
     last.source.pairId === source.pairId &&
