@@ -21,7 +21,7 @@ import {
 } from "./messages.ts";
 
 const REFRESH_MS = 20_000;
-const MAX_DRAWN_TRADES = 60;
+const MAX_DRAWN_TRADES = 200;
 
 type ChartMode = "searching" | "tradingview" | "unavailable";
 
@@ -497,8 +497,11 @@ function analyze(source: BarsSource, all: Candle[]): void {
   // Drop the still-forming bar: signals are only valid on closed bars. Start from a fixed point
   // (midnight UTC, ~31 days plus warm-up back): trades are path dependent, so starting wherever
   // the chart's loaded history happens to begin made signals jump when the user scrolled back.
+  // Older bars the user has scrolled back to (the chart loads them itself; no requests of ours)
+  // move the start back to the first loaded bar, so the whole viewed history is computed.
   const dayMs = 86_400_000;
-  const start = Math.floor(Date.now() / dayMs) * dayMs - (Math.ceil((31 * 1440) / source.resolution) + 250) * barMs;
+  const fixed = Math.floor(Date.now() / dayMs) * dayMs - (Math.ceil((31 * 1440) / source.resolution) + 250) * barMs;
+  const start = Math.min(fixed, all[0]!.time);
   const candles = all.filter((c) => c.time >= start && c.time + barMs <= Date.now());
   const sameChart =
     last &&
