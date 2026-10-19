@@ -34,7 +34,7 @@ export const STRATEGY_NAMES: Record<StrategyId, string> = {
   range: "Range Swing",
 };
 
-export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant = 8): StrategySetup {
+export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant = 3): StrategySetup {
   if (id === "range") {
     // Trade the range: Deep Dip's entry, but always within 3% of the 7-day low, then sell the
     // whole position at a limit 3% under the 7-day high (at least +5%). Tested and losing:
@@ -70,9 +70,10 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
     const launch = id === "launch";
     const hourly = resolutionMinutes === 60;
-    // On 15m and 1h Deep Dip runs one of the variants #1–#8 compared in docs/strategies.md
-    // (1h, 41 pairs: #7 +42% median and 31/40 profitable; #5 the most $ over 15 coins; #8 the
-    // smallest losses). Other timeframes and New Launch use #1, cost back at 3x.
+    // On 15m and 1h Deep Dip runs one of the variants #1–#8 compared in docs/strategies.md.
+    // Default #3 (sell 10% on each RSI >= 80 close): over the last 30 days of 40 pairs at $880 a
+    // trade it made +$58,344 on 1h (+166%) by riding the one pair that pumped, -10.5% without it.
+    // Other timeframes and New Launch use #1, cost back at 3x.
     const v = !launch && (resolutionMinutes === 15 || resolutionMinutes === 60) ? variant : 1;
     const signalExit = v >= 2;
     const exit =
