@@ -24,6 +24,7 @@ npm run chart -- 5 --pair robinhood       # writes data/report-*.html and opens 
 npm run compare -- --pair robinhood       # scalping vs spot, with/without free ride
 npm run universe -- --detail              # every strategy on every pair in src/universe.txt
 npm run ext:build                         # bundle extension into extension/dist
+npm run ext:zip                           # build + zip it for a GitHub release (extension/dist/release/)
 ```
 
 Node 24 runs the `.ts` files directly (type stripping), so code must use erasable TypeScript only (no enums, no parameter properties) and import local files with the `.ts` extension.
