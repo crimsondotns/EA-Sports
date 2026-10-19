@@ -387,6 +387,11 @@ function drawOnTradingView(): void {
     anchors: candles.slice(-300).map((c) => ({ time: sec(c.time), close: c.close })),
     stop: result.trades.at(-1)?.reason === "end" ? (result.stops.at(-1) ?? null) : null,
     rangeLow: last.setup.strategy.prepare(candles).rangeLow?.(candles.length - 1) ?? null,
+    ath: (() => {
+      if (!candles.length) return null;
+      const top = candles.reduce((a, c) => (c.close > a.close ? c : a));
+      return { close: top.close, time: sec(top.time), levels: [0.9, 0.95].map((pct) => ({ pct, price: top.close * (1 - pct) })) };
+    })(),
     sellLabel: last.setup.sellLabel ?? "SELL 10%",
     sellLimit: (() => {
       const pos = openPosition();

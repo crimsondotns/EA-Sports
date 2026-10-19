@@ -100,6 +100,8 @@ export interface DrawPayload {
   sellLabel: string;
   /** Lowest low of the strategy's range window; buys outside an uptrend must be near it. */
   rangeLow: { price: number; uptrend: boolean } | null;
+  /** Highest close on the loaded bars and lines 90% / 95% below it. */
+  ath: { close: number; time: number; levels: { pct: number; price: number }[] } | null;
   /** Next setup: a zone box (or trigger line) projected into the future, with stop and target. */
   plan: { kind: "zone" | "trigger" | "below"; low: number; high: number; stop: number; target: number | null; from: number; to: number } | null;
   /** Support / resistance levels to draw as rays from where they were first touched. */

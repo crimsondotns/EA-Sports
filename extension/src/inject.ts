@@ -418,6 +418,17 @@ async function draw(p: DrawPayload): Promise<void> {
       ),
     );
   }
+  if (p.ath) {
+    for (const l of p.ath.levels) {
+      const text = `ATH −${Math.round(l.pct * 100)}%`;
+      await add(text, () =>
+        chart.createShape(
+          { time: p.ath!.time, price: l.price },
+          { ...opts, shape: "horizontal_line", text, overrides: { linecolor: "#b4b4b4", linestyle: 2, showLabel: true, textcolor: "#b4b4b4" } },
+        ),
+      );
+    }
+  }
   if (p.sellLimit !== null) {
     const last = p.arrows.at(-1)?.time ?? Math.floor(Date.now() / 1000);
     await add("sell limit", () =>
