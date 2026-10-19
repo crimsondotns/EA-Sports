@@ -245,6 +245,20 @@ async function drawFib(chart: TvChart, atl: NonNullable<DrawPayload["atl"]>, ath
   }
 }
 
+// Anchored VWAP from the pair's first bar, a real saved drawing. Skipped when the chart already
+// has an Anchored VWAP (ours from an earlier run, or the user's own).
+async function drawVwap(chart: TvChart, time: number, errors: string[]): Promise<void> {
+  if ((chart.getAllShapes?.() ?? []).some((s) => s.name === "anchored_vwap")) return;
+  try {
+    await Promise.race([
+      Promise.resolve().then(() => chart.createShape({ time }, { shape: "anchored_vwap" })),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("timed out")), SHAPE_TIMEOUT_MS)),
+    ]);
+  } catch (e) {
+    errors.push(`anchored vwap: ${(e as Error)?.message ?? e}`);
+  }
+}
+
 // Studies this script added, keyed by spec, so a strategy switch removes only ours.
 const ourStudies = new Map<string, unknown>();
 const specKey = (s: StudySpec) => `${s.name}|${JSON.stringify(s.inputs ?? {})}`;
@@ -489,6 +503,7 @@ async function draw(p: DrawPayload): Promise<void> {
   }
   if (p.ath) await drawAthLines(chart, p.ath, errors);
   if (p.ath && p.atl) await drawFib(chart, p.atl, p.ath, errors);
+  if (p.firstBar !== null) await drawVwap(chart, p.firstBar, errors);
   if (p.sellLimit !== null) {
     const last = p.arrows.at(-1)?.time ?? Math.floor(Date.now() / 1000);
     await add("sell limit", () =>

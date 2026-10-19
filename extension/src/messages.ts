@@ -102,8 +102,10 @@ export interface DrawPayload {
   rangeLow: { price: number; uptrend: boolean } | null;
   /** Highest close of a closed daily bar (ATH close) and lines 90% / 95% below it. */
   ath: { close: number; time: number; levels: { pct: number; price: number }[] } | null;
-  /** Lowest open of a closed daily bar (ATL open), the start of the Fib retracement to the ATH close. */
+  /** Open of the closed daily bar with the lowest close (ATL), the start of the Fib retracement to the ATH close. */
   atl: { open: number; time: number } | null;
+  /** Time (s) of the pair's first daily bar, where the Anchored VWAP starts. */
+  firstBar: number | null;
   /** Next setup: a zone box (or trigger line) projected into the future, with stop and target. */
   plan: { kind: "zone" | "trigger" | "below"; low: number; high: number; stop: number; target: number | null; from: number; to: number } | null;
   /** Support / resistance levels to draw as rays from where they were first touched. */
