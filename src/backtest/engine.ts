@@ -278,7 +278,8 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
 
     if (bags.length) sellLadder(bar);
     let sellAt = bar.open;
-    if (pos && pendingSell === 0 && pendingLimit && bar.high >= pendingLimit.price) {
+    // A bar that also reaches the stop could have hit it first: no limit fill then (conservative).
+    if (pos && pendingSell === 0 && pendingLimit && bar.high >= pendingLimit.price && bar.low > pos.stop) {
       pendingSell = pendingLimit.fraction;
       sellAt = Math.max(bar.open, pendingLimit.price);
     }

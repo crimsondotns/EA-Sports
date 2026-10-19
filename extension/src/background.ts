@@ -10,16 +10,30 @@ const MIN_BARS = 999;
 
 // The chart only loads a few days, so strategies would see less history than the backtest (EMA
 // 200, 30-day supports, earlier trades still open). Page back to about 31 days plus warm-up,
-// at most HISTORY_PAGES extra requests per pair and timeframe, cached for HISTORY_TTL_MS.
+// at most HISTORY_PAGES extra requests per pair and timeframe, cached for HISTORY_TTL_MS in
+// session storage (the service worker is stopped when idle, which would empty a Map). DEX
+// Screener has blocked an IP for bulk requests before: one paging run per key at a time, and
+// after a failed request no paging for HISTORY_COOLDOWN_MS.
 const HISTORY_PAGES = 4;
 const HISTORY_TTL_MS = 15 * 60_000;
+const HISTORY_COOLDOWN_MS = 10 * 60_000;
 const PAGE_DELAY_MS = 1500;
-const history = new Map<string, { at: number; bars: Bar[] }>();
+const inFlight = new Map<string, Promise<Bar[]>>();
+let pagingBlockedUntil = 0;
 
 async function olderBars(source: BarsSource, first: Bar): Promise<Bar[]> {
-  const key = `${source.chain}:${source.pairId.toLowerCase()}:${source.resolution}:${source.marketCap}`;
-  const hit = history.get(key);
+  const key = `hist:${source.chain}:${source.pairId.toLowerCase()}:${source.resolution}:${source.marketCap}`;
+  const running = inFlight.get(key);
+  if (running) return running;
+  const run = pageBack(key, source, first).finally(() => inFlight.delete(key));
+  inFlight.set(key, run);
+  return run;
+}
+
+async function pageBack(key: string, source: BarsSource, first: Bar): Promise<Bar[]> {
+  const hit = (await chrome.storage.session.get(key))[key] as { at: number; bars: Bar[] } | undefined;
   if (hit && Date.now() - hit.at < HISTORY_TTL_MS) return hit.bars;
+  if (Date.now() < pagingBlockedUntil) return hit?.bars ?? [];
   const need = Math.ceil((31 * 1440) / source.resolution) + 250;
   const pages: Bar[][] = [];
   let total = 0;
@@ -29,9 +43,15 @@ async function olderBars(source: BarsSource, first: Bar): Promise<Bar[]> {
     const u = new URL(source.url);
     u.searchParams.set("bbn", String(before));
     u.searchParams.set("cb", "999");
-    const res = await fetch(u, { cache: "no-store" });
-    if (!res.ok) break;
-    const page = decodeBars(new Uint8Array(await res.arrayBuffer()));
+    let page: Bar[];
+    try {
+      const res = await fetch(u, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      page = decodeBars(new Uint8Array(await res.arrayBuffer()));
+    } catch {
+      pagingBlockedUntil = Date.now() + HISTORY_COOLDOWN_MS;
+      break;
+    }
     if (!page.length) break;
     pages.unshift(page);
     total += page.length;
@@ -39,7 +59,9 @@ async function olderBars(source: BarsSource, first: Bar): Promise<Bar[]> {
     before = page[0]!.blockNumberStart;
   }
   const bars = pages.flat();
-  history.set(key, { at: Date.now(), bars });
+  await chrome.storage.session.set({ [key]: { at: Date.now(), bars } }).catch(() => {
+    // Session storage is capped (10 MB); without the cache the next push pages again.
+  });
   return bars;
 }
 
