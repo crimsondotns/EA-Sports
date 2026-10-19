@@ -752,7 +752,7 @@ Use tokens from the primary project design system when available. This standalon
 .picker-panel {
   color: var(--picker-text);
   background: var(--picker-bg);
-  border: 1px solid var(--picker-border);
+  border: 0; /* project override: no panel border */
   border-radius: var(--picker-radius);
   box-shadow: var(--picker-panel-shadow);
   padding: 4px;
