@@ -258,7 +258,7 @@ async function main(): Promise<void> {
         { type: "basic", iconUrl: "icon128.png", title: "EA BUY · test", message: "Test alert from EA Signals. Real alerts look like this." },
         () => {
           $("testNotifyStatus").textContent =
-            level === "granted" ? "Sent. If nothing appeared, allow Chrome notifications in your system settings." : "Notifications are blocked for this extension.";
+            level === "granted" ? "" : "Notifications are blocked for this extension.";
           button.disabled = false;
         },
       );
