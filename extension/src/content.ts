@@ -72,7 +72,8 @@ const resLabel = (r: number) => (r >= 1440 ? `${r / 1440}D` : r >= 60 ? `${r / 6
 // ---------- table in the chart's top-right corner ----------
 
 const host = document.createElement("div");
-host.style.cssText = "position:fixed;top:16px;right:16px;z-index:2147483647;pointer-events:none;";
+// EA Drawing shows no table: only the ATH lines are drawn.
+host.style.cssText = "display:none;position:fixed;top:16px;right:16px;z-index:2147483647;pointer-events:none;";
 const root = host.attachShadow({ mode: "open" });
 root.innerHTML = `
 <style>
@@ -325,74 +326,20 @@ function publish(): void {
 
 function drawOnTradingView(): void {
   if (mode !== "tradingview") return;
-  // Sent every time: the chart object is replaced on symbol / timeframe changes.
-  postToFrames({ source: CONTENT_TAG, type: "studies", studies: settings.showIndicators && last ? last.setup.studies : [] });
-  if (!settings.drawMarkers || !last) {
-    postToFrames({ source: CONTENT_TAG, type: "clear" });
-    return;
-  }
-  const { candles, result } = last;
-  const sec = (ms: number) => Math.floor(ms / 1000);
-  const byTime = new Map(candles.map((c) => [c.time, c]));
-  // Keep markers just outside the candle so they don't sit on top of it.
-  const below = (t: number) => {
-    const c = byTime.get(t)!;
-    return c.low - (c.high - c.low) * 0.3;
-  };
-  const above = (t: number) => {
-    const c = byTime.get(t)!;
-    return c.high + (c.high - c.low) * 0.3;
-  };
-  const trades = result.trades.slice(-MAX_DRAWN_TRADES);
+  // EA Drawing: no strategy indicators, markers or stop lines, only the ATH lines.
+  postToFrames({ source: CONTENT_TAG, type: "studies", studies: [] });
+  const candles = lastInput?.candles ?? [];
   const payload: DrawPayload = {
-    arrows: trades.flatMap((tr) => [
-      { time: sec(tr.entryTime), price: below(tr.entryTime), side: "buy" as const, text: "BUY", color: "#2196f3" },
-      ...(tr.costBackTime !== undefined && !tr.partials
-        ? [{ time: sec(tr.costBackTime), price: above(tr.costBackTime), side: "sell" as const, text: "COST BACK", color: "#fbbf24" }]
-        : []),
-      // Partial sells (10% signal exits): one marker per 10% sold.
-      ...(tr.partials ?? []).map((ps) => ({
-        time: sec(ps.time),
-        price: above(ps.time),
-        side: "sell" as const,
-        text: `${last?.setup.sellLabel ?? "SELL 10%"} ${pct((ps.price / tr.entryPrice - 1) * 100)}`,
-        color: "#fbbf24",
-      })),
-      ...(tr.reason === "end"
-        ? []
-        : [
-            {
-              time: sec(tr.exitTime),
-              price: above(tr.exitTime),
-              side: "sell" as const,
-              text: pct(tr.returnPct),
-              color: tr.pnl > 0 ? "#26a69a" : "#ef5350",
-            },
-          ]),
-    ]),
+    arrows: [],
     segments: [],
-    plan: (() => {
-      const pl = currentPlan();
-      if (!pl) return null;
-      const barSec = last.source.resolution * 60;
-      const from = sec(candles.at(-1)!.time);
-      return { kind: pl.kind, low: pl.low, high: pl.high, stop: pl.stop, target: pl.target, from, to: from + barSec * 40 };
-    })(),
-    levels: (last.setup.strategy.prepare(candles).levels?.(candles.length - 1) ?? []).map((l) => ({
-      kind: l.kind,
-      price: l.price,
-      touches: l.touches,
-      time: sec(candles[l.from]!.time),
-    })),
-    anchors: candles.slice(-300).map((c) => ({ time: sec(c.time), close: c.close })),
-    stop: result.trades.at(-1)?.reason === "end" ? (result.stops.at(-1) ?? null) : null,
-    rangeLow: last.setup.strategy.prepare(candles).rangeLow?.(candles.length - 1) ?? null,
+    plan: null,
+    levels: [],
+    anchors: [],
+    stop: null,
+    rangeLow: null,
     ath: athClose(candles),
-    sellLabel: last.setup.sellLabel ?? "SELL 10%",
-    sellLimit: (() => {
-      const pos = openPosition();
-      return pos ? (last.setup.strategy.prepare(candles).limitSell?.(candles.length - 1, pos)?.price ?? null) : null;
-    })(),
+    sellLabel: "",
+    sellLimit: null,
   };
   postToFrames({ source: CONTENT_TAG, type: "draw", payload });
 }
@@ -507,34 +454,9 @@ function notEnoughBars(setup: StrategySetup, resolution: number, candles: Candle
 function analyze(source: BarsSource, all: Candle[]): void {
   // An empty export just means the chart is still loading.
   if (all.length === 0) return;
+  // EA Drawing runs no strategy: the bars only pick the price field for the ATH lines.
   lastInput = { source, candles: all };
-  const setup = setupStrategy(settings.strategy, source.resolution);
-  const barMs = source.resolution * 60_000;
-  // Drop the still-forming bar: signals are only valid on closed bars. Start from a fixed point
-  // (midnight UTC, ~31 days plus warm-up back): trades are path dependent, so starting wherever
-  // the chart's loaded history happens to begin made signals jump when the user scrolled back.
-  const dayMs = 86_400_000;
-  const start = Math.floor(Date.now() / dayMs) * dayMs - (Math.ceil((31 * 1440) / source.resolution) + 250) * barMs;
-  const candles = all.filter((c) => c.time >= start && c.time + barMs <= Date.now());
-  const sameChart =
-    last &&
-    last.source.pairId === source.pairId &&
-    last.source.resolution === source.resolution &&
-    last.source.marketCap === source.marketCap &&
-    last.setup.id === setup.id;
-  // Small incremental responses would replace the full history; keep what we have.
-  if (sameChart && candles.length < last!.candles.length / 2) return;
-  if (candles.length < setup.minBars) {
-    errorText = notEnoughBars(setup, source.resolution, candles);
-    publish();
-    return;
-  }
-  errorText = null;
-  if (!sameChart) notifySignals.armed = false;
-  last = { source, candles, result: runBacktest(candles, setup.strategy, setup.config), setup };
-  publish();
   drawOnTradingView();
-  notifySignals();
 }
 
 function onBars(source: BarsSource, bars: Bar[]): void {

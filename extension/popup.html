@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>EA Signals</title>
+<title>EA Drawing</title>
 <style>
   /* Tokens: docs/design-system.md (dark canvas, white primary, neutral states) and its
      Dropdown / Picker / Hover appendix. Every color below comes from here. */
@@ -208,10 +208,10 @@
   <div id="homePage">
   <header>
     <img src="icon48.png" alt="">
-    <div class="grow"><h1 id="title">EA Signals</h1><p id="subtitle">DEX Screener signals</p></div>
-    <button type="button" class="icon-button" id="openSettings" aria-label="Settings" title="Settings"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z M6.6 1.75h2.8l.4 1.7 1.3.75 1.65-.55 1.4 2.4-1.25 1.2v1.5l1.25 1.2-1.4 2.4-1.65-.55-1.3.75-.4 1.7H6.6l-.4-1.7-1.3-.75-1.65.55-1.4-2.4 1.25-1.2v-1.5L1.85 6.05l1.4-2.4 1.65.55 1.3-.75.4-1.7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>
+    <div class="grow"><h1 id="title">EA Drawing</h1><p id="subtitle">Lines 90% and 95% below the daily ATH close</p></div>
+    <button type="button" class="icon-button" id="openSettings" hidden aria-label="Settings" title="Settings"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z M6.6 1.75h2.8l.4 1.7 1.3.75 1.65-.55 1.4 2.4-1.25 1.2v1.5l1.25 1.2-1.4 2.4-1.65-.55-1.3.75-.4 1.7H6.6l-.4-1.7-1.3-.75-1.65.55-1.4-2.4 1.25-1.2v-1.5L1.85 6.05l1.4-2.4 1.65.55 1.3-.75.4-1.7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>
   </header>
-  <section>
+  <section hidden>
     <h2 id="strategyLabel">Strategy</h2>
     <div class="dropdown">
       <button type="button" class="dropdown-trigger" id="strategyTrigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="strategyMenu"
@@ -255,7 +255,7 @@
       </div>
     </div>
   </section>
-  <main id="main"></main>
+  <main id="main" hidden></main>
   </div>
 
   <div id="settingsPage" hidden>
