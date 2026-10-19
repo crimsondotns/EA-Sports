@@ -60,6 +60,11 @@ export interface DeepDipParams {
   /** Range-mode buys: stop this far under the range low instead of `stopPct` under the entry,
    *  when that is tighter. 0 = always `stopPct`. */
   rangeStopPct: number;
+  /** Range swing exit: a resting limit for the whole position at the range high (highest high of
+   *  the same `rangeLowBars` window) x (1 - this), and at least `rangeSellMinGain` over the
+   *  entry. 0 = off. */
+  rangeSellTol: number;
+  rangeSellMinGain: number;
   /** Also count a support the close has just broken, up to this far under its low (0.1 = 10%).
    *  0 = off. */
   supportBreak: number;
@@ -160,6 +165,8 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   rangeLowTol: 0.05,
   trendBars: 0,
   rangeStopPct: 0,
+  rangeSellTol: 0,
+  rangeSellMinGain: 0.05,
   supportBreak: 0,
   useSupport: true,
   pivotBars: 5,
@@ -454,6 +461,11 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           return !pos.costRecovered && c[i]!.time - c[pos.entryIndex]!.time >= holdMs;
         },
         limitSell(i, pos) {
+          if (p.rangeSellTol > 0) {
+            let hi = -Infinity;
+            for (let k = Math.max(0, i - p.rangeLowBars); k <= i; k++) hi = Math.max(hi, c[k]!.high);
+            return { price: Math.max(hi * (1 - p.rangeSellTol), pos.entryPrice * (1 + p.rangeSellMinGain)), fraction: 1 };
+          }
           if (p.exitMode !== "signals") return null;
           if (p.rsiLimit > 0) return { price: Math.max(rsiPrice(i, p.rsiLimit), pos.entryPrice * (1 + p.limitMinGain)), fraction: p.sellPct };
           if (p.limitStretch <= 0 || r[i]! < p.limitRsi) return null;
