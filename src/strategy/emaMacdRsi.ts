@@ -48,6 +48,11 @@ export interface DeepDipParams {
   /** Reversal on the signal bar: "rsi" = RSI above the previous bar's, "green" = close above
    *  open, "both" = both. "off" buys on any bar that passes the other checks. */
   turnUp: "off" | "rsi" | "green" | "both";
+  /** Big-picture range bottom: the close within `rangeLowTol` of the lowest low of the last
+   *  `rangeLowBars` bars (e.g. a week), so it buys near the floor of the range, not mid-range.
+   *  0 = off. */
+  rangeLowBars: number;
+  rangeLowTol: number;
   /** Also count a support the close has just broken, up to this far under its low (0.1 = 10%).
    *  0 = off. */
   supportBreak: number;
@@ -144,6 +149,8 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   rsiSwingWithin: 6,
   priceSwing: 0,
   turnUp: "off",
+  rangeLowBars: 0,
+  rangeLowTol: 0.05,
   supportBreak: 0,
   useSupport: true,
   pivotBars: 5,
@@ -324,6 +331,19 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
             ok: rv > p.minRsi && rv <= p.maxRsi,
             detail: rv.toFixed(0),
           },
+          ...(p.rangeLowBars > 0
+            ? (() => {
+                let lo = Infinity;
+                for (let k = Math.max(0, i - p.rangeLowBars); k <= i; k++) lo = Math.min(lo, c[k]!.low);
+                return [
+                  {
+                    label: "Near the range low",
+                    ok: px <= lo * (1 + p.rangeLowTol),
+                    detail: `${fmt(lo)} (+${((px / lo - 1) * 100).toFixed(1)}%)`,
+                  },
+                ];
+              })()
+            : []),
           ...(p.turnUp !== "off"
             ? [
                 {
