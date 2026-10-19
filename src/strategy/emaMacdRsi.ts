@@ -64,7 +64,7 @@ export interface DeepDipParams {
    */
   exitMode: "costback" | "signals";
   sellPct: number;
-  exitSignals: ("volume" | "rsi" | "macd")[];
+  exitSignals: ("volume" | "rsi" | "macd" | "climax" | "climaxTurn")[];
   exitNeed: number;
   /** "volume": bar volume at least this many times its 20-bar average. */
   exitVolMult: number;
@@ -74,6 +74,15 @@ export interface DeepDipParams {
   /** "macd": MACD line above zero and at least this fraction below its peak of the last `exitMacdBars` bars. */
   exitMacdDrop: number;
   exitMacdBars: number;
+  /**
+   * "climax": a blow-off bar -- volume >= `climaxVol` x its 20-bar average, RSI >= `climaxRsi`,
+   * close >= `climaxStretch` above EMA 21. Across 41 pairs (15m) the median major top bar had
+   * volume 2.8x, RSI 71, close 5.2% over EMA 21. "climaxTurn": the bar after a climax, with RSI
+   * and the MACD histogram both turning down (lands at a major top ~6x as often as RSI >= 70).
+   */
+  climaxVol: number;
+  climaxRsi: number;
+  climaxStretch: number;
   trailPct: number;
   maxHoldBars: number;
 }
@@ -105,6 +114,9 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   exitRsiBars: 5,
   exitMacdDrop: 1 / 3,
   exitMacdBars: 20,
+  climaxVol: 2.5,
+  climaxRsi: 70,
+  climaxStretch: 0.04,
   trailPct: 0.35,
   maxHoldBars: 2880,
 };
@@ -132,6 +144,8 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       // MACD's signal line is the slowest series that must exist; EMA 200 joins when it can.
       const holdMs = p.maxHoldBars * barInterval(c);
       const volAvg = sma(c.map((x) => x.volumeUsd), 20);
+      const climax = (i: number) =>
+        c[i]!.volumeUsd >= p.climaxVol * volAvg[i]! && r[i]! >= p.climaxRsi && close[i]! >= e2[i]! * (1 + p.climaxStretch);
       /** Exit signals firing on the close of bar i (for "signals" mode). */
       const exitFired = (i: number) => {
         let n = 0;
@@ -142,6 +156,8 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
             for (let k = Math.max(0, i - p.exitRsiBars); k <= i; k++) hi = Math.max(hi, r[k]!);
             if (hi >= p.exitRsiHigh && r[i]! < r[i - 1]!) n++;
           }
+          if (sig === "climax" && climax(i)) n++;
+          if (sig === "climaxTurn" && climax(i - 1) && r[i]! < r[i - 1]! && m.hist[i]! < m.hist[i - 1]!) n++;
           if (sig === "macd") {
             let peak = -Infinity;
             for (let k = Math.max(0, i - p.exitMacdBars); k <= i; k++) peak = Math.max(peak, m.line[k]!);
