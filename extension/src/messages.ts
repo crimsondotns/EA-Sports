@@ -49,7 +49,7 @@ export interface Summary {
 }
 
 export interface Settings {
-  strategy: "breakout" | "quiet" | "dip" | "launch";
+  strategy: "breakout" | "quiet" | "dip" | "launch" | "range";
   showTable: boolean;
   drawMarkers: boolean;
   notify: boolean;
@@ -93,6 +93,7 @@ export interface DrawPayload {
   stop: number | null;
   /** Resting limit for the next 10% sell while holding, if the strategy uses one. */
   sellLimit: number | null;
+  sellLabel: string;
   /** Lowest low of the strategy's range window; buys outside an uptrend must be near it. */
   rangeLow: { price: number; uptrend: boolean } | null;
   /** Next setup: a zone box (or trigger line) projected into the future, with stop and target. */

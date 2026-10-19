@@ -423,7 +423,7 @@ async function draw(p: DrawPayload): Promise<void> {
     await add("sell limit", () =>
       chart.createShape(
         { time: last, price: p.sellLimit! },
-        { ...opts, shape: "horizontal_line", text: "SELL 10% LIMIT", overrides: { linecolor: "#fbbf24", linestyle: 2, showLabel: true, textcolor: "#fbbf24" } },
+        { ...opts, shape: "horizontal_line", text: `${p.sellLabel} LIMIT`, overrides: { linecolor: "#fbbf24", linestyle: 2, showLabel: true, textcolor: "#fbbf24" } },
       ),
     );
   }

@@ -262,7 +262,7 @@ function drawOnTradingView(): void {
         time: sec(ps.time),
         price: above(ps.time),
         side: "sell" as const,
-        text: `SELL 10% ${pct((ps.price / tr.entryPrice - 1) * 100)}`,
+        text: `${last?.setup.sellLabel ?? "SELL 10%"} ${pct((ps.price / tr.entryPrice - 1) * 100)}`,
         color: "#fbbf24",
       })),
       ...(tr.reason === "end"
@@ -294,6 +294,7 @@ function drawOnTradingView(): void {
     anchors: candles.slice(-300).map((c) => ({ time: sec(c.time), close: c.close })),
     stop: result.trades.at(-1)?.reason === "end" ? (result.stops.at(-1) ?? null) : null,
     rangeLow: last.setup.strategy.prepare(candles).rangeLow?.(candles.length - 1) ?? null,
+    sellLabel: last.setup.sellLabel ?? "SELL 10%",
     sellLimit: (() => {
       const open = result.trades.at(-1);
       if (open?.reason !== "end") return null;

@@ -5,7 +5,7 @@ import { quietAccumulation } from "../../src/strategy/quietAccumulation.ts";
 import type { StudySpec } from "./messages.ts";
 import { DEEP_DIP_DEFAULTS, deepDip } from "../../src/strategy/emaMacdRsi.ts";
 
-export type StrategyId = "breakout" | "quiet" | "dip" | "launch";
+export type StrategyId = "breakout" | "quiet" | "dip" | "launch" | "range";
 
 export interface StrategySetup {
   id: StrategyId;
@@ -16,6 +16,8 @@ export interface StrategySetup {
   minBars: number;
   /** Short condition labels for the on-chart table, in `conditions()` order. */
   shortLabels: string[];
+  /** Label for partial-sell markers and the resting sell line (default "SELL 10%"). */
+  sellLabel?: string;
   /** One line describing sizing and exits, shown with the backtest numbers. */
   note: string;
   /** Indicators the strategy reads, added to the chart for the user to see. */
@@ -29,9 +31,41 @@ export const STRATEGY_NAMES: Record<StrategyId, string> = {
   quiet: "Quiet Accumulation",
   dip: "Deep Dip",
   launch: "New Launch",
+  range: "Range Swing",
 };
 
 export function setupStrategy(id: StrategyId, resolutionMinutes: number): StrategySetup {
+  if (id === "range") {
+    // Trade the range: Deep Dip's entry, but always within 3% of the 7-day low, then sell the
+    // whole position at a limit 3% under the 7-day high (at least +5%). Tested and losing:
+    // 41 pairs 15m median -0.5% (18/41 profitable, 65% of trades win), 1h -1.7%. Shown so the
+    // trades can be inspected on the chart; Deep Dip stays the default.
+    const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
+    const dip = setupStrategy("dip", resolutionMinutes);
+    return {
+      ...dip,
+      id,
+      name: STRATEGY_NAMES.range,
+      strategy: deepDip({
+        srLookback: perDay * 30,
+        maxHoldBars: perDay * 30,
+        rsiLowBars: perDay,
+        exitMode: "signals",
+        exitSignals: [],
+        breakevenAt: null,
+        rsiSwing: 2,
+        rsiSwingWithin: 6,
+        rangeLowBars: perDay * 7,
+        rangeLowTol: 0.03,
+        rangeSellTol: 0.03,
+        rangeSellMinGain: 0.05,
+      }),
+      config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideKeep: 0 },
+      shortLabels: ["Under EMAs", "MACD turn", "RSI", "Range low", "RSI swing low", "Support"],
+      sellLabel: "SELL ALL",
+      note: "10% per trade · buy within 3% of the 7-day low · sell all at the 7-day high −3% · stop −20% · backtest: loses on most pairs",
+    };
+  }
   if (id === "dip" || id === "launch") {
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
     const launch = id === "launch";
