@@ -60,6 +60,13 @@ const postToFrames = (msg: FromContent) => {
 
 const fmt = (v: number) => (v === 0 ? "0" : Math.abs(v) >= 1e5 ? `${(v / 1e6).toFixed(3)}M` : Math.abs(v) >= 1 ? v.toFixed(4) : v.toPrecision(4));
 const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${v.toFixed(digits)}%`;
+/** "DELTA $10.29M - Delta / WETH on Robinhood / Uniswap - DEX Screener" -> "DELTA $10.29M - Delta / WETH". */
+const pairName = () =>
+  document.title
+    .split("|")[0]!
+    .replace(/\s+-\s+DEX Screener\s*$/i, "")
+    .replace(/\s+on\s+.*$/, "")
+    .trim();
 const resLabel = (r: number) => (r >= 1440 ? `${r / 1440}D` : r >= 60 ? `${r / 60}h` : `${r}m`);
 
 // ---------- table in the chart's top-right corner ----------
@@ -223,7 +230,7 @@ function summarize(): Summary | null {
     strategy: setup.name,
     strategyNote: setup.note,
     costRecovered: inPos && lastTrade!.costBackTime !== undefined,
-    pair: document.title.split("|")[0]!.trim(),
+    pair: pairName(),
     chain: source.chain,
     dex: source.dex,
     resolution: resLabel(source.resolution),
@@ -426,7 +433,7 @@ function notifySignals(): void {
   const strat = last.setup.strategy.prepare(candles);
   const t = result.trades.at(-1);
   const inPos = t?.reason === "end";
-  const label = `${source.chain} ${resLabel(source.resolution)} · ${document.title.split("|")[0]!.trim()}`;
+  const label = `${source.chain} ${resLabel(source.resolution)} · ${pairName()}`;
   if (!inPos && strat.shouldEnter(candles.length - 1)) {
     once("buy", `EA BUY · ${last.setup.name}`, `${label}\nClose ${fmt(lastBar.close)} — buy at next bar open`);
   }
