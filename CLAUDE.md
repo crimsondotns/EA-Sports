@@ -62,6 +62,6 @@ All UI in this project (extension panel, HTML reports, any future pages) follows
 - Hover is neutral and fast (120–160ms), never scales or shifts layout; pointer-only polish goes under `@media (hover: hover) and (pointer: fine)`.
 - Follow the spec's implementation rules and definition of done, and only report checks that were actually run.
 
-The extension icon (`extension/icon.svg`, black and gold EA monogram) is the brand mark and is exempt from the no-gradient rule.
+The extension icon (`extension/icon.svg`, the Eagle Analytics mark traced to SVG, white on a black rounded square) is the brand mark. `icon128/48.png` are rendered from it; `icon32/16.png` from a version with thicker lines so they stay legible.
 
 @docs/design-system.md
