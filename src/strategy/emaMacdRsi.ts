@@ -114,6 +114,9 @@ export interface DeepDipParams {
    */
   hhExit: "off" | "close" | "swing";
   hhPivot: number;
+  /** Signal sells: after the first one the stop moves up to entry x (1 + this). null keeps the
+   *  original stop. */
+  breakevenAt: number | null;
   rsiLimit: number;
   trailPct: number;
   maxHoldBars: number;
@@ -160,6 +163,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   sellMinGain: 0,
   hhExit: "off",
   hhPivot: 2,
+  breakevenAt: 0,
   rsiLimit: 0,
   trailPct: 0.35,
   maxHoldBars: 2880,
@@ -366,7 +370,8 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           return entryPrice * (1 - p.stopPct);
         },
         updateStop(_i, pos) {
-          if (p.exitMode === "signals") return pos.partialsSold > 0 ? Math.max(pos.stop, pos.entryPrice) : pos.stop;
+          if (p.exitMode === "signals")
+            return pos.partialsSold > 0 && p.breakevenAt !== null ? Math.max(pos.stop, pos.entryPrice * (1 + p.breakevenAt)) : pos.stop;
           if (!pos.costRecovered) return pos.stop;
           return Math.max(pos.stop, pos.entryPrice, pos.highestClose * (1 - p.trailPct));
         },
