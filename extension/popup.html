@@ -133,12 +133,9 @@
   .dropdown-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
   .dropdown-menu { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px;
     max-height: min(320px, 60vh); overflow-y: auto; list-style: none; background: var(--color-surface-elevated);
-    border: 0; border-radius: var(--radius-control); box-shadow: var(--shadow-picker);
-    animation: menu-in var(--transition-fast); }
-  .dropdown-menu.above { top: auto; bottom: calc(100% + 4px); animation-name: menu-in-above; }
+    border: 0; border-radius: var(--radius-control); box-shadow: var(--shadow-picker); }
+  .dropdown-menu.above { top: auto; bottom: calc(100% + 4px); }
   .dropdown-menu[hidden] { display: none; }
-  @keyframes menu-in { from { opacity: 0; transform: translateY(-2px); } }
-  @keyframes menu-in-above { from { opacity: 0; transform: translateY(2px); } }
   /* Focus sits on the list; the active row (plus its ring when using the keyboard) shows where it is. */
   .dropdown-menu:focus { outline: none; }
   .dropdown-menu:focus-visible li.active { outline: 2px solid var(--color-focus); outline-offset: -2px; }
@@ -154,17 +151,19 @@
   .dropdown-menu li[aria-selected="true"].active { background: var(--color-surface-selected-hover); }
   .dropdown-menu li:active { background: var(--color-surface-pressed); }
   .dropdown-menu li[aria-disabled="true"] { color: var(--color-text-disabled); cursor: not-allowed; background: transparent; }
-  /* Conditions: an asterisk at the end of each option (pointer / touch affordance; keyboard users
+  /* Conditions: an info icon at the end of each option (pointer / touch affordance; keyboard users
      get the same text when the option becomes active, screen readers via aria-describedby). */
   .dropdown-menu li .info { flex: none; width: 32px; height: 32px; border-radius: var(--radius-pill); display: inline-flex;
     align-items: center; justify-content: center; color: var(--color-text-secondary); font-size: 16px; font-weight: 600; line-height: 1;
     cursor: help; transition: background-color var(--transition-fast), color var(--transition-fast); }
+  .dropdown-menu li .info svg { width: 16px; height: 16px; }
   .dropdown-menu li .info.open { color: var(--color-text-primary); }
   .descriptions { display: none; } /* text for aria-describedby and the tooltip */
 
   /* Shared tooltip: positioned by popup.ts, top placement first, flipped / shifted to stay in view */
-  .tooltip { position: fixed; z-index: 20; max-width: 240px; padding: 8px 10px; background: var(--color-surface-elevated);
-    border: 1px solid var(--color-picker-border); border-radius: var(--radius-tooltip); color: var(--color-text-primary);
+  /* One short line in a pill, no border. */
+  .tooltip { position: fixed; z-index: 20; max-width: calc(100vw - 16px); padding: 4px 10px; background: var(--color-surface-selected-hover);
+    border: 0; border-radius: var(--radius-pill); color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     font-size: var(--font-size-small); line-height: 16px; pointer-events: none; opacity: 0; transform: translateY(2px);
     transition: opacity var(--transition-fast), transform var(--transition-fast); }
   .tooltip.bottom { transform: translateY(-2px); }
@@ -224,35 +223,35 @@
         <li role="option" id="opt-breakout" data-value="breakout" aria-selected="false" aria-describedby="tip-breakout">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">Volume Breakout</span>
-          <span class="info" aria-hidden="true">*</span>
+          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
         </li>
         <li role="option" id="opt-quiet" data-value="quiet" aria-selected="false" aria-describedby="tip-quiet">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">Quiet Accumulation</span>
-          <span class="info" aria-hidden="true">*</span>
+          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
         </li>
         <li role="option" id="opt-dip" data-value="dip" aria-selected="false" aria-describedby="tip-dip">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">Deep Dip</span>
-          <span class="info" aria-hidden="true">*</span>
+          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
         </li>
         <li role="option" id="opt-launch" data-value="launch" aria-selected="false" aria-describedby="tip-launch">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">New Launch</span>
-          <span class="info" aria-hidden="true">*</span>
+          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
         </li>
         <li role="option" id="opt-range" data-value="range" aria-selected="false" aria-describedby="tip-range">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">Range Swing</span>
-          <span class="info" aria-hidden="true">*</span>
+          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
         </li>
       </ul>
       <div class="descriptions">
-        <span id="tip-breakout">Close above the 20-bar high · volume ≥ 2.5× average · above EMA 50</span>
-        <span id="tip-quiet">≥ 40% below ATH · held support (2+ touches) · reversal candle · selling faded</span>
-        <span id="tip-dip">At a support (or no support below) · under EMA 9 / 21 / 200 · MACD &amp; signal below the histogram · RSI 30–60 · best on 15m</span>
-        <span id="tip-launch">Deep Dip rules at 5% per trade, for a pair's first week · best on 5m</span>
-        <span id="tip-range">Deep Dip entry within 3% of the 7-day low · sell all at the 7-day high −3% · loses in backtest, for review</span>
+        <span id="tip-breakout">Buys breakouts above the 20-bar high</span>
+        <span id="tip-quiet">Buys quiet bases 40%+ below the ATH</span>
+        <span id="tip-dip">Buys dips under the EMAs at a support</span>
+        <span id="tip-launch">Deep Dip at 5% size for new pairs</span>
+        <span id="tip-range">Buys the 7-day low, sells the high</span>
       </div>
     </div>
   </section>

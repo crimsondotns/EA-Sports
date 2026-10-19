@@ -361,9 +361,9 @@ Tooltips must follow the companion specification in `chatgpt-inspired-tooltip-de
 
 ### Core Rules
 
-- Surface: `#171717`; text: `#FFFFFF`; border: `#383838`; radius: `8px`.
-- Typography: `12px` with a `16px` line height; keep copy short and contextual.
-- Default maximum width: `240px`; padding: `6px 9px` for one line or `8px 10px` for multiline content.
+- Surface: `#303030`; text: `#FFFFFF`; no border; radius: `999px` (pill). Project override of the companion spec.
+- Typography: `12px` with a `16px` line height; one short line only (a few words), never wrapping.
+- Padding: `4px 10px`; width fits the text, kept inside the viewport.
 - Show after approximately `500ms` of hover; show promptly on keyboard focus; close after a short `100ms` exit delay.
 - Prefer top placement, but flip/shift based on available viewport space. Prevent clipping inside dialogs, sidebars, and scroll containers.
 - Provide `role="tooltip"`, a stable ID, and an `aria-describedby` relationship. The trigger must still have its own accessible name.

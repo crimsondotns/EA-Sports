@@ -234,7 +234,7 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
     info.addEventListener("pointerleave", (e) => {
       if (e.pointerType === "mouse") tip.hide();
     });
-    // Touch has no hover: tapping the asterisk toggles the conditions instead of picking the option.
+    // Touch has no hover: tapping the info icon toggles the description instead of picking the option.
     info.addEventListener("click", (e) => {
       e.stopPropagation();
       if (tip.isOpenOn(info)) tip.hide(0);
