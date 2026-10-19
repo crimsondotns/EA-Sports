@@ -8,6 +8,8 @@ interface TvChart {
   createShape(point: { time: number; price?: number }, opts: object): Promise<unknown> | unknown;
   createMultipointShape(points: { time: number; price: number }[], opts: object): Promise<unknown> | unknown;
   removeEntity(id: unknown): void;
+  getAllShapes?(): { id: unknown; name: string }[];
+  getShapeById?(id: unknown): { getPoints(): { time: number; price: number }[] };
   createStudy?(name: string, forceOverlay: boolean, lock?: boolean): Promise<unknown> | unknown;
   getAllStudies?(): { id: unknown; name: string }[];
   getStudyById?(id: unknown): TvStudy;
@@ -175,6 +177,40 @@ function timeOffset(anchors: DrawPayload["anchors"], bars: TvBar[]): number | nu
 }
 
 // ---------- strategy indicators ----------
+
+// ATH −90% / −95% are real drawings: saved with the chart layout, editable, never cleared by a
+// redraw. Before adding one, look for a horizontal line already within 0.5% of its price (ours
+// from an earlier run, or the user's own) and leave it as it is.
+async function drawAthLines(chart: TvChart, ath: NonNullable<DrawPayload["ath"]>, errors: string[]): Promise<void> {
+  const existing: number[] = [];
+  for (const s of chart.getAllShapes?.() ?? []) {
+    if (s.name !== "horizontal_line") continue;
+    try {
+      const price = chart.getShapeById?.(s.id).getPoints()[0]?.price;
+      if (price !== undefined) existing.push(price);
+    } catch {
+      // Shape removed meanwhile.
+    }
+  }
+  for (const l of ath.levels) {
+    if (existing.some((x) => Math.abs(x / l.price - 1) < 0.005)) continue;
+    const text = `ATH −${Math.round(l.pct * 100)}%`;
+    try {
+      await Promise.race([
+        Promise.resolve().then(() =>
+          chart.createShape(
+            { time: ath.time, price: l.price },
+            { shape: "horizontal_line", text, overrides: { linecolor: "#b4b4b4", linestyle: 2, showLabel: true, textcolor: "#b4b4b4" } },
+          ),
+        ),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timed out")), SHAPE_TIMEOUT_MS)),
+      ]);
+      existing.push(l.price);
+    } catch (e) {
+      errors.push(`${text}: ${(e as Error)?.message ?? e}`);
+    }
+  }
+}
 
 // Studies this script added, keyed by spec, so a strategy switch removes only ours.
 const ourStudies = new Map<string, unknown>();
@@ -418,17 +454,7 @@ async function draw(p: DrawPayload): Promise<void> {
       ),
     );
   }
-  if (p.ath) {
-    for (const l of p.ath.levels) {
-      const text = `ATH −${Math.round(l.pct * 100)}%`;
-      await add(text, () =>
-        chart.createShape(
-          { time: p.ath!.time, price: l.price },
-          { ...opts, shape: "horizontal_line", text, overrides: { linecolor: "#b4b4b4", linestyle: 2, showLabel: true, textcolor: "#b4b4b4" } },
-        ),
-      );
-    }
-  }
+  if (p.ath) await drawAthLines(chart, p.ath, errors);
   if (p.sellLimit !== null) {
     const last = p.arrows.at(-1)?.time ?? Math.floor(Date.now() / 1000);
     await add("sell limit", () =>
