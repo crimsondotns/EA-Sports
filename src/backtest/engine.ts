@@ -9,6 +9,8 @@ export interface Position {
   costRecovered: boolean;
   /** Partial sells taken so far (see `partialExit`). */
   partialsSold: number;
+  /** Price of the last partial sell, 0 before the first. */
+  lastSellPrice: number;
 }
 
 export interface IndicatorSeries {
@@ -261,6 +263,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
         highestClose: bar.open,
         costRecovered: false,
         partialsSold: 0,
+        lastSellPrice: 0,
         qty,
         cost,
         initialQty: qty,
@@ -289,6 +292,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
         p.realized += proceeds;
         p.qty -= qty;
         p.partialsSold++;
+        p.lastSellPrice = sellAt;
         p.partials.push({ time: bar.time, price: sellAt * (1 - cfg.slippage) });
         if (!p.costRecovered && p.realized >= p.cost) {
           p.costRecovered = true;

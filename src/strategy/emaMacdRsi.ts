@@ -95,6 +95,12 @@ export interface DeepDipParams {
   /** "rsiOver": RSI closed at or above this. `rsiLimit` > 0: also a resting limit sell at the
    *  price that would lift RSI(14) to `rsiLimit` during the next bar. */
   exitRsiOver: number;
+  /** "rsiOver" with `rsiOverRearm` > 0: one sell per run above `exitRsiOver`; RSI has to close
+   *  below `rsiOverRearm` before the next one. 0 sells on every bar over the level. */
+  rsiOverRearm: number;
+  /** Signal sells after the first need the close at least this far above the last sell price
+   *  (0.2 = +20%), so a run that keeps rising is not sold off bar after bar. */
+  sellStep: number;
   rsiLimit: number;
   trailPct: number;
   maxHoldBars: number;
@@ -134,6 +140,8 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   limitMinGain: 0.3,
   limitRsi: 0,
   exitRsiOver: 80,
+  rsiOverRearm: 0,
+  sellStep: 0,
   rsiLimit: 0,
   trailPct: 0.35,
   maxHoldBars: 2880,
@@ -189,7 +197,14 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
             if (hi >= p.exitRsiHigh && r[i]! < r[i - 1]!) n++;
           }
           if (sig === "climax" && climax(i)) n++;
-          if (sig === "rsiOver" && r[i]! >= p.exitRsiOver) n++;
+          if (sig === "rsiOver" && r[i]! >= p.exitRsiOver) {
+            let armed = p.rsiOverRearm <= 0;
+            for (let k = i - 1; !armed && k >= 0; k--) {
+              if (r[k]! >= p.exitRsiOver) break;
+              if (r[k]! < p.rsiOverRearm) armed = true;
+            }
+            if (armed) n++;
+          }
           if (sig === "climaxTurn" && climax(i - 1) && r[i]! < r[i - 1]! && m.hist[i]! < m.hist[i - 1]!) n++;
           if (sig === "macd") {
             let peak = -Infinity;
@@ -311,6 +326,7 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         },
         partialExit(i, pos) {
           if (p.exitMode !== "signals" || c[i]!.close <= pos.entryPrice) return 0;
+          if (p.sellStep > 0 && pos.lastSellPrice > 0 && c[i]!.close < pos.lastSellPrice * (1 + p.sellStep)) return 0;
           return exitFired(i) ? p.sellPct : 0;
         },
         conditions(i) {

@@ -305,6 +305,7 @@ function drawOnTradingView(): void {
         highestClose: open.entryPrice,
         costRecovered: open.costBackTime !== undefined,
         partialsSold: open.partials?.length ?? 0,
+        lastSellPrice: open.partials?.at(-1)?.price ?? 0,
       };
       return last.setup.strategy.prepare(candles).limitSell?.(i, pos)?.price ?? null;
     })(),
