@@ -35,19 +35,21 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
   if (id === "dip" || id === "launch") {
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
     const launch = id === "launch";
-    // On 15m and 1h, sell 10% at each confirmed swing higher high (2 bars either side; $880 x 15
-    // coins: 15m +$3,355, 11/15; 1h only +$845, 6/15. New highest close made +$4,236 / +$3,571).
+    // 15m: sell 10% at each confirmed swing higher high (2 bars either side; $880 x 15 coins:
+    // +$3,355, 11/15). 1h: sell 10% on each new highest close since the entry (+$3,571, worst -$94;
+    // swing highs made only +$845 there).
+    const hourly = resolutionMinutes === 60;
     const signalExit = !launch && (resolutionMinutes === 15 || resolutionMinutes === 60);
     return {
       id,
       name: STRATEGY_NAMES[id],
-      // Deep Dip on 15m and 1h sells 10% at each swing higher high; 4h and up keep
+      // Deep Dip on 15m and 1h sells 10% at each swing higher high (15m) or new highest close (1h); 4h and up keep
       // the cost-back exit. New Launch keeps cost back too (untested with these exits).
       strategy: deepDip({
         srLookback: perDay * 30,
         maxHoldBars: perDay * 30,
         rsiLowBars: perDay,
-        ...(signalExit ? { exitMode: "signals" as const, exitSignals: [], hhExit: "swing" as const, hhPivot: 2 } : {}),
+        ...(signalExit ? { exitMode: "signals" as const, exitSignals: [], hhExit: hourly ? ("close" as const) : ("swing" as const), hhPivot: 2 } : {}),
       }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
@@ -66,7 +68,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       note: launch
         ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
         : signalExit
-          ? "10% per trade · sell 10% at each swing higher high · keep 10% free, sold at 10x/30x/100x"
+          ? `10% per trade · sell 10% ${hourly ? "on each new highest close" : "at each swing higher high"} · keep 10% free, sold at 10x/30x/100x`
           : `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x · best on 15m`,
       studies: [
         emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),
