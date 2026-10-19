@@ -103,6 +103,13 @@ export interface DeepDipParams {
   sellStep: number;
   /** Signal sells only start once the close is this far above the entry (0.4 = +40%). */
   sellMinGain: number;
+  /**
+   * Higher-high sells (10% each): "close" = the close is the highest since the entry; "swing" =
+   * a swing high (highest high `hhPivot` bars either side) above the previous swing high since
+   * the entry, sold once it is confirmed. With `exitSignals` set, both must fire on the same bar.
+   */
+  hhExit: "off" | "close" | "swing";
+  hhPivot: number;
   rsiLimit: number;
   trailPct: number;
   maxHoldBars: number;
@@ -145,6 +152,8 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   rsiOverRearm: 0,
   sellStep: 0,
   sellMinGain: 0,
+  hhExit: "off",
+  hhPivot: 2,
   rsiLimit: 0,
   trailPct: 0.35,
   maxHoldBars: 2880,
@@ -216,6 +225,22 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           }
         }
         return n >= p.exitNeed;
+      };
+      const isSwingHigh = (j: number) => {
+        if (j - p.hhPivot < 0 || j + p.hhPivot >= c.length) return false;
+        for (let k = j - p.hhPivot; k <= j + p.hhPivot; k++) if (k !== j && c[k]!.high >= c[j]!.high) return false;
+        return true;
+      };
+      /** A higher high on the close of bar i, counting only bars since the entry. */
+      const higherHigh = (i: number, from: number) => {
+        if (p.hhExit === "close") {
+          for (let k = from; k < i; k++) if (close[k]! >= close[i]!) return false;
+          return i > from;
+        }
+        const j = i - p.hhPivot;
+        if (j < from || !isSwingHigh(j)) return false;
+        for (let k = j - 1; k >= from; k--) if (k + p.hhPivot <= i - 1 && isSwingHigh(k)) return c[j]!.high > c[k]!.high;
+        return true;
       };
       const warmup = p.requireSlowEma ? p.emaSlow + 1 : Math.max(p.emaMid, 26 + 9) + 1;
       /** The lowest of the EMAs that exist at bar i: the price has to be under it. */
@@ -331,7 +356,8 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           if (p.exitMode !== "signals" || c[i]!.close <= pos.entryPrice) return 0;
           if (pos.partialsSold === 0 && c[i]!.close < pos.entryPrice * (1 + p.sellMinGain)) return 0;
           if (p.sellStep > 0 && pos.lastSellPrice > 0 && c[i]!.close < pos.lastSellPrice * (1 + p.sellStep)) return 0;
-          return exitFired(i) ? p.sellPct : 0;
+          if (p.hhExit !== "off" && !higherHigh(i, pos.entryIndex)) return 0;
+          return p.hhExit !== "off" && p.exitSignals.length === 0 ? p.sellPct : exitFired(i) ? p.sellPct : 0;
         },
         conditions(i) {
           return i >= warmup ? checks(i) : [];
