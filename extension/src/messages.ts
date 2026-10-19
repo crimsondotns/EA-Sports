@@ -59,9 +59,11 @@ export interface Settings {
   tableOpacity: number;
   /** Deep Dip variant on 15m and 1h, #1–#8 in docs/strategies.md. */
   dipVariant: number;
+  /** Chart table folded down to its header. */
+  tableCollapsed: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true, showIndicators: true, tableOpacity: 0.6, dipVariant: 3 };
+export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true, showIndicators: true, tableOpacity: 0.6, dipVariant: 3, tableCollapsed: false };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 // content <-> background (chrome.runtime messaging)

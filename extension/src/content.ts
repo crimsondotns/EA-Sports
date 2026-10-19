@@ -79,7 +79,21 @@ root.innerHTML = `
   th, td { padding: 3px 10px; text-align: left; white-space: nowrap; }
   td:last-child { text-align: right; }
   thead th { padding-top: 7px; padding-bottom: 6px; font-weight: 600; border-bottom: 1px solid #2a2a2a; }
-  thead th span { color: #777; font-weight: 400; margin-left: 6px; }
+  .head { display: flex; align-items: center; gap: 8px; }
+  .head #title { flex: 1; }
+  thead th #title span { color: #777; font-weight: 400; margin-left: 6px; }
+  #brief { font-weight: 600; }
+  #toggle { all: unset; flex: none; width: 20px; height: 20px; margin: -2px -6px -2px 0; display: inline-flex;
+    align-items: center; justify-content: center; border-radius: 6px; color: #b4b4b4; cursor: pointer;
+    transition: background-color 140ms ease-out, color 140ms ease-out; }
+  #toggle svg { width: 12px; height: 12px; transition: transform 140ms ease-out; }
+  #toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
+  #toggle:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+  #toggle:active { background: #2a2a2a; }
+  @media (hover: hover) and (pointer: fine) { #toggle:hover { background: #202020; color: #fff; } }
+  table.collapsed tbody { display: none; }
+  table.collapsed thead th { border-bottom: 0; padding-bottom: 7px; }
+  @media (prefers-reduced-motion: reduce) { #toggle, #toggle svg { transition: none; } }
   tr.sep td { border-top: 1px solid #2a2a2a; padding-top: 5px; }
   tbody tr:last-child td { padding-bottom: 7px; }
   .muted { color: #777; } .sub { color: #b4b4b4; }
@@ -87,11 +101,25 @@ root.innerHTML = `
   .sig { font-weight: 600; }
   td.msg { white-space: normal; }
 </style>
-<table aria-label="EA Volume Breakout"><thead><tr><th colspan="2" id="title">EA</th></tr></thead><tbody id="body">
+<table id="table" aria-label="EA signals"><thead><tr><th colspan="2"><div class="head"><span id="title">EA</span><span id="brief"></span>
+  <button type="button" id="toggle" aria-expanded="true" aria-controls="body" aria-label="Collapse table" title="Collapse table">
+    <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button></div></th></tr></thead><tbody id="body">
   <tr><td colspan="2" class="muted">Waiting for chart data…</td></tr>
 </tbody></table>`;
 document.documentElement.appendChild(host);
 const $ = (id: string) => root.getElementById(id)!;
+
+// Collapse to the header line (title + signal); remembered in settings.
+function paintCollapsed(): void {
+  const collapsed = settings.tableCollapsed;
+  $("table").classList.toggle("collapsed", collapsed);
+  const t = $("toggle");
+  t.setAttribute("aria-expanded", String(!collapsed));
+  t.setAttribute("aria-label", collapsed ? "Expand table" : "Collapse table");
+  t.title = collapsed ? "Expand table" : "Collapse table";
+}
+$("toggle").addEventListener("click", () => void chrome.storage.local.set({ tableCollapsed: !settings.tableCollapsed }));
 
 /** Pin the table inside the chart's top-right corner, left of the price scale. */
 function positionTable(): void {
@@ -178,6 +206,10 @@ function renderTable(): void {
   }
   if (!sum) return;
   $("title").innerHTML = `EA · ${sum.resolution}<span>${sum.strategy}</span>`;
+  // Shown in the header only while collapsed, so the signal stays visible.
+  const brief = $("brief");
+  brief.className = sum.signal === "buy" ? "pos" : sum.signal === "hold" && sum.openPnlPct !== null && sum.openPnlPct !== undefined ? (sum.openPnlPct >= 0 ? "pos" : "neg") : "sub";
+  brief.textContent = !settings.tableCollapsed ? "" : sum.signal === "buy" ? "▲ BUY" : sum.signal === "hold" ? `● ${pct(sum.openPnlPct ?? 0, 2)}` : "Waiting";
   const shortLabels = last?.setup.shortLabels ?? [];
   const signal =
     sum.signal === "buy"
@@ -496,12 +528,17 @@ window.addEventListener("message", (e: MessageEvent<FromMain>) => {
 void chrome.storage.local.get(DEFAULT_SETTINGS).then((s) => {
   settings = s as Settings;
   positionTable();
+  paintCollapsed();
 });
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
   const prev = settings;
   settings = { ...settings, ...Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.newValue])) } as Settings;
   positionTable();
+  if (prev.tableCollapsed !== settings.tableCollapsed) {
+    paintCollapsed();
+    renderTable();
+  }
   if ((prev.strategy !== settings.strategy || prev.dipVariant !== settings.dipVariant) && lastInput) {
     last = null;
     analyze(lastInput.source, lastInput.candles);
