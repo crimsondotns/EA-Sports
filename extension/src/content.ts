@@ -270,13 +270,13 @@ function renderTable(): void {
   // Shown in the header only while collapsed, so the signal stays visible.
   const brief = $("brief");
   brief.className = sum.signal === "buy" ? "pos" : sum.signal === "hold" && sum.openPnlPct !== null && sum.openPnlPct !== undefined ? (sum.openPnlPct >= 0 ? "pos" : "neg") : "sub";
-  brief.textContent = !settings.tableCollapsed ? "" : sum.signal === "buy" ? "▲ BUY" : sum.signal === "hold" ? `● ${pct(sum.openPnlPct ?? 0, 2)}` : "Waiting";
+  brief.textContent = !settings.tableCollapsed ? "" : sum.signal === "buy" ? "▲ BUY" : sum.signal === "hold" ? pct(sum.openPnlPct ?? 0, 2) : "Waiting";
   const shortLabels = last?.setup.shortLabels ?? [];
   const signal =
     sum.signal === "buy"
       ? `<td class="sig pos">▲ BUY</td>`
       : sum.signal === "hold"
-        ? `<td class="sig">● ${sum.costRecovered ? "Free ride" : "Holding"}</td>`
+        ? `<td class="sig">${sum.costRecovered ? "Free ride" : "Holding"}</td>`
         : `<td class="sig sub">Waiting</td>`;
   const rows = [
     `<tr><td class="sub">Signal</td>${signal}</tr>`,

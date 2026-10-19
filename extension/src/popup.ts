@@ -38,7 +38,7 @@ function render(s: Summary): void {
     s.signal === "buy"
       ? `<p class="signal pos">▲ BUY signal</p><p class="muted">Buy at the open of the next bar</p>`
       : s.signal === "hold"
-        ? `<p class="signal">● ${s.costRecovered ? "Free ride" : "Holding"}</p>
+        ? `<p class="signal">${s.costRecovered ? "Free ride" : "Holding"}</p>
            ${s.costRecovered ? `<p class="muted">Cost recovered · 10% kept free — ${esc(s.strategyNote)}</p>` : ""}
            <div class="row num"><span>Entry ${s.entryTime ? time(s.entryTime) : ""}</span><span>${s.entryPrice === null ? "–" : fmt(s.entryPrice)}</span></div>
            <div class="row num"><span>Stop</span><span class="neg">${s.stop === null ? "–" : fmt(s.stop)}</span></div>
