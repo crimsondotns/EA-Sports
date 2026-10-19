@@ -125,6 +125,9 @@
   #settingsPage header h1 { font-size: 15px; }
   footer { color: var(--muted); font-size: 11px; padding-top: 8px; }
   section[hidden] { display: none; }
+  /* Scrolling still works (wheel, touch, keyboard); the bars are just not drawn. */
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
   .test-row { display: flex; align-items: center; gap: 12px; padding: 4px 0 8px; }
   .test-row small { color: var(--muted); font-size: 12px; line-height: 16px; }
   .button-secondary { min-height: 36px; padding: 0 14px; border: 1px solid #333; border-radius: 10px; background: #1a1a1a; color: #fff;
