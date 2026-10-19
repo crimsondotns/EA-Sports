@@ -91,6 +91,13 @@ root.innerHTML = `
   #toggle:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
   #toggle:active { background: #2a2a2a; }
   @media (hover: hover) and (pointer: fine) { #toggle:hover { background: #202020; color: #fff; } }
+  #grip { all: unset; flex: none; width: 14px; height: 20px; margin-left: -6px; display: inline-flex; align-items: center;
+    justify-content: center; border-radius: 6px; color: #777; cursor: grab; touch-action: none;
+    transition: background-color 140ms ease-out, color 140ms ease-out; }
+  #grip svg { width: 8px; height: 12px; }
+  #grip:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+  :host(.dragging) #grip { cursor: grabbing; color: #fff; }
+  @media (hover: hover) and (pointer: fine) { #grip:hover { background: #202020; color: #fff; } }
   table.collapsed tbody { display: none; }
   table.collapsed thead th { border-bottom: 0; padding-bottom: 7px; }
   @media (prefers-reduced-motion: reduce) { #toggle, #toggle svg { transition: none; } }
@@ -101,7 +108,9 @@ root.innerHTML = `
   .sig { font-weight: 600; }
   td.msg { white-space: normal; }
 </style>
-<table id="table" aria-label="EA signals"><thead><tr><th colspan="2"><div class="head"><span id="title">EA</span><span id="brief"></span>
+<table id="table" aria-label="EA signals"><thead><tr><th colspan="2"><div class="head"><button type="button" id="grip" aria-label="Move table up or down" title="Drag to move · double-click to reset">
+    <svg viewBox="0 0 8 12" aria-hidden="true"><g fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="6" cy="2" r="1"/><circle cx="2" cy="6" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="2" cy="10" r="1"/><circle cx="6" cy="10" r="1"/></g></svg>
+  </button><span id="title">EA</span><span id="brief"></span>
   <button type="button" id="toggle" aria-expanded="true" aria-controls="body" aria-label="Collapse table" title="Collapse table">
     <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button></div></th></tr></thead><tbody id="body">
@@ -121,6 +130,9 @@ function paintCollapsed(): void {
 }
 $("toggle").addEventListener("click", () => void chrome.storage.local.set({ tableCollapsed: !settings.tableCollapsed }));
 
+/** Offset while the table is being dragged (null otherwise); saved to settings on release. */
+let dragOffset: number | null = null;
+
 /** Pin the table inside the chart's top-right corner, left of the price scale. */
 function positionTable(): void {
   const frame = document.querySelector<HTMLIFrameElement>('iframe[id^="tradingview_"]');
@@ -134,10 +146,52 @@ function positionTable(): void {
   const PRICE_SCALE = 72; // width of the chart's right price axis
   const TOOLBAR = 44; // chart top toolbar
   const INSET = 16; // keep clear of the chart's edges and its legend buttons
-  host.style.top = `${Math.max(0, r.top + TOOLBAR + INSET)}px`;
+  // The user's drag offset, kept inside the chart.
+  const base = r.top + TOOLBAR + INSET;
+  const maxOffset = Math.max(0, r.bottom - INSET - host.offsetHeight - base);
+  const offset = Math.min(Math.max(0, dragOffset ?? settings.tableOffsetY), maxOffset);
+  host.style.top = `${Math.max(0, base + offset)}px`;
   host.style.right = `${Math.max(0, window.innerWidth - r.right + PRICE_SCALE + INSET)}px`;
 }
 setInterval(positionTable, 500);
+
+// Drag the grip (or use the arrow keys on it) to move the table up and down; double-click resets.
+{
+  const grip = $("grip");
+  let startY = 0;
+  let startOffset = 0;
+  grip.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    grip.setPointerCapture(e.pointerId);
+    startY = e.clientY;
+    startOffset = settings.tableOffsetY;
+    dragOffset = startOffset;
+    host.classList.add("dragging");
+  });
+  grip.addEventListener("pointermove", (e) => {
+    if (dragOffset === null) return;
+    dragOffset = Math.max(0, startOffset + e.clientY - startY);
+    positionTable();
+  });
+  const end = () => {
+    if (dragOffset === null) return;
+    const top = parseFloat(host.style.top);
+    host.classList.remove("dragging");
+    // Save what was actually applied (clamped to the chart).
+    const frame = document.querySelector<HTMLIFrameElement>('iframe[id^="tradingview_"]');
+    const base = (frame?.getBoundingClientRect().top ?? 0) + 44 + 16;
+    dragOffset = null;
+    void chrome.storage.local.set({ tableOffsetY: Math.max(0, Math.round(top - base)) });
+  };
+  grip.addEventListener("pointerup", end);
+  grip.addEventListener("pointercancel", end);
+  grip.addEventListener("dblclick", () => void chrome.storage.local.set({ tableOffsetY: 0 }));
+  grip.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    void chrome.storage.local.set({ tableOffsetY: Math.max(0, settings.tableOffsetY + (e.key === "ArrowDown" ? 16 : -16)) });
+  });
+}
 window.addEventListener("resize", positionTable);
 
 function currentPlan(): Summary["plan"] {
