@@ -45,6 +45,9 @@ export interface DeepDipParams {
   /** Buy the price swing low: enter once bar i - `priceSwing` is confirmed as a low under the
    *  `priceSwing` bars either side, if Deep Dip's checks all held on that low bar. 0 = off. */
   priceSwing: number;
+  /** Also count a support the close has just broken, up to this far under its low (0.1 = 10%).
+   *  0 = off. */
+  supportBreak: number;
   /** Require the support test when a support exists (case a). Off: rules 1–3 only. */
   useSupport: boolean;
   pivotBars: number;
@@ -137,6 +140,7 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   rsiSwing: 0,
   rsiSwingWithin: 6,
   priceSwing: 0,
+  supportBreak: 0,
   useSupport: true,
   pivotBars: 5,
   zoneTol: 0.04,
@@ -276,9 +280,14 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         const zones = supportsBelow(i);
         if (!zones.length) return null;
         const bar = c[i]!;
-        return zones
+        const at = zones
           .filter((z) => bar.low <= z.high * (1 + p.zoneTol) && bar.close >= z.low)
           .sort((a, b) => b.touches - a.touches || b.high - a.high)[0];
+        if (at || p.supportBreak <= 0) return at;
+        const known = lows.filter((x) => x.index + p.pivotBars <= i && x.index >= i - p.srLookback);
+        return clusterZones(known, p.zoneTol)
+          .filter((z) => z.touches >= p.minTouches && z.low > bar.close && bar.close >= z.low * (1 - p.supportBreak))
+          .sort((a, b) => a.low - b.low)[0];
       };
 
       /** The most recent confirmed RSI swing low within `rsiSwingWithin` bars of i, or null. */
