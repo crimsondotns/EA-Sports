@@ -3,7 +3,7 @@
 // and publishes a summary for the popup.
 import type { Bar } from "../../src/dexscreener/bars.ts";
 import { toCandles, type Candle } from "../../src/indicators.ts";
-import { runBacktest, type BacktestResult } from "../../src/backtest/engine.ts";
+import { runBacktest, type BacktestResult, type Position } from "../../src/backtest/engine.ts";
 import { setupStrategy, type StrategySetup } from "./strategies.ts";
 import {
   CONTENT_TAG,
@@ -328,26 +328,31 @@ function drawOnTradingView(): void {
     rangeLow: last.setup.strategy.prepare(candles).rangeLow?.(candles.length - 1) ?? null,
     sellLabel: last.setup.sellLabel ?? "SELL 10%",
     sellLimit: (() => {
-      const open = result.trades.at(-1);
-      if (open?.reason !== "end") return null;
-      const i = candles.length - 1;
-      const entryIndex = candles.findIndex((c) => c.time === open.entryTime);
-      const pos = {
-        entryIndex,
-        entryPrice: open.entryPrice,
-        stop: result.stops.at(-1) ?? 0,
-        highestClose: open.entryPrice,
-        costRecovered: open.costBackTime !== undefined,
-        partialsSold: open.partials?.length ?? 0,
-        lastSellPrice: open.partials?.at(-1)?.price ?? 0,
-      };
-      return last.setup.strategy.prepare(candles).limitSell?.(i, pos)?.price ?? null;
+      const pos = openPosition();
+      return pos ? (last.setup.strategy.prepare(candles).limitSell?.(candles.length - 1, pos)?.price ?? null) : null;
     })(),
   };
   postToFrames({ source: CONTENT_TAG, type: "draw", payload });
 }
 
 // ---------- notifications ----------
+
+/** The backtest's open position rebuilt as the strategy sees it, or null when flat. */
+function openPosition(): Position | null {
+  if (!last) return null;
+  const { candles, result } = last;
+  const open = result.trades.at(-1);
+  if (open?.reason !== "end") return null;
+  return {
+    entryIndex: candles.findIndex((c) => c.time === open.entryTime),
+    entryPrice: open.entryPrice,
+    stop: result.stops.at(-1) ?? 0,
+    highestClose: open.entryPrice,
+    costRecovered: open.costBackTime !== undefined,
+    partialsSold: open.partials?.length ?? 0,
+    lastSellPrice: open.partials?.at(-1)?.price ?? 0,
+  };
+}
 
 function notifySignals(): void {
   if (!last) return;
@@ -374,6 +379,12 @@ function notifySignals(): void {
   const plan = currentPlan();
   if (plan?.inZone) {
     once("zone", `EA · price in buy zone · ${last.setup.name}`, `${label}\n${plan.kind === "below" ? `under ${fmt(plan.high)}` : `${fmt(plan.low)}–${fmt(plan.high)}`} — ${plan.waitFor}`);
+  }
+  // 10% signal sells keep the position open, so they never show up as an exit.
+  const pos = openPosition();
+  const sellPct = pos && pos.partialsSold < 9 ? (strat.partialExit?.(candles.length - 1, pos) ?? 0) : 0;
+  if (pos && sellPct > 0) {
+    once("partial", `EA SELL ${Math.round(sellPct * 100)}% · ${last.setup.name}`, `${label}\nClose ${fmt(lastBar.close)} (${pct((lastBar.close / pos.entryPrice - 1) * 100)}) — sell at next bar open`);
   }
   if (t && t.reason !== "end" && t.exitTime === lastBar.time) {
     once("sell", `EA SELL (${t.reason})`, `${label}\n${pct(t.returnPct, 2)}`);
@@ -407,7 +418,7 @@ function notEnoughBars(setup: StrategySetup, resolution: number, candles: Candle
   const ageDays = candles.length ? (Date.now() - candles[0]!.time) / 86_400_000 : 0;
   // The chart loads roughly the same number of bars on any timeframe (so larger timeframes
   // reach further back): suggest the smallest one that needs no more bars than are loaded now.
-  const fits = TIMEFRAMES.filter((tf) => tf > resolution).find((tf) => setupStrategy(setup.id, tf, settings.dipVariant).minBars <= Math.max(candles.length, 300));
+  const fits = TIMEFRAMES.filter((tf) => tf > resolution).find((tf) => setupStrategy(setup.id, tf).minBars <= Math.max(candles.length, 300));
   if (fits) return `Not enough bars on ${resLabel(resolution)} for ${setup.name}. Switch the chart to ${resLabel(fits)}.`;
   // Already on a large timeframe: the loaded history is the pair's real age.
   if (ageDays < needDays) {
@@ -420,7 +431,7 @@ function analyze(source: BarsSource, all: Candle[]): void {
   // An empty export just means the chart is still loading.
   if (all.length === 0) return;
   lastInput = { source, candles: all };
-  const setup = setupStrategy(settings.strategy, source.resolution, settings.dipVariant);
+  const setup = setupStrategy(settings.strategy, source.resolution);
   const barMs = source.resolution * 60_000;
   // Drop the still-forming bar: signals are only valid on closed bars. Start from a fixed point
   // (midnight UTC, ~31 days plus warm-up back): trades are path dependent, so starting wherever
@@ -539,7 +550,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     paintCollapsed();
     renderTable();
   }
-  if ((prev.strategy !== settings.strategy || prev.dipVariant !== settings.dipVariant) && lastInput) {
+  if (prev.strategy !== settings.strategy && lastInput) {
     last = null;
     analyze(lastInput.source, lastInput.candles);
   } else if (prev.drawMarkers !== settings.drawMarkers || prev.showIndicators !== settings.showIndicators) drawOnTradingView();

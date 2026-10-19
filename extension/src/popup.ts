@@ -229,14 +229,7 @@ async function main(): Promise<void> {
     input.checked = settings[name];
     input.addEventListener("change", () => void chrome.storage.local.set({ [name]: input.checked }));
   }
-  // Deep Dip's variants (#1–#8 in docs/strategies.md) only apply to Deep Dip.
-  const showVariant = (strategy: string) => ($("variantSection").hidden = strategy !== "dip");
-  dropdown("strategy", settings.strategy, (value) => {
-    showVariant(value);
-    void chrome.storage.local.set({ strategy: value });
-  });
-  showVariant(settings.strategy);
-  dropdown("variant", String(settings.dipVariant), (value) => void chrome.storage.local.set({ dipVariant: Number(value) }));
+  dropdown("strategy", settings.strategy, (value) => void chrome.storage.local.set({ strategy: value }));
 
   // Table opacity: 20–100% in 5% steps; greyed out while the table is hidden.
   const opacity = $("tableOpacity") as HTMLInputElement;
@@ -256,6 +249,22 @@ async function main(): Promise<void> {
   });
   showTable.addEventListener("change", paintOpacity);
 
+  // Shows a sample alert so the user can check Chrome / the OS let notifications through.
+  $("testNotify").addEventListener("click", () => {
+    const button = $("testNotify") as HTMLButtonElement;
+    button.disabled = true;
+    chrome.notifications.getPermissionLevel((level) => {
+      chrome.notifications.create(
+        { type: "basic", iconUrl: "icon128.png", title: "EA BUY · test", message: "Test alert from EA Signals. Real alerts look like this." },
+        () => {
+          $("testNotifyStatus").textContent =
+            level === "granted" ? "Sent. If nothing appeared, allow Chrome notifications in your system settings." : "Notifications are blocked for this extension.";
+          button.disabled = false;
+        },
+      );
+    });
+  });
+
   // Settings is its own page inside the popup.
   const showPage = (settingsOpen: boolean) => {
     $("homePage").hidden = settingsOpen;
@@ -265,7 +274,7 @@ async function main(): Promise<void> {
   $("openSettings").addEventListener("click", () => showPage(true));
   $("closeSettings").addEventListener("click", () => showPage(false));
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !$("settingsPage").hidden && $("strategyMenu").hidden && $("variantMenu").hidden) showPage(false);
+    if (e.key === "Escape" && !$("settingsPage").hidden && $("strategyMenu").hidden) showPage(false);
   });
 }
 
