@@ -104,6 +104,8 @@ export interface Trade {
   /** With `freeRideKeep`: when and at what price the cost was sold back. */
   costBackTime?: number;
   costBackPrice?: number;
+  /** Partial sells (see `partialExit`): fill time and price. */
+  partials?: { time: number; price: number }[];
 }
 
 export interface BacktestResult {
@@ -154,7 +156,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
   const stops: BacktestResult["stops"] = [];
   let cash = cfg.initialCapital;
   let pos:
-    | (Position & { qty: number; cost: number; initialQty: number; realized: number; kept: number; costBack?: { time: number; price: number } })
+    | (Position & { qty: number; cost: number; initialQty: number; realized: number; kept: number; costBack?: { time: number; price: number }; partials: { time: number; price: number }[] })
     | null = null;
   let pendingEntry: number | null = null; // signal bar index
   let pendingSell = 0; // fraction of the original tokens to sell at the next open
@@ -198,6 +200,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
       reason,
       ...(p.kept ? { freeQty: p.kept } : {}),
       ...(p.costBack ? { costBackTime: p.costBack.time, costBackPrice: p.costBack.price } : {}),
+      ...(p.partials.length ? { partials: p.partials } : {}),
     });
     pos = null;
   };
@@ -256,6 +259,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
         initialQty: qty,
         realized: 0,
         kept: 0,
+        partials: [],
       };
     }
     pendingEntry = null;
@@ -272,6 +276,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
         p.realized += proceeds;
         p.qty -= qty;
         p.partialsSold++;
+        p.partials.push({ time: bar.time, price: bar.open * (1 - cfg.slippage) });
         if (!p.costRecovered && p.realized >= p.cost) {
           p.costRecovered = true;
           p.costBack = { time: bar.time, price: bar.open * (1 - cfg.slippage) };

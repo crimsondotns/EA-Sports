@@ -35,21 +35,38 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
   if (id === "dip" || id === "launch") {
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
     const launch = id === "launch";
+    const climaxExit = !launch && resolutionMinutes === 15;
     return {
       id,
       name: STRATEGY_NAMES[id],
-      strategy: deepDip({ srLookback: perDay * 30, maxHoldBars: perDay * 30, rsiLowBars: perDay }),
+      // Deep Dip on 15m sells 10% at each climax turn (15m median +72% vs +37.8% for the cost-back
+      // exit across 41 pairs, same drawdown); other timeframes keep the cost-back exit, which the
+      // climax exit didn't beat on 1h. New Launch keeps cost back too (untested with it).
+      strategy: deepDip({
+        srLookback: perDay * 30,
+        maxHoldBars: perDay * 30,
+        rsiLowBars: perDay,
+        ...(climaxExit ? { exitMode: "signals" as const, exitSignals: ["climaxTurn" as const], exitNeed: 1 } : {}),
+      }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
       // New Launch: the same rules at half size for a pair's first week, where rugs are likelier.
       // First 7 days of 34 pairs on 5m: 23 profitable, median +2.5% for the week, worst -17%.
-      config: { ...DEFAULT_CONFIG, positionSize: launch ? 0.05 : 0.1, freeRideAt: 2, freeRideKeep: 0.1, freeLadder: FREE_LADDER },
+      config: {
+        ...DEFAULT_CONFIG,
+        positionSize: launch ? 0.05 : 0.1,
+        freeRideAt: climaxExit ? undefined : 2,
+        freeRideKeep: 0.1,
+        freeLadder: FREE_LADDER,
+      },
       // EMA 200 is skipped until it exists, so MACD (26 + 9 bars) sets the minimum.
       minBars: 37,
       shortLabels: ["Under EMAs", "MACD turn", "RSI", "Support"],
       note: launch
         ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
-        : `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x${resolutionMinutes === 15 ? "" : " · best on 15m"}`,
+        : climaxExit
+          ? "10% per trade · sell 10% at each climax turn · keep 10% free, sold at 10x/30x/100x"
+          : `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x · best on 15m`,
       studies: [
         emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),
         emaStudy(DEEP_DIP_DEFAULTS.emaMid, "#2196f3"),

@@ -254,9 +254,17 @@ function drawOnTradingView(): void {
   const payload: DrawPayload = {
     arrows: trades.flatMap((tr) => [
       { time: sec(tr.entryTime), price: below(tr.entryTime), side: "buy" as const, text: "BUY", color: "#2196f3" },
-      ...(tr.costBackTime !== undefined
+      ...(tr.costBackTime !== undefined && !tr.partials
         ? [{ time: sec(tr.costBackTime), price: above(tr.costBackTime), side: "sell" as const, text: "COST BACK", color: "#fbbf24" }]
         : []),
+      // Partial sells (climax-turn exit): one marker per 10% sold.
+      ...(tr.partials ?? []).map((ps) => ({
+        time: sec(ps.time),
+        price: above(ps.time),
+        side: "sell" as const,
+        text: `SELL 10% ${pct((ps.price / tr.entryPrice - 1) * 100)}`,
+        color: "#fbbf24",
+      })),
       ...(tr.reason === "end"
         ? []
         : [
