@@ -534,7 +534,7 @@ Rules:
 |---|---|
 | Background | `#171717` |
 | Text | `#FFFFFF` |
-| Border | `1px solid #383838` |
+| Border | None (project override: the elevated surface and shadow separate the panel). Tooltips keep their `#383838` border. |
 | Radius | `10px` or match the trigger radius |
 | Shadow | `0 8px 24px rgb(0 0 0 / 32%)` |
 | Width | Match trigger width by default; allow wider only when the content requires it |
@@ -820,7 +820,7 @@ Before editing the app:
 
 - [ ] Main application background remains `#000000`.
 - [ ] Primary buttons remain white with black labels.
-- [ ] Dropdown/picker panel uses a dark elevated surface with a subtle border.
+- [ ] Dropdown/picker panel uses a dark elevated surface and shadow, with no border.
 - [ ] Hover is neutral, fast, and does not shift layout.
 - [ ] Hover, active, selected, focus, and disabled states are visually distinct.
 - [ ] Selected options show a persistent selection indicator.
