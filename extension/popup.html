@@ -2,142 +2,207 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>EA Volume Breakout</title>
+<title>EA Signals</title>
 <style>
+  /* Tokens: docs/design-system.md (dark canvas, white primary, neutral states) and its
+     Dropdown / Picker / Hover appendix. Every color below comes from here. */
   :root {
     color-scheme: dark;
-    --bg: #000000; --surface: #0a0a0a; --elevated: #171717; --hover: #202020;
-    --text: #ffffff; --text-2: #b4b4b4; --muted: #777777;
-    --border: #2a2a2a; --border-strong: #444444;
-    --danger: #f87171; --success: #4ade80; --warning: #fbbf24;
-    --radius: 10px; --t: 140ms ease-out;
-    --selected: #262626; --pressed: #2a2a2a; --picker-border: #383838;
+    --color-bg: #000000;
+    --color-surface: #0a0a0a;
+    --color-surface-elevated: #171717;
+    --color-surface-hover: #202020;
+    --color-surface-pressed: #2a2a2a;
+    --color-surface-selected: #262626;
+    --color-surface-selected-hover: #303030;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #b4b4b4;
+    --color-text-muted: #777777;
+    --color-text-disabled: #666666;
+    --color-text-ghost: #e5e5e5;
+    --color-border: #2a2a2a;
+    --color-border-strong: #444444;
+    --color-border-control: #333333;
+    --color-picker-border: #383838;
+    --color-focus: #ffffff;
+    --color-button-primary-bg: #ffffff;
+    --color-button-primary-text: #000000;
+    --color-button-primary-hover: #eaeaea;
+    --color-button-primary-pressed: #d6d6d6;
+    --color-button-secondary-bg: #1a1a1a;
+    --color-button-secondary-text: #ffffff;
+    --color-button-secondary-hover: #262626;
+    --color-button-secondary-pressed: #303030;
+    --color-trigger-hover-bg: #111111;
+    --color-danger: #f87171;
+    --color-success: #4ade80;
+    --color-warning: #fbbf24;
+    --shadow-picker: 0 8px 24px rgb(0 0 0 / 32%);
+    --radius-control: 10px;
+    --radius-option: 6px;
+    --radius-tooltip: 8px;
+    --radius-pill: 999px;
+    --transition-fast: 140ms ease-out;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    /* Compact density for a 340px extension popup: body copy uses the Small step (13px) and
+       metadata 12px, the spec's floor. Controls (buttons, triggers, options) keep 14px. */
+    --font-size-body: 13px;
+    --font-size-small: 12px;
+    --font-size-control: 14px;
+    --font-size-title: 15px;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--text);
-    font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  /* Scrolling still works (wheel, touch, keyboard); the bars are just not drawn. */
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+  html, body { margin: 0; background: var(--color-bg); color: var(--color-text-primary);
+    font: var(--font-size-body)/1.45 var(--font-sans); }
   body { width: 340px; padding: 16px; }
   header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
   header img { width: 32px; height: 32px; border-radius: 8px; }
-  header h1 { font-size: 15px; font-weight: 600; margin: 0; line-height: 1.2; }
-  header p { margin: 0; color: var(--muted); font-size: 12px; }
-  section { padding: 12px 0; border-top: 1px solid var(--border); }
-  h2 { font-size: 12px; font-weight: 600; color: var(--text-2); margin: 0 0 8px; }
+  header h1 { font-size: var(--font-size-title); font-weight: 600; margin: 0; line-height: 1.2; }
+  header p { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-small); }
+  section { padding: 12px 0; border-top: 1px solid var(--color-border); }
+  section[hidden] { display: none; }
+  h2 { font-size: var(--font-size-small); font-weight: 600; color: var(--color-text-secondary); margin: 0 0 8px; }
   .num { font-variant-numeric: tabular-nums; }
   .row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
-  .row > span:first-child { color: var(--text-2); }
+  .row > span:first-child { color: var(--color-text-secondary); }
   .signal { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
-  .pos, .ok { color: var(--success); } .neg { color: var(--danger); } .muted { color: var(--muted); }
+  .pos, .ok { color: var(--color-success); } .neg { color: var(--color-danger); } .muted { color: var(--color-text-muted); }
   .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .stat { background: var(--surface); border-radius: var(--radius); padding: 8px 10px; }
-  .stat small { display: block; color: var(--muted); font-size: 11px; }
+  .stat { background: var(--color-surface); border-radius: var(--radius-control); padding: 8px 10px; }
+  .stat small { display: block; color: var(--color-text-muted); font-size: var(--font-size-small); }
   .stat strong { font-weight: 600; }
-  .empty { color: var(--text-2); }
+  .empty { color: var(--color-text-secondary); }
   .empty p { margin: 0 0 12px; }
+  .grow { flex: 1; min-width: 0; }
+  footer { color: var(--color-text-muted); font-size: var(--font-size-small); padding-top: 8px; }
 
   /* Switch rows: the whole label is clickable */
   label.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px;
-    margin: 0 -10px; border-radius: var(--radius); cursor: pointer; transition: background-color var(--t); }
-  label.switch:hover { background: var(--hover); }
-  label.switch small { display: block; color: var(--muted); font-size: 11px; }
-  label.switch input { appearance: none; flex: none; width: 34px; height: 20px; border-radius: 999px; margin: 0;
-    background: #333; position: relative; cursor: pointer; transition: background-color var(--t); }
+    margin: 0 -10px; border-radius: var(--radius-control); cursor: pointer; transition: background-color var(--transition-fast); }
+  label.switch small { display: block; color: var(--color-text-muted); font-size: var(--font-size-small); }
+  label.switch:active { background: var(--color-surface-pressed); }
+  label.switch input { appearance: none; flex: none; width: 34px; height: 20px; border-radius: var(--radius-pill); margin: 0;
+    background: var(--color-border-control); position: relative; cursor: pointer; transition: background-color var(--transition-fast); }
   label.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px;
-    border-radius: 50%; background: #777; transition: transform var(--t), background-color var(--t); }
-  label.switch input:checked { background: #fff; }
-  label.switch input:checked::after { transform: translateX(14px); background: #000; }
-  label.switch input:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    border-radius: 50%; background: var(--color-text-muted); transition: transform var(--transition-fast), background-color var(--transition-fast); }
+  label.switch input:checked { background: var(--color-text-primary); }
+  label.switch input:checked::after { transform: translateX(14px); background: var(--color-bg); }
+  label.switch input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  label.switch:has(input:disabled) { cursor: not-allowed; color: var(--color-text-disabled); }
+  label.switch input:disabled { cursor: not-allowed; opacity: .45; }
 
+  /* Buttons */
   .button-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 18px;
-    border: 1px solid transparent; border-radius: 999px; background: #fff; color: #000; font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1.2;
-    text-decoration: none; cursor: pointer; transition: background-color var(--t); }
-  .button-primary:hover { background: #eaeaea; }
-  .button-primary:active { background: #d6d6d6; }
-  .button-primary:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-  /* Strategy dropdown: trigger styled as a text input, menu as an elevated surface.
-     A custom listbox, because a native <select> menu is drawn by the OS and can't follow the spec. */
+    border: 1px solid transparent; border-radius: var(--radius-pill); background: var(--color-button-primary-bg);
+    color: var(--color-button-primary-text); font-family: inherit; font-size: var(--font-size-control); font-weight: 600; line-height: 1.2;
+    text-decoration: none; cursor: pointer; transition: background-color var(--transition-fast); }
+  .button-primary:active { background: var(--color-button-primary-pressed); }
+  .button-primary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  .button-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 14px;
+    border: 1px solid var(--color-border-control); border-radius: var(--radius-control); background: var(--color-button-secondary-bg);
+    color: var(--color-button-secondary-text); font-family: inherit; font-size: var(--font-size-body); font-weight: 600; line-height: 1.2;
+    cursor: pointer; transition: background-color var(--transition-fast); }
+  .button-secondary:active:not(:disabled) { background: var(--color-button-secondary-pressed); }
+  .button-secondary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+  .button-secondary:disabled { opacity: .45; cursor: not-allowed; }
+  .icon-button { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
+    padding: 0; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-text-ghost); cursor: pointer;
+    transition: background-color var(--transition-fast); }
+  .icon-button:active { background: var(--color-surface-pressed); }
+  .icon-button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+  .test-row { display: flex; align-items: center; gap: 12px; padding: 4px 0 8px; }
+  .test-row small { color: var(--color-text-muted); font-size: var(--font-size-small); line-height: 16px; }
+
+  /* Dropdown: trigger styled as a text input, menu as an elevated surface. A custom listbox,
+     because a native <select> menu is drawn by the OS and can't follow the spec. popup.ts
+     places the menu below the trigger, or above it when there is more room there. */
   .dropdown { position: relative; }
   .dropdown-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 40px;
-    padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text);
-    font-family: inherit; font-size: 14px; font-weight: 400; line-height: 1.4; text-align: left; cursor: pointer;
-    transition: background-color var(--t), border-color var(--t); }
-  .dropdown-trigger:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
-  .dropdown-trigger svg { flex: none; width: 16px; height: 16px; color: var(--text-2); transition: transform var(--t); }
+    padding: 0 12px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface);
+    color: var(--color-text-primary); font-family: inherit; font-size: var(--font-size-control); font-weight: 400; line-height: 1.4;
+    text-align: left; cursor: pointer; transition: background-color var(--transition-fast), border-color var(--transition-fast); }
+  .dropdown-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dropdown-trigger:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+  .dropdown-trigger:active:not(:disabled) { background: var(--color-surface-pressed); }
+  .dropdown-trigger:disabled { color: var(--color-text-disabled); cursor: not-allowed; }
+  .dropdown-trigger:disabled svg { color: var(--color-text-disabled); }
+  .dropdown-trigger svg { flex: none; width: 16px; height: 16px; color: var(--color-text-secondary); transition: transform var(--transition-fast); }
   .dropdown-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
   .dropdown-menu { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px;
-    max-height: min(320px, 60vh); overflow-y: auto; list-style: none; background: var(--elevated);
-    border: 1px solid var(--picker-border); border-radius: var(--radius); box-shadow: 0 8px 24px rgb(0 0 0 / 32%); }
+    max-height: min(320px, 60vh); overflow-y: auto; list-style: none; background: var(--color-surface-elevated);
+    border: 1px solid var(--color-picker-border); border-radius: var(--radius-control); box-shadow: var(--shadow-picker);
+    animation: menu-in var(--transition-fast); }
+  .dropdown-menu.above { top: auto; bottom: calc(100% + 4px); animation-name: menu-in-above; }
   .dropdown-menu[hidden] { display: none; }
+  @keyframes menu-in { from { opacity: 0; transform: translateY(-2px); } }
+  @keyframes menu-in-above { from { opacity: 0; transform: translateY(2px); } }
   /* Focus sits on the list; the active row (plus its ring when using the keyboard) shows where it is. */
   .dropdown-menu:focus { outline: none; }
-  .dropdown-menu:focus-visible li.active { outline: 2px solid var(--text); outline-offset: -2px; }
+  .dropdown-menu:focus-visible li.active { outline: 2px solid var(--color-focus); outline-offset: -2px; }
   .dropdown-menu li { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 4px 0 10px;
-    border-radius: 6px; font-size: 14px; line-height: 1.4; cursor: pointer; transition: background-color var(--t); }
-  .dropdown-menu li .name { flex: 1; }
+    border-radius: var(--radius-option); font-size: var(--font-size-control); line-height: 1.4; cursor: pointer;
+    transition: background-color var(--transition-fast); }
+  .dropdown-menu li .name { flex: 1; min-width: 0; }
   .dropdown-menu li .check { flex: none; width: 16px; height: 16px; visibility: hidden; }
-  .dropdown-menu li[aria-selected="true"] { background: var(--selected); }
+  /* State order: selected < active (hover / keyboard) < selected + active < pressed; disabled never reacts. */
+  .dropdown-menu li[aria-selected="true"] { background: var(--color-surface-selected); }
   .dropdown-menu li[aria-selected="true"] .check { visibility: visible; }
-  .dropdown-menu li.active { background: var(--hover); }
-  .dropdown-menu li[aria-selected="true"].active { background: #303030; }
-  .dropdown-menu li:active { background: var(--pressed); }
-  /* Conditions: an asterisk at the end of each option. The hit area is larger than the glyph. */
-  .dropdown-menu li .info { flex: none; width: 32px; height: 32px; border-radius: 999px; display: inline-flex;
-    align-items: center; justify-content: center; color: var(--text-2); font-size: 16px; font-weight: 600; line-height: 1;
-    cursor: help; transition: background-color var(--t), color var(--t); }
-  .dropdown-menu li .info.open { color: var(--text); }
-  .dropdown-menu li .tip { display: none; } /* text source for aria-describedby; shown via #tooltip */
+  .dropdown-menu li.active { background: var(--color-surface-hover); }
+  .dropdown-menu li[aria-selected="true"].active { background: var(--color-surface-selected-hover); }
+  .dropdown-menu li:active { background: var(--color-surface-pressed); }
+  .dropdown-menu li[aria-disabled="true"] { color: var(--color-text-disabled); cursor: not-allowed; background: transparent; }
+  /* Conditions: an asterisk at the end of each option (pointer / touch affordance; keyboard users
+     get the same text when the option becomes active, screen readers via aria-describedby). */
+  .dropdown-menu li .info { flex: none; width: 32px; height: 32px; border-radius: var(--radius-pill); display: inline-flex;
+    align-items: center; justify-content: center; color: var(--color-text-secondary); font-size: 16px; font-weight: 600; line-height: 1;
+    cursor: help; transition: background-color var(--transition-fast), color var(--transition-fast); }
+  .dropdown-menu li .info.open { color: var(--color-text-primary); }
+  .descriptions { display: none; } /* text for aria-describedby and the tooltip */
 
   /* Shared tooltip: positioned by popup.ts, top placement first, flipped / shifted to stay in view */
-  .tooltip { position: fixed; z-index: 20; max-width: 240px; padding: 8px 10px; background: var(--elevated);
-    border: 1px solid var(--picker-border); border-radius: 8px; color: var(--text); font-size: 12px; line-height: 16px;
-    pointer-events: none; opacity: 0; transform: translateY(2px); transition: opacity var(--t), transform var(--t); }
+  .tooltip { position: fixed; z-index: 20; max-width: 240px; padding: 8px 10px; background: var(--color-surface-elevated);
+    border: 1px solid var(--color-picker-border); border-radius: var(--radius-tooltip); color: var(--color-text-primary);
+    font-size: var(--font-size-small); line-height: 16px; pointer-events: none; opacity: 0; transform: translateY(2px);
+    transition: opacity var(--transition-fast), transform var(--transition-fast); }
   .tooltip.bottom { transform: translateY(-2px); }
   .tooltip.show { opacity: 1; transform: none; }
   .tooltip[hidden] { display: none; }
 
-  @media (hover: hover) and (pointer: fine) {
-    .icon-button:hover { background: var(--hover); }
-    .dropdown-trigger:hover { background: #111111; border-color: var(--border-strong); }
-    .dropdown-menu li .info:hover { background: var(--border-strong); color: var(--text); }
-  }
-  .grow { flex: 1; min-width: 0; }
-  /* Ghost icon button (header) */
-  .icon-button { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
-    padding: 0; border: 0; border-radius: 999px; background: transparent; color: #e5e5e5; cursor: pointer;
-    transition: background-color var(--t); }
-  .icon-button:active { background: var(--pressed); }
-  .icon-button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
   /* Slider */
   .slider { padding: 8px 0 4px; }
   .slider-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-  .slider-label output { color: var(--text-2); font-variant-numeric: tabular-nums; }
-  .slider small { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; }
+  .slider-label output { color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+  .slider small { display: block; margin-top: 6px; color: var(--color-text-muted); font-size: var(--font-size-small); }
   .slider.disabled { opacity: .45; }
   input[type="range"] { appearance: none; display: block; width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer; }
   input[type="range"]:disabled { cursor: not-allowed; }
-  input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 999px;
-    background: linear-gradient(to right, #fff var(--fill, 50%), #333 var(--fill, 50%)); }
+  /* The track fill shows the value (functional, not decorative). */
+  input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: var(--radius-pill);
+    background: linear-gradient(to right, var(--color-text-primary) var(--fill, 50%), var(--color-border-control) var(--fill, 50%)); }
   input[type="range"]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%;
-    background: #fff; border: 0; transition: transform var(--t); }
+    background: var(--color-text-primary); border: 0; transition: background-color var(--transition-fast); }
   input[type="range"]:focus-visible { outline: none; }
-  input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid #fff; outline-offset: 3px; }
-  input[type="range"]:active::-webkit-slider-thumb { background: #d6d6d6; }
-  #settingsPage header h1 { font-size: 15px; }
-  footer { color: var(--muted); font-size: 11px; padding-top: 8px; }
-  section[hidden] { display: none; }
-  /* Scrolling still works (wheel, touch, keyboard); the bars are just not drawn. */
-  * { scrollbar-width: none; }
-  *::-webkit-scrollbar { display: none; }
-  .test-row { display: flex; align-items: center; gap: 12px; padding: 4px 0 8px; }
-  .test-row small { color: var(--muted); font-size: 12px; line-height: 16px; }
-  .button-secondary { min-height: 36px; padding: 0 14px; border: 1px solid #333; border-radius: 10px; background: #1a1a1a; color: #fff;
-    font: 600 13px/1.2 inherit; cursor: pointer; transition: background-color var(--t); }
-  .button-secondary:active { background: #303030; }
-  .button-secondary:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-  .button-secondary:disabled { opacity: .45; cursor: not-allowed; }
-  @media (hover: hover) and (pointer: fine) { .button-secondary:hover:not(:disabled) { background: #262626; } }
+  input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  input[type="range"]:active:not(:disabled)::-webkit-slider-thumb { background: var(--color-button-primary-pressed); }
 
-  @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
+  /* Pointer-only hover polish; keyboard and touch work without it. */
+  @media (hover: hover) and (pointer: fine) {
+    label.switch:hover { background: var(--color-surface-hover); }
+    label.switch:has(input:disabled):hover { background: transparent; }
+    .button-primary:hover { background: var(--color-button-primary-hover); }
+    .button-secondary:hover:not(:disabled) { background: var(--color-button-secondary-hover); }
+    .icon-button:hover { background: var(--color-surface-hover); }
+    .dropdown-trigger:hover:not(:disabled) { background: var(--color-trigger-hover-bg); border-color: var(--color-border-strong); }
+    .dropdown-menu li .info:hover { background: var(--color-border-strong); color: var(--color-text-primary); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    .tooltip, .tooltip.bottom { transform: none; }
+  }
 </style>
 </head>
 <body>
@@ -159,29 +224,36 @@
         <li role="option" id="opt-breakout" data-value="breakout" aria-selected="false" aria-describedby="tip-breakout">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">Volume Breakout</span>
-          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="tip-breakout">Close above the 20-bar high · volume ≥ 2.5× average · above EMA 50</span>
+          <span class="info" aria-hidden="true">*</span>
         </li>
         <li role="option" id="opt-quiet" data-value="quiet" aria-selected="false" aria-describedby="tip-quiet">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">Quiet Accumulation</span>
-          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="tip-quiet">≥ 40% below ATH · held support (2+ touches) · reversal candle · selling faded</span>
+          <span class="info" aria-hidden="true">*</span>
         </li>
         <li role="option" id="opt-dip" data-value="dip" aria-selected="false" aria-describedby="tip-dip">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">Deep Dip</span>
-          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="tip-dip">At a support (or no support below) · under EMA 9 / 21 / 200 · MACD &amp; signal below the histogram · RSI 30–60 · best on 15m</span>
+          <span class="info" aria-hidden="true">*</span>
         </li>
         <li role="option" id="opt-launch" data-value="launch" aria-selected="false" aria-describedby="tip-launch">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">New Launch</span>
-          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="tip-launch">Deep Dip rules at 5% per trade, for a pair's first week · best on 5m</span>
+          <span class="info" aria-hidden="true">*</span>
         </li>
         <li role="option" id="opt-range" data-value="range" aria-selected="false" aria-describedby="tip-range">
           <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="name">Range Swing</span>
-          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="tip-range">Deep Dip entry within 3% of the 7-day low · sell all at the 7-day high −3% · loses in backtest, for review</span>
+          <span class="info" aria-hidden="true">*</span>
         </li>
       </ul>
+      <div class="descriptions">
+        <span id="tip-breakout">Close above the 20-bar high · volume ≥ 2.5× average · above EMA 50</span>
+        <span id="tip-quiet">≥ 40% below ATH · held support (2+ touches) · reversal candle · selling faded</span>
+        <span id="tip-dip">At a support (or no support below) · under EMA 9 / 21 / 200 · MACD &amp; signal below the histogram · RSI 30–60 · best on 15m</span>
+        <span id="tip-launch">Deep Dip rules at 5% per trade, for a pair's first week · best on 5m</span>
+        <span id="tip-range">Deep Dip entry within 3% of the 7-day low · sell all at the 7-day high −3% · loses in backtest, for review</span>
+      </div>
     </div>
   </section>
   <main id="main"></main>

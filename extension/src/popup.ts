@@ -88,14 +88,21 @@ function tooltip() {
     el.style.top = "0px";
     const w = el.offsetWidth;
     const h = el.offsetHeight;
-    const below = r.top - gap - h < pad;
+    const vw = document.documentElement.clientWidth;
+    const vh = window.innerHeight;
+    // Top first; flip below when it doesn't fit above; clamp inside the popup either way.
+    const below = r.top - gap - h < pad && r.bottom + gap + h <= vh - pad;
     el.classList.toggle("bottom", below);
-    el.style.top = `${below ? r.bottom + gap : r.top - gap - h}px`;
-    el.style.left = `${Math.min(Math.max(pad, r.left + r.width / 2 - w / 2), document.documentElement.clientWidth - w - pad)}px`;
+    const top = below ? r.bottom + gap : r.top - gap - h;
+    el.style.top = `${Math.min(Math.max(pad, top), Math.max(pad, vh - h - pad))}px`;
+    el.style.left = `${Math.min(Math.max(pad, r.left + r.width / 2 - w / 2), Math.max(pad, vw - w - pad))}px`;
   };
+  // Hidden only after the fade-out finishes, unless it was shown again meanwhile.
+  let hideAfterFade: ReturnType<typeof setTimeout> | undefined;
   const show = (a: Element, text: string, delay: number) => {
     clearTimeout(timer);
     timer = setTimeout(() => {
+      clearTimeout(hideAfterFade);
       anchor?.classList.remove("open");
       anchor = a;
       a.classList.add("open");
@@ -111,7 +118,11 @@ function tooltip() {
       anchor?.classList.remove("open");
       anchor = null;
       el.classList.remove("show");
-      el.hidden = true;
+      const fade = parseFloat(getComputedStyle(el).transitionDuration) * 1000 || 0;
+      clearTimeout(hideAfterFade);
+      hideAfterFade = setTimeout(() => {
+        if (!el.classList.contains("show")) el.hidden = true;
+      }, fade);
     }, delay);
   };
   return { show, hide, isOpenOn: (a: Element) => anchor === a };
@@ -126,13 +137,24 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
   let active = 0;
   const tip = tooltip();
   const infoOf = (o: HTMLElement) => o.querySelector<HTMLElement>(".info")!;
-  const tipText = (o: HTMLElement) => o.querySelector(".tip")!.textContent ?? "";
+  // The option's description (also its aria-describedby), kept outside the listbox.
+  const tipText = (o: HTMLElement) => document.getElementById(o.getAttribute("aria-describedby") ?? "")?.textContent ?? "";
 
   const select = (value: string, notify: boolean) => {
     for (const o of options) o.setAttribute("aria-selected", String(o.dataset.value === value));
     const chosen = options.find((o) => o.dataset.value === value) ?? options[0]!;
     $(`${id}Value`).textContent = chosen.querySelector(".name")!.textContent;
     if (notify) onChange(chosen.dataset.value!);
+  };
+  // Options with aria-disabled="true" are skipped by the keyboard and can't be picked.
+  const enabled = (o: HTMLElement) => o.getAttribute("aria-disabled") !== "true";
+  /** The next enabled option from i in direction dir (wrapping), or i if none is enabled. */
+  const nextEnabled = (i: number, dir: 1 | -1) => {
+    for (let n = 0; n < options.length; n++) {
+      const k = (((i + dir * n) % options.length) + options.length) % options.length;
+      if (enabled(options[k]!)) return k;
+    }
+    return i;
   };
   const setActive = (i: number) => {
     active = (i + options.length) % options.length;
@@ -145,10 +167,25 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
     setActive(i);
     tip.show(infoOf(options[active]!), tipText(options[active]!), 0);
   };
+  /** Below the trigger by default; above it when there is more room there. Max height fits the space. */
+  const place = () => {
+    const r = trigger.getBoundingClientRect();
+    const gap = 4;
+    const pad = 8;
+    const below = window.innerHeight - r.bottom - gap - pad;
+    const above = r.top - gap - pad;
+    menu.classList.remove("above");
+    menu.style.maxHeight = "";
+    const natural = Math.min(menu.scrollHeight + 2, 320);
+    const flip = natural > below && above > below;
+    menu.classList.toggle("above", flip);
+    menu.style.maxHeight = `${Math.max(120, Math.min(320, flip ? above : below))}px`;
+  };
   const open = () => {
     menu.hidden = false;
+    place();
     trigger.setAttribute("aria-expanded", "true");
-    setActive(Math.max(0, options.findIndex((o) => o.getAttribute("aria-selected") === "true")));
+    setActive(nextEnabled(Math.max(0, options.findIndex((o) => o.getAttribute("aria-selected") === "true")), 1));
     menu.focus();
   };
   const close = (refocus = true) => {
@@ -168,17 +205,20 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
   menu.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveByKey(active + (e.key === "ArrowDown" ? 1 : -1));
+      const dir = e.key === "ArrowDown" ? 1 : -1;
+      setActiveByKey(nextEnabled(active + dir, dir));
     } else if (e.key === "Home" || e.key === "End") {
       e.preventDefault();
-      setActiveByKey(e.key === "Home" ? 0 : options.length - 1);
+      setActiveByKey(e.key === "Home" ? nextEnabled(0, 1) : nextEnabled(options.length - 1, -1));
     } else if (e.key.length === 1 && /\S/.test(e.key)) {
       // Type-to-select: jump to the next option starting with that letter.
-      const k = options.findIndex((o, n) => n > active && o.textContent!.trim().toLowerCase().startsWith(e.key.toLowerCase()));
-      const first = options.findIndex((o) => o.textContent!.trim().toLowerCase().startsWith(e.key.toLowerCase()));
+      const starts = (o: HTMLElement) => enabled(o) && o.querySelector(".name")!.textContent!.trim().toLowerCase().startsWith(e.key.toLowerCase());
+      const k = options.findIndex((o, n) => n > active && starts(o));
+      const first = options.findIndex(starts);
       if (k >= 0 || first >= 0) setActiveByKey(k >= 0 ? k : first);
     } else if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
+      if (!enabled(options[active]!)) return;
       select(options[active]!.dataset.value!, true);
       close();
     } else if (e.key === "Escape") {
@@ -200,13 +240,17 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
       if (tip.isOpenOn(info)) tip.hide(0);
       else tip.show(info, tipText(o), 0);
     });
-    o.addEventListener("mousemove", () => setActive(k));
+    o.addEventListener("mousemove", () => {
+      if (enabled(o)) setActive(k);
+    });
     o.addEventListener("click", () => {
+      if (!enabled(o)) return;
       select(o.dataset.value!, true);
       close();
     });
   });
-  document.addEventListener("mousedown", (e) => {
+  // pointerdown covers mouse, pen and touch.
+  document.addEventListener("pointerdown", (e) => {
     if (!menu.hidden && !(e.target as Element).closest(".dropdown")) close(false);
   });
   select(initial, false);
