@@ -432,6 +432,18 @@ function onChartBars(resolution: string, bars: ChartBar[], hasVolume: boolean): 
     close: b.close,
     volumeUsd: b.volume ?? feedVolume.get(b.time * 1000) ?? 0,
   }));
+  // The chart loads only a few days: put the feed's older history in front of its bars, in
+  // whichever price field matches the chart (USD or quote, price or market cap).
+  if (feed && candles.length) {
+    const first = candles[0]!;
+    const pick = (["usd", "quote"] as const)
+      .map((f) => toCandles(feed.bars, f))
+      .find((fc) => {
+        const at = fc.find((x) => x.time === first.time);
+        return at && Math.abs(at.close / first.close - 1) < 0.03;
+      });
+    if (pick) candles.unshift(...pick.filter((x) => x.time < first.time));
+  }
   const pair = location.pathname.split("/").filter(Boolean);
   const source: BarsSource = feed?.source ?? {
     dex: "",

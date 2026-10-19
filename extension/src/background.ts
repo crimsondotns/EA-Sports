@@ -1,12 +1,47 @@
 // Watches the bars requests the DEX Screener page makes (including ones from its Web Worker),
 // then re-fetches the same URL and hands the decoded bars to the tab's content script.
-import { decodeBars } from "../../src/dexscreener/bars.ts";
+import { decodeBars, type Bar } from "../../src/dexscreener/bars.ts";
 import { summaryKey, type BarsSource, type ToBackground, type ToContent } from "./messages.ts";
 
 // Served from io.dexscreener.com or feed.dexscreener.com. With mc=1 the USD fields are market cap.
 const BARS_URL = /^https:\/\/(?:io|feed)\.dexscreener\.com\/dex\/chart\/amm\/v\d+\/([^/]+)\/bars\/([^/]+)\/([^/?]+)/;
 
 const MIN_BARS = 999;
+
+// The chart only loads a few days, so strategies would see less history than the backtest (EMA
+// 200, 30-day supports, earlier trades still open). Page back to about 31 days plus warm-up,
+// at most HISTORY_PAGES extra requests per pair and timeframe, cached for HISTORY_TTL_MS.
+const HISTORY_PAGES = 4;
+const HISTORY_TTL_MS = 15 * 60_000;
+const PAGE_DELAY_MS = 1500;
+const history = new Map<string, { at: number; bars: Bar[] }>();
+
+async function olderBars(source: BarsSource, first: Bar): Promise<Bar[]> {
+  const key = `${source.chain}:${source.pairId.toLowerCase()}:${source.resolution}:${source.marketCap}`;
+  const hit = history.get(key);
+  if (hit && Date.now() - hit.at < HISTORY_TTL_MS) return hit.bars;
+  const need = Math.ceil((31 * 1440) / source.resolution) + 250;
+  const pages: Bar[][] = [];
+  let total = 0;
+  let before = first.blockNumberStart;
+  for (let k = 0; k < HISTORY_PAGES && total < need; k++) {
+    await new Promise((r) => setTimeout(r, PAGE_DELAY_MS));
+    const u = new URL(source.url);
+    u.searchParams.set("bbn", String(before));
+    u.searchParams.set("cb", "999");
+    const res = await fetch(u, { cache: "no-store" });
+    if (!res.ok) break;
+    const page = decodeBars(new Uint8Array(await res.arrayBuffer()));
+    if (!page.length) break;
+    pages.unshift(page);
+    total += page.length;
+    if (page.length < 999) break;
+    before = page[0]!.blockNumberStart;
+  }
+  const bars = pages.flat();
+  history.set(key, { at: Date.now(), bars });
+  return bars;
+}
 
 // The MV3 service worker is stopped when idle, so the latest source per pair lives in session storage.
 const storageKey = (chain: string, pairId: string) => `src:${chain}:${pairId.toLowerCase()}`;
@@ -35,7 +70,11 @@ async function pushBars(tabId: number, source: BarsSource): Promise<void> {
   try {
     const res = await fetch(source.url, { cache: "no-store" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    msg = { type: "bars", source, bars: decodeBars(new Uint8Array(await res.arrayBuffer())) };
+    const latest = decodeBars(new Uint8Array(await res.arrayBuffer()));
+    const older = latest.length ? await olderBars(source, latest[0]!).catch(() => []) : [];
+    const seen = new Set<number>();
+    const bars = [...older, ...latest].filter((b) => !seen.has(b.timestamp) && seen.add(b.timestamp));
+    msg = { type: "bars", source, bars };
   } catch (e) {
     msg = { type: "error", message: `Fetching bars failed: ${(e as Error).message}` };
   }

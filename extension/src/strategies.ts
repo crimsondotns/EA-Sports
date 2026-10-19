@@ -49,7 +49,10 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
         srLookback: perDay * 30,
         maxHoldBars: perDay * 30,
         rsiLowBars: perDay,
-        ...(signalExit ? { exitMode: "signals" as const, exitSignals: [], hhExit: hourly ? ("close" as const) : ("swing" as const), hhPivot: 2 } : {}),
+        // The stop stays at -20% after the first sell (moving it to the entry: 15m median +83% vs
+        // +138%, 1h +23% vs +47% across 41 pairs). 1h also counts a support broken by up to 10%.
+        ...(signalExit ? { exitMode: "signals" as const, exitSignals: [], hhExit: hourly ? ("close" as const) : ("swing" as const), hhPivot: 2, breakevenAt: null } : {}),
+        ...(hourly && !launch ? { supportBreak: 0.1 } : {}),
       }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
