@@ -7,6 +7,8 @@ export interface Position {
   highestClose: number;
   /** True once the free ride has sold the cost back; the rest is house money. */
   costRecovered: boolean;
+  /** Partial sells taken so far (see `partialExit`). */
+  partialsSold: number;
 }
 
 export interface IndicatorSeries {
@@ -27,6 +29,12 @@ export interface PreparedStrategy {
   /** Called on the close of bar i while in a position; returns the stop for bar i + 1. */
   updateStop(i: number, pos: Position): number;
   shouldTimeExit(i: number, pos: Position): boolean;
+  /**
+   * Called on the close of bar i while in a position: the fraction of the original tokens to
+   * sell at the open of bar i + 1 (0 = none). Sells stop once only the `freeRideKeep` slice is
+   * left, which is then kept free like a cost-back bag.
+   */
+  partialExit?(i: number, pos: Position): number;
   /** Entry conditions on bar i, for display. */
   conditions?(i: number): { label: string; ok: boolean; detail: string }[];
   /**
@@ -149,6 +157,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     | (Position & { qty: number; cost: number; initialQty: number; realized: number; kept: number; costBack?: { time: number; price: number } })
     | null = null;
   let pendingEntry: number | null = null; // signal bar index
+  let pendingSell = 0; // fraction of the original tokens to sell at the next open
   let barsInMarket = 0;
   let freeQty = 0;
   // Each trade's free tokens, so the ladder can measure its multiple against that entry.
@@ -241,6 +250,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
         stop: s.initialStop(pendingEntry, entryPrice),
         highestClose: bar.open,
         costRecovered: false,
+        partialsSold: 0,
         qty,
         cost,
         initialQty: qty,
@@ -251,6 +261,31 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     pendingEntry = null;
 
     if (bags.length) sellLadder(bar);
+    if (pos && pendingSell > 0) {
+      // Partial exit: sell a slice of the original tokens, never into the kept free slice.
+      const p = pos;
+      const keep = p.initialQty * (cfg.freeRideKeep ?? 0);
+      const qty = Math.min(p.qty - keep, p.initialQty * pendingSell);
+      if (qty > 0) {
+        const proceeds = qty * bar.open * (1 - cfg.slippage) * (1 - cfg.feeRate);
+        cash += proceeds;
+        p.realized += proceeds;
+        p.qty -= qty;
+        p.partialsSold++;
+        if (!p.costRecovered && p.realized >= p.cost) {
+          p.costRecovered = true;
+          p.costBack = { time: bar.time, price: bar.open * (1 - cfg.slippage) };
+        }
+      }
+      if (p.qty <= keep * (1 + 1e-9)) {
+        // Only the free slice is left: hand it to the free bags and close the trade.
+        keepFree(p.entryPrice, p.qty);
+        p.kept = p.qty;
+        p.qty = 0;
+        close(i, bar.open, "free");
+      }
+    }
+    pendingSell = 0;
     stops.push(pos ? pos.stop : null);
     if (pos) {
       barsInMarket++;
@@ -268,6 +303,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
         pos.highestClose = Math.max(pos.highestClose, bar.close);
         pos.stop = s.updateStop(i, pos);
         if (s.shouldTimeExit(i, pos)) close(i, bar.close, "time");
+        else if (s.partialExit && i < candles.length - 1) pendingSell = s.partialExit(i, pos);
       }
     } else if (i < candles.length - 1 && s.shouldEnter(i)) {
       pendingEntry = i;

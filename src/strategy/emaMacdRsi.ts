@@ -21,7 +21,7 @@
 //   - time stop once `maxHoldBars` bars of time have passed (measured by the clock, not the bar
 //     count: quiet pairs skip bars) if the cost never came back
 
-import { barInterval, clusterZones, ema, macd, pivotLows, rsi, type Candle, type Zone } from "../indicators.ts";
+import { barInterval, clusterZones, ema, macd, pivotLows, rsi, sma, type Candle, type Zone } from "../indicators.ts";
 import type { Strategy } from "../backtest/engine.ts";
 
 export interface DeepDipParams {
@@ -57,6 +57,23 @@ export interface DeepDipParams {
   reentryBars: number;
   divergenceRsi: number;
   stopPct: number;
+  /**
+   * "costback": sell the cost back at the engine's `freeRideAt`, trail the rest (default).
+   * "signals": sell `sellPct` of the original tokens each time `exitNeed` of `exitSignals` fire
+   * on a bar closing in profit; after the first sell the stop moves to the entry price.
+   */
+  exitMode: "costback" | "signals";
+  sellPct: number;
+  exitSignals: ("volume" | "rsi" | "macd")[];
+  exitNeed: number;
+  /** "volume": bar volume at least this many times its 20-bar average. */
+  exitVolMult: number;
+  /** "rsi": RSI reached this within the last `exitRsiBars` bars and is now lower than the bar before. */
+  exitRsiHigh: number;
+  exitRsiBars: number;
+  /** "macd": MACD line above zero and at least this fraction below its peak of the last `exitMacdBars` bars. */
+  exitMacdDrop: number;
+  exitMacdBars: number;
   trailPct: number;
   maxHoldBars: number;
 }
@@ -79,6 +96,15 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   reentryBars: 2880,
   divergenceRsi: 3,
   stopPct: 0.2,
+  exitMode: "costback",
+  sellPct: 0.1,
+  exitSignals: ["volume", "rsi", "macd"],
+  exitNeed: 3,
+  exitVolMult: 2,
+  exitRsiHigh: 70,
+  exitRsiBars: 5,
+  exitMacdDrop: 1 / 3,
+  exitMacdBars: 20,
   trailPct: 0.35,
   maxHoldBars: 2880,
 };
@@ -105,6 +131,25 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       const lows = pivotLows(c, p.pivotBars);
       // MACD's signal line is the slowest series that must exist; EMA 200 joins when it can.
       const holdMs = p.maxHoldBars * barInterval(c);
+      const volAvg = sma(c.map((x) => x.volumeUsd), 20);
+      /** Exit signals firing on the close of bar i (for "signals" mode). */
+      const exitFired = (i: number) => {
+        let n = 0;
+        for (const sig of p.exitSignals) {
+          if (sig === "volume" && c[i]!.volumeUsd >= p.exitVolMult * volAvg[i]!) n++;
+          if (sig === "rsi") {
+            let hi = -Infinity;
+            for (let k = Math.max(0, i - p.exitRsiBars); k <= i; k++) hi = Math.max(hi, r[k]!);
+            if (hi >= p.exitRsiHigh && r[i]! < r[i - 1]!) n++;
+          }
+          if (sig === "macd") {
+            let peak = -Infinity;
+            for (let k = Math.max(0, i - p.exitMacdBars); k <= i; k++) peak = Math.max(peak, m.line[k]!);
+            if (peak > 0 && m.line[i]! > 0 && m.line[i]! <= peak * (1 - p.exitMacdDrop)) n++;
+          }
+        }
+        return n >= p.exitNeed;
+      };
       const warmup = p.requireSlowEma ? p.emaSlow + 1 : Math.max(p.emaMid, 26 + 9) + 1;
       /** The lowest of the EMAs that exist at bar i: the price has to be under it. */
       const emaFloor = (i: number) => Math.min(e1[i]!, e2[i]!, Number.isFinite(e3[i]!) ? e3[i]! : Infinity);
@@ -201,11 +246,17 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           return entryPrice * (1 - p.stopPct);
         },
         updateStop(_i, pos) {
+          if (p.exitMode === "signals") return pos.partialsSold > 0 ? Math.max(pos.stop, pos.entryPrice) : pos.stop;
           if (!pos.costRecovered) return pos.stop;
           return Math.max(pos.stop, pos.entryPrice, pos.highestClose * (1 - p.trailPct));
         },
         shouldTimeExit(i, pos) {
+          if (p.exitMode === "signals" && pos.partialsSold > 0) return false;
           return !pos.costRecovered && c[i]!.time - c[pos.entryIndex]!.time >= holdMs;
+        },
+        partialExit(i, pos) {
+          if (p.exitMode !== "signals" || c[i]!.close <= pos.entryPrice) return 0;
+          return exitFired(i) ? p.sellPct : 0;
         },
         conditions(i) {
           return i >= warmup ? checks(i) : [];
