@@ -124,6 +124,8 @@
   input[type="range"]:active::-webkit-slider-thumb { background: #d6d6d6; }
   #settingsPage header h1 { font-size: 15px; }
   footer { color: var(--muted); font-size: 11px; padding-top: 8px; }
+  section[hidden] { display: none; }
+  .hint { display: block; margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 16px; }
 
   @media (prefers-reduced-motion: reduce) { * { transition-duration: .01ms !important; } }
 </style>
@@ -171,6 +173,59 @@
         </li>
       </ul>
     </div>
+  </section>
+  <section id="variantSection">
+    <h2 id="variantLabel">Deep Dip variant</h2>
+    <div class="dropdown">
+      <button type="button" class="dropdown-trigger" id="variantTrigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="variantMenu"
+        aria-labelledby="variantLabel variantValue">
+        <span id="variantValue">#8 + Range low always</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <ul class="dropdown-menu" id="variantMenu" role="listbox" aria-labelledby="variantLabel" tabindex="-1" hidden>
+        <li role="option" id="vopt-1" data-value="1" aria-selected="false" aria-describedby="vtip-1">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">#1 Cost back 3x</span>
+          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="vtip-1">Sell enough to get the cost back at 3x · trail the rest 35%</span>
+        </li>
+        <li role="option" id="vopt-2" data-value="2" aria-selected="false" aria-describedby="vtip-2">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">#2 Climax turn</span>
+          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="vtip-2">Sell 10% when a climax bar (volume ≥ 2.5×, RSI ≥ 70) is followed by RSI and MACD turning down</span>
+        </li>
+        <li role="option" id="vopt-3" data-value="3" aria-selected="false" aria-describedby="vtip-3">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">#3 RSI ≥ 80</span>
+          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="vtip-3">Sell 10% on each close with RSI ≥ 80</span>
+        </li>
+        <li role="option" id="vopt-4" data-value="4" aria-selected="false" aria-describedby="vtip-4">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">#4 Higher high, stop to entry</span>
+          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="vtip-4">Sell 10% at each swing higher high (15m) or new highest close (1h) · stop moves to the entry after the first sell</span>
+        </li>
+        <li role="option" id="vopt-5" data-value="5" aria-selected="false" aria-describedby="vtip-5">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">#5 Higher high, stop −20%</span>
+          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="vtip-5">#4 with the stop kept at −20% · most profit across 15 coins</span>
+        </li>
+        <li role="option" id="vopt-6" data-value="6" aria-selected="false" aria-describedby="vtip-6">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">#6 + RSI swing low</span>
+          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="vtip-6">#5 · buy only after RSI makes a swing low and turns up</span>
+        </li>
+        <li role="option" id="vopt-7" data-value="7" aria-selected="false" aria-describedby="vtip-7">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">#7 + Range low, uptrend exempt</span>
+          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="vtip-7">#6 · unless EMA 200 is rising, buy within 3–5% of the 7-day low · best overall on 1h</span>
+        </li>
+        <li role="option" id="vopt-8" data-value="8" aria-selected="false" aria-describedby="vtip-8">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">#8 + Range low always</span>
+          <span class="info" aria-hidden="true">*</span><span class="tip" role="tooltip" id="vtip-8">#6 · always buy within 3% of the 7-day low · smallest losses, misses uptrends</span>
+        </li>
+      </ul>
+    </div>
+    <small class="hint">Applies on 15m and 1h; other timeframes use cost back</small>
   </section>
   <main id="main"></main>
   </div>

@@ -34,7 +34,7 @@ export const STRATEGY_NAMES: Record<StrategyId, string> = {
   range: "Range Swing",
 };
 
-export function setupStrategy(id: StrategyId, resolutionMinutes: number): StrategySetup {
+export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant = 8): StrategySetup {
   if (id === "range") {
     // Trade the range: Deep Dip's entry, but always within 3% of the 7-day low, then sell the
     // whole position at a limit 3% under the 7-day high (at least +5%). Tested and losing:
@@ -69,32 +69,34 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
   if (id === "dip" || id === "launch") {
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
     const launch = id === "launch";
-    // 15m: sell 10% at each confirmed swing higher high (2 bars either side; $880 x 15 coins:
-    // +$3,355, 11/15). 1h: sell 10% on each new highest close since the entry (+$3,571, worst -$94;
-    // swing highs made only +$845 there).
     const hourly = resolutionMinutes === 60;
-    const signalExit = !launch && (resolutionMinutes === 15 || resolutionMinutes === 60);
+    // On 15m and 1h Deep Dip runs one of the variants #1–#8 compared in docs/strategies.md
+    // (1h, 41 pairs: #7 +42% median and 31/40 profitable; #5 the most $ over 15 coins; #8 the
+    // smallest losses). Other timeframes and New Launch use #1, cost back at 3x.
+    const v = !launch && (resolutionMinutes === 15 || resolutionMinutes === 60) ? variant : 1;
+    const signalExit = v >= 2;
+    const exit =
+      v === 2 ? { exitSignals: ["climaxTurn" as const], exitNeed: 1 }
+      : v === 3 ? { exitSignals: ["rsiOver" as const], exitNeed: 1, exitRsiOver: 80 }
+      : { exitSignals: [], hhExit: hourly ? ("close" as const) : ("swing" as const), hhPivot: 2 };
+    const rangeLow = v === 7 ? { rangeLowBars: perDay * 7, rangeLowTol: hourly ? 0.03 : 0.05, trendBars: hourly ? perDay : perDay * 3 }
+      : v === 8 ? { rangeLowBars: perDay * 7, rangeLowTol: 0.03, trendBars: 0 }
+      : {};
+    const exitNote =
+      v === 2 ? "sell 10% at each climax turn"
+      : v === 3 ? "sell 10% on each close with RSI ≥ 80"
+      : `sell 10% ${hourly ? "on each new highest close" : "at each swing higher high"}${v === 4 ? " · stop to entry after the first sell" : ""}`;
     return {
       id,
-      name: STRATEGY_NAMES[id],
-      // Deep Dip on 15m and 1h sells 10% at each swing higher high (15m) or new highest close (1h); 4h and up keep
-      // the cost-back exit. New Launch keeps cost back too (untested with these exits).
+      name: v === 1 || launch ? STRATEGY_NAMES[id] : `${STRATEGY_NAMES[id]} #${v}`,
       strategy: deepDip({
         srLookback: perDay * 30,
         maxHoldBars: perDay * 30,
         rsiLowBars: perDay,
-        // The stop stays at -20% after the first sell (moving it to the entry: 15m median +83% vs
-        // +138%, 1h +23% vs +47% across 41 pairs). 1h also counts a support broken by up to 10%.
-        ...(signalExit ? { exitMode: "signals" as const, exitSignals: [], hhExit: hourly ? ("close" as const) : ("swing" as const), hhPivot: 2, breakevenAt: null } : {}),
-        ...(hourly && !launch ? { supportBreak: 0.1 } : {}),
-        // Wait for an RSI swing low (under the 2 bars either side, within the last 6 bars) and
-        // RSI back above it, instead of buying while RSI is still falling. 41 pairs: 15m median
-        // +121% vs +138%, 1h +59% and 32/40 profitable vs +62% and 30/40.
-        ...(signalExit ? { rsiSwing: 2, rsiSwingWithin: 6 } : {}),
-        // Big picture: only buy within 3% of the lowest low of the last 7 days, in any trend (the
-        // user's RANGE LOW). 41 pairs: 15m median +8.6% (29/41) vs +96.6% when uptrends are exempt,
-        // worst $880 coin -$33 vs -$122; 1h +6.0% (21/40) vs +52.6%.
-        ...(signalExit ? { rangeLowBars: perDay * 7, rangeLowTol: 0.03, trendBars: 0 } : {}),
+        ...(signalExit ? { exitMode: "signals" as const, ...exit } : {}),
+        ...(v >= 5 ? { breakevenAt: null } : {}),
+        ...(v >= 6 ? { rsiSwing: 2, rsiSwingWithin: 6 } : {}),
+        ...rangeLow,
       }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
@@ -109,11 +111,11 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       },
       // EMA 200 is skipped until it exists, so MACD (26 + 9 bars) sets the minimum.
       minBars: 37,
-      shortLabels: signalExit ? ["Under EMAs", "MACD turn", "RSI", "Range low", "RSI swing low", "Support"] : ["Under EMAs", "MACD turn", "RSI", "Support"],
+      shortLabels: ["Under EMAs", "MACD turn", "RSI", ...(v >= 7 ? ["Range low"] : []), ...(v >= 6 ? ["RSI swing low"] : []), "Support"],
       note: launch
         ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
         : signalExit
-          ? `10% per trade · sell 10% ${hourly ? "on each new highest close" : "at each swing higher high"} · keep 10% free, sold at 10x/30x/100x`
+          ? `10% per trade · ${exitNote} · keep 10% free, sold at 10x/30x/100x`
           : `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x · best on 15m`,
       studies: [
         emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),

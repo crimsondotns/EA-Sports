@@ -57,9 +57,11 @@ export interface Settings {
   showIndicators: boolean;
   /** Background opacity of the chart table, 0.2–1. */
   tableOpacity: number;
+  /** Deep Dip variant on 15m and 1h, #1–#8 in docs/strategies.md. */
+  dipVariant: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true, showIndicators: true, tableOpacity: 0.6 };
+export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true, showIndicators: true, tableOpacity: 0.6, dipVariant: 8 };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 // content <-> background (chrome.runtime messaging)

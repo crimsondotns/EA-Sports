@@ -118,9 +118,10 @@ function tooltip() {
 }
 
 /** Listbox dropdown: click or Enter/Space/↓ opens it, ↑↓ move, Enter selects, Esc/Tab/outside click close. */
-function strategyDropdown(initial: Settings["strategy"], onChange: (value: Settings["strategy"]) => void): void {
-  const trigger = $("strategyTrigger") as HTMLButtonElement;
-  const menu = $("strategyMenu");
+/** A listbox picker built from `${id}Trigger`, `${id}Menu` and `${id}Value` in popup.html. */
+function dropdown(id: string, initial: string, onChange: (value: string) => void): void {
+  const trigger = $(`${id}Trigger`) as HTMLButtonElement;
+  const menu = $(`${id}Menu`);
   const options = [...menu.querySelectorAll<HTMLLIElement>('[role="option"]')];
   let active = 0;
   const tip = tooltip();
@@ -130,8 +131,8 @@ function strategyDropdown(initial: Settings["strategy"], onChange: (value: Setti
   const select = (value: string, notify: boolean) => {
     for (const o of options) o.setAttribute("aria-selected", String(o.dataset.value === value));
     const chosen = options.find((o) => o.dataset.value === value) ?? options[0]!;
-    $("strategyValue").textContent = chosen.querySelector(".name")!.textContent;
-    if (notify) onChange(chosen.dataset.value as Settings["strategy"]);
+    $(`${id}Value`).textContent = chosen.querySelector(".name")!.textContent;
+    if (notify) onChange(chosen.dataset.value!);
   };
   const setActive = (i: number) => {
     active = (i + options.length) % options.length;
@@ -228,7 +229,14 @@ async function main(): Promise<void> {
     input.checked = settings[name];
     input.addEventListener("change", () => void chrome.storage.local.set({ [name]: input.checked }));
   }
-  strategyDropdown(settings.strategy, (value) => void chrome.storage.local.set({ strategy: value }));
+  // Deep Dip's variants (#1–#8 in docs/strategies.md) only apply to Deep Dip.
+  const showVariant = (strategy: string) => ($("variantSection").hidden = strategy !== "dip");
+  dropdown("strategy", settings.strategy, (value) => {
+    showVariant(value);
+    void chrome.storage.local.set({ strategy: value });
+  });
+  showVariant(settings.strategy);
+  dropdown("variant", String(settings.dipVariant), (value) => void chrome.storage.local.set({ dipVariant: Number(value) }));
 
   // Table opacity: 20–100% in 5% steps; greyed out while the table is hidden.
   const opacity = $("tableOpacity") as HTMLInputElement;
@@ -257,7 +265,7 @@ async function main(): Promise<void> {
   $("openSettings").addEventListener("click", () => showPage(true));
   $("closeSettings").addEventListener("click", () => showPage(false));
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !$("settingsPage").hidden && $("strategyMenu").hidden) showPage(false);
+    if (e.key === "Escape" && !$("settingsPage").hidden && $("strategyMenu").hidden && $("variantMenu").hidden) showPage(false);
   });
 }
 

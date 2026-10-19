@@ -375,7 +375,7 @@ function notEnoughBars(setup: StrategySetup, resolution: number, candles: Candle
   const ageDays = candles.length ? (Date.now() - candles[0]!.time) / 86_400_000 : 0;
   // The chart loads roughly the same number of bars on any timeframe (so larger timeframes
   // reach further back): suggest the smallest one that needs no more bars than are loaded now.
-  const fits = TIMEFRAMES.filter((tf) => tf > resolution).find((tf) => setupStrategy(setup.id, tf).minBars <= Math.max(candles.length, 300));
+  const fits = TIMEFRAMES.filter((tf) => tf > resolution).find((tf) => setupStrategy(setup.id, tf, settings.dipVariant).minBars <= Math.max(candles.length, 300));
   if (fits) return `Not enough bars on ${resLabel(resolution)} for ${setup.name}. Switch the chart to ${resLabel(fits)}.`;
   // Already on a large timeframe: the loaded history is the pair's real age.
   if (ageDays < needDays) {
@@ -388,7 +388,7 @@ function analyze(source: BarsSource, all: Candle[]): void {
   // An empty export just means the chart is still loading.
   if (all.length === 0) return;
   lastInput = { source, candles: all };
-  const setup = setupStrategy(settings.strategy, source.resolution);
+  const setup = setupStrategy(settings.strategy, source.resolution, settings.dipVariant);
   const barMs = source.resolution * 60_000;
   // Drop the still-forming bar: signals are only valid on closed bars. Start from a fixed point
   // (midnight UTC, ~31 days plus warm-up back): trades are path dependent, so starting wherever
@@ -502,7 +502,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const prev = settings;
   settings = { ...settings, ...Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.newValue])) } as Settings;
   positionTable();
-  if (prev.strategy !== settings.strategy && lastInput) {
+  if ((prev.strategy !== settings.strategy || prev.dipVariant !== settings.dipVariant) && lastInput) {
     last = null;
     analyze(lastInput.source, lastInput.candles);
   } else if (prev.drawMarkers !== settings.drawMarkers || prev.showIndicators !== settings.showIndicators) drawOnTradingView();
