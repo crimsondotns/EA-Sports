@@ -64,7 +64,7 @@ export interface DeepDipParams {
    */
   exitMode: "costback" | "signals";
   sellPct: number;
-  exitSignals: ("volume" | "rsi" | "macd" | "climax" | "climaxTurn")[];
+  exitSignals: ("volume" | "rsi" | "macd" | "climax" | "climaxTurn" | "rsiOver")[];
   exitNeed: number;
   /** "volume": bar volume at least this many times its 20-bar average. */
   exitVolMult: number;
@@ -92,6 +92,10 @@ export interface DeepDipParams {
   limitStretch: number;
   limitMinGain: number;
   limitRsi: number;
+  /** "rsiOver": RSI closed at or above this. `rsiLimit` > 0: also a resting limit sell at the
+   *  price that would lift RSI(14) to `rsiLimit` during the next bar. */
+  exitRsiOver: number;
+  rsiLimit: number;
   trailPct: number;
   maxHoldBars: number;
 }
@@ -129,6 +133,8 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   limitStretch: 0,
   limitMinGain: 0.3,
   limitRsi: 0,
+  exitRsiOver: 80,
+  rsiLimit: 0,
   trailPct: 0.35,
   maxHoldBars: 2880,
 };
@@ -156,6 +162,20 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       // MACD's signal line is the slowest series that must exist; EMA 200 joins when it can.
       const holdMs = p.maxHoldBars * barInterval(c);
       const volAvg = sma(c.map((x) => x.volumeUsd), 20);
+      // Wilder averages behind RSI(14), to solve for the price that would lift RSI to a level.
+      const avgUp: number[] = [], avgDown: number[] = [];
+      for (let i = 0, g = 0, l = 0; i < close.length; i++) {
+        const d = i ? close[i]! - close[i - 1]! : 0;
+        if (i <= 14) { g += Math.max(d, 0) / 14; l += Math.max(-d, 0) / 14; }
+        else { g = (g * 13 + Math.max(d, 0)) / 14; l = (l * 13 + Math.max(-d, 0)) / 14; }
+        avgUp.push(g); avgDown.push(l);
+      }
+      /** Price at which bar i + 1 would close with RSI = level (rising from close i). */
+      const rsiPrice = (i: number, level: number) => {
+        const rs = level / (100 - level);
+        const d = rs * avgDown[i]! * 13 - avgUp[i]! * 13;
+        return close[i]! + Math.max(d, 0);
+      };
       const climax = (i: number) =>
         c[i]!.volumeUsd >= p.climaxVol * volAvg[i]! && r[i]! >= p.climaxRsi && close[i]! >= e2[i]! * (1 + p.climaxStretch);
       /** Exit signals firing on the close of bar i (for "signals" mode). */
@@ -169,6 +189,7 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
             if (hi >= p.exitRsiHigh && r[i]! < r[i - 1]!) n++;
           }
           if (sig === "climax" && climax(i)) n++;
+          if (sig === "rsiOver" && r[i]! >= p.exitRsiOver) n++;
           if (sig === "climaxTurn" && climax(i - 1) && r[i]! < r[i - 1]! && m.hist[i]! < m.hist[i - 1]!) n++;
           if (sig === "macd") {
             let peak = -Infinity;
@@ -283,7 +304,9 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           return !pos.costRecovered && c[i]!.time - c[pos.entryIndex]!.time >= holdMs;
         },
         limitSell(i, pos) {
-          if (p.exitMode !== "signals" || p.limitStretch <= 0 || r[i]! < p.limitRsi) return null;
+          if (p.exitMode !== "signals") return null;
+          if (p.rsiLimit > 0) return { price: Math.max(rsiPrice(i, p.rsiLimit), pos.entryPrice * (1 + p.limitMinGain)), fraction: p.sellPct };
+          if (p.limitStretch <= 0 || r[i]! < p.limitRsi) return null;
           return { price: Math.max(e2[i]! * (1 + p.limitStretch), pos.entryPrice * (1 + p.limitMinGain)), fraction: p.sellPct };
         },
         partialExit(i, pos) {
