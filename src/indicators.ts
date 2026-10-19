@@ -168,3 +168,16 @@ export function macd(values: number[], fast = 12, slow = 26, signal = 9): { line
   ema(line.slice(start), signal).forEach((v, k) => (sig[start + k] = v));
   return { line, signal: sig, hist: line.map((v, i) => v - sig[i]!) };
 }
+
+/**
+ * The chart's bar length in ms: the smallest gap between bars. DEX Screener skips bars with no
+ * trades, so counting bars undercounts time on quiet pairs; use this to measure time instead.
+ */
+export function barInterval(c: Candle[]): number {
+  let min = Infinity;
+  for (let i = 1; i < c.length; i++) {
+    const d = c[i]!.time - c[i - 1]!.time;
+    if (d > 0 && d < min) min = d;
+  }
+  return Number.isFinite(min) ? min : 60_000;
+}

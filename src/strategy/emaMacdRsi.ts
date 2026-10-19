@@ -18,9 +18,10 @@
 //     3,544 trades vs 1,523, worst pair −60% vs −16%)
 //   - pair with the engine's `freeRideAt` / `freeRideKeep` for the cost back and free tokens
 //   - once the cost is back, the tokens still traded trail `trailPct` below the highest close
-//   - time stop after `maxHoldBars` if the cost never came back
+//   - time stop once `maxHoldBars` bars of time have passed (measured by the clock, not the bar
+//     count: quiet pairs skip bars) if the cost never came back
 
-import { clusterZones, ema, macd, pivotLows, rsi, type Candle, type Zone } from "../indicators.ts";
+import { barInterval, clusterZones, ema, macd, pivotLows, rsi, type Candle, type Zone } from "../indicators.ts";
 import type { Strategy } from "../backtest/engine.ts";
 
 export interface DeepDipParams {
@@ -103,6 +104,7 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       const r = rsi(close);
       const lows = pivotLows(c, p.pivotBars);
       // MACD's signal line is the slowest series that must exist; EMA 200 joins when it can.
+      const holdMs = p.maxHoldBars * barInterval(c);
       const warmup = p.requireSlowEma ? p.emaSlow + 1 : Math.max(p.emaMid, 26 + 9) + 1;
       /** The lowest of the EMAs that exist at bar i: the price has to be under it. */
       const emaFloor = (i: number) => Math.min(e1[i]!, e2[i]!, Number.isFinite(e3[i]!) ? e3[i]! : Infinity);
@@ -203,7 +205,7 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           return Math.max(pos.stop, pos.entryPrice, pos.highestClose * (1 - p.trailPct));
         },
         shouldTimeExit(i, pos) {
-          return !pos.costRecovered && i - pos.entryIndex >= p.maxHoldBars;
+          return !pos.costRecovered && c[i]!.time - c[pos.entryIndex]!.time >= holdMs;
         },
         conditions(i) {
           return i >= warmup ? checks(i) : [];

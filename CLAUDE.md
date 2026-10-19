@@ -37,9 +37,9 @@ Node 24 runs the `.ts` files directly (type stripping), so code must use erasabl
 
 ## Reporting strategy work
 
-- **Every time a strategy change or strategy test is finished, explain the confirm point** in the reply: the exact bar on which the entry is confirmed, which conditions must all be true on that bar's close (and any that may already have happened earlier, such as the support test), when the order fills (the next bar's open), and where the stop, cost back and exits sit. Use a concrete example (prices or a chart moment) when one is available.
+- **Every time a strategy change or strategy test is finished, explain the confirm points** for both entry and exit in the reply: the exact bar on which the entry is confirmed, which conditions must all be true on that bar's close (and any that may already have happened earlier, such as the support test), when the order fills (the next bar's open), and where the stop, cost back and exits sit. Use a concrete example (prices or a chart moment) when one is available.
 - Say which rules are on in the shipped preset and which were only tested.
-- **When a strategy's rules, sizing, exits or preset defaults change, update `docs/strategies.md` in the same commit**: the conditions, the trade-management table, the backtest line, the confirm point and its example. Keep its format.
+- **When a strategy's rules, sizing, exits or preset defaults change, update `docs/strategies.md` in the same commit**: the conditions, the trade-management table, the exit rules (when each exit triggers and at what price), the backtest line, the entry and exit confirm points and their examples. Keep its format.
 
 ## Git workflow
 

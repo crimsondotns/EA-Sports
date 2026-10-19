@@ -13,9 +13,9 @@
 //   - stop just under the support zone (`stopAtr` x ATR below its low)
 //   - pair with the engine's `freeRideAt` / `freeRideKeep` for the cost back and free tokens
 //   - once the cost is back, the tokens still traded trail `trailPct` below the highest close
-//   - time stop after `maxHoldBars` if the cost never came back
+//   - time stop once `maxHoldBars` bars of time have passed (by the clock) if the cost never came back
 
-import { atr, clusterZones, pivotHighs, pivotLows, sma, type Candle, type Pivot, type Zone } from "../indicators.ts";
+import { atr, barInterval, clusterZones, pivotHighs, pivotLows, sma, type Candle, type Pivot, type Zone } from "../indicators.ts";
 import type { Strategy } from "../backtest/engine.ts";
 
 export interface QuietAccumulationParams {
@@ -70,6 +70,7 @@ export function quietAccumulation(params: Partial<QuietAccumulationParams> = {})
       for (let i = 0, m = -Infinity; i < c.length; i++) ath.push((m = Math.max(m, c[i]!.high)));
       const lows = pivotLows(c, p.pivotBars);
       const highs = pivotHighs(c, p.pivotBars);
+      const holdMs = p.maxHoldBars * barInterval(c);
       const warmup = Math.max(p.volSlow, p.atrPeriod, p.pivotBars * 4);
 
       // Zones known at the close of bar i: pivots confirmed by then, within the lookback.
@@ -132,7 +133,7 @@ export function quietAccumulation(params: Partial<QuietAccumulationParams> = {})
         },
         shouldTimeExit(i, pos) {
           // House money can run as long as the trail allows.
-          return !pos.costRecovered && i - pos.entryIndex >= p.maxHoldBars;
+          return !pos.costRecovered && c[i]!.time - c[pos.entryIndex]!.time >= holdMs;
         },
         conditions(i) {
           return i >= warmup ? checks(i) : [];
