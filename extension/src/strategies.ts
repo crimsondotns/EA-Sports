@@ -36,17 +36,21 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
     const launch = id === "launch";
     const climaxExit = !launch && resolutionMinutes === 15;
+    // On 1h, a resting limit at the price that would lift RSI to 80 (median +37.6% vs +22.3%).
+    const rsiExit = !launch && resolutionMinutes === 60;
+    const signalExit = climaxExit || rsiExit;
     return {
       id,
       name: STRATEGY_NAMES[id],
       // Deep Dip on 15m sells 10% at each climax turn (15m median +72% vs +37.8% for the cost-back
-      // exit across 41 pairs, same drawdown); other timeframes keep the cost-back exit, which the
-      // climax exit didn't beat on 1h. New Launch keeps cost back too (untested with it).
+      // exit across 41 pairs, same drawdown); on 1h it sells 10% at an RSI-80 limit; 4h and up keep
+      // the cost-back exit. New Launch keeps cost back too (untested with these exits).
       strategy: deepDip({
         srLookback: perDay * 30,
         maxHoldBars: perDay * 30,
         rsiLowBars: perDay,
         ...(climaxExit ? { exitMode: "signals" as const, exitSignals: ["climaxTurn" as const], exitNeed: 1 } : {}),
+        ...(rsiExit ? { exitMode: "signals" as const, exitSignals: [], rsiLimit: 80 } : {}),
       }),
       // Same sizing as Quiet; across 40 pairs this did best on 15m (30 of 40 profitable). The
       // ladder cut the worst drawdown from 99% to 54% there.
@@ -55,7 +59,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
       config: {
         ...DEFAULT_CONFIG,
         positionSize: launch ? 0.05 : 0.1,
-        freeRideAt: climaxExit ? undefined : 2,
+        freeRideAt: signalExit ? undefined : 2,
         freeRideKeep: 0.1,
         freeLadder: FREE_LADDER,
       },
@@ -66,6 +70,8 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number): Strate
         ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
         : climaxExit
           ? "10% per trade · sell 10% at each climax turn · keep 10% free, sold at 10x/30x/100x"
+          : rsiExit
+          ? "10% per trade · sell 10% when RSI reaches 80 (limit) · keep 10% free, sold at 10x/30x/100x"
           : `10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x · best on 15m`,
       studies: [
         emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),

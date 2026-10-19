@@ -293,6 +293,21 @@ function drawOnTradingView(): void {
     })),
     anchors: candles.slice(-300).map((c) => ({ time: sec(c.time), close: c.close })),
     stop: result.trades.at(-1)?.reason === "end" ? (result.stops.at(-1) ?? null) : null,
+    sellLimit: (() => {
+      const open = result.trades.at(-1);
+      if (open?.reason !== "end") return null;
+      const i = candles.length - 1;
+      const entryIndex = candles.findIndex((c) => c.time === open.entryTime);
+      const pos = {
+        entryIndex,
+        entryPrice: open.entryPrice,
+        stop: result.stops.at(-1) ?? 0,
+        highestClose: open.entryPrice,
+        costRecovered: open.costBackTime !== undefined,
+        partialsSold: open.partials?.length ?? 0,
+      };
+      return last.setup.strategy.prepare(candles).limitSell?.(i, pos)?.price ?? null;
+    })(),
   };
   postToFrames({ source: CONTENT_TAG, type: "draw", payload });
 }

@@ -408,6 +408,15 @@ async function draw(p: DrawPayload): Promise<void> {
       ),
     );
   }
+  if (p.sellLimit !== null) {
+    const last = p.arrows.at(-1)?.time ?? Math.floor(Date.now() / 1000);
+    await add("sell limit", () =>
+      chart.createShape(
+        { time: last, price: p.sellLimit! },
+        { ...opts, shape: "horizontal_line", text: "SELL 10% LIMIT", overrides: { linecolor: "#fbbf24", linestyle: 2, showLabel: true, textcolor: "#fbbf24" } },
+      ),
+    );
+  }
   if (errors.length) console.warn("[EA] drawing errors", errors);
   postDrawResult(ok, errors.length, errors, note);
 }
