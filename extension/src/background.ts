@@ -65,6 +65,29 @@ async function pageBack(key: string, source: BarsSource, first: Bar): Promise<Ba
   return bars;
 }
 
+// Daily bars for the ATH close: one request (999 days) per pair, cached like the history.
+async function dailyBars(source: BarsSource): Promise<Bar[]> {
+  const key = `day:${source.chain}:${source.pairId.toLowerCase()}:${source.marketCap}`;
+  const hit = (await chrome.storage.session.get(key))[key] as { at: number; bars: Bar[] } | undefined;
+  if (hit && Date.now() - hit.at < HISTORY_TTL_MS) return hit.bars;
+  if (source.resolution === 1440) return [];
+  if (Date.now() < pagingBlockedUntil) return hit?.bars ?? [];
+  const u = new URL(source.url);
+  u.searchParams.set("res", "1440");
+  u.searchParams.set("cb", "999");
+  let bars: Bar[];
+  try {
+    const res = await fetch(u, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    bars = decodeBars(new Uint8Array(await res.arrayBuffer()));
+  } catch {
+    pagingBlockedUntil = Date.now() + HISTORY_COOLDOWN_MS;
+    return hit?.bars ?? [];
+  }
+  await chrome.storage.session.set({ [key]: { at: Date.now(), bars } }).catch(() => {});
+  return bars;
+}
+
 // The MV3 service worker is stopped when idle, so the latest source per pair lives in session storage.
 const storageKey = (chain: string, pairId: string) => `src:${chain}:${pairId.toLowerCase()}`;
 
@@ -96,7 +119,9 @@ async function pushBars(tabId: number, source: BarsSource): Promise<void> {
     const older = latest.length ? await olderBars(source, latest[0]!).catch(() => []) : [];
     const seen = new Set<number>();
     const bars = [...older, ...latest].filter((b) => !seen.has(b.timestamp) && seen.add(b.timestamp));
-    msg = { type: "bars", source, bars };
+    // On the daily chart the bars are the daily bars.
+    const daily = source.resolution === 1440 ? bars : await dailyBars(source).catch(() => []);
+    msg = { type: "bars", source, bars, daily };
   } catch (e) {
     msg = { type: "error", message: `Fetching bars failed: ${(e as Error).message}` };
   }

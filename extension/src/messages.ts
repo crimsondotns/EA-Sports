@@ -74,7 +74,7 @@ export type ToBackground =
   | { type: "notify"; title: string; message: string };
 
 export type ToContent =
-  | { type: "bars"; source: BarsSource; bars: Bar[] }
+  | { type: "bars"; source: BarsSource; bars: Bar[]; daily: Bar[] }
   | { type: "error"; message: string };
 
 // content <-> MAIN-world inject script (window.postMessage)
@@ -100,7 +100,7 @@ export interface DrawPayload {
   sellLabel: string;
   /** Lowest low of the strategy's range window; buys outside an uptrend must be near it. */
   rangeLow: { price: number; uptrend: boolean } | null;
-  /** Highest close on the loaded bars and lines 90% / 95% below it. */
+  /** Highest close of a closed daily bar (ATH close) and lines 90% / 95% below it. */
   ath: { close: number; time: number; levels: { pct: number; price: number }[] } | null;
   /** Next setup: a zone box (or trigger line) projected into the future, with stop and target. */
   plan: { kind: "zone" | "trigger" | "below"; low: number; high: number; stop: number; target: number | null; from: number; to: number } | null;

@@ -387,11 +387,7 @@ function drawOnTradingView(): void {
     anchors: candles.slice(-300).map((c) => ({ time: sec(c.time), close: c.close })),
     stop: result.trades.at(-1)?.reason === "end" ? (result.stops.at(-1) ?? null) : null,
     rangeLow: last.setup.strategy.prepare(candles).rangeLow?.(candles.length - 1) ?? null,
-    ath: (() => {
-      if (!candles.length) return null;
-      const top = candles.reduce((a, c) => (c.close > a.close ? c : a));
-      return { close: top.close, time: sec(top.time), levels: [0.9, 0.95].map((pct) => ({ pct, price: top.close * (1 - pct) })) };
-    })(),
+    ath: athClose(candles),
     sellLabel: last.setup.sellLabel ?? "SELL 10%",
     sellLimit: (() => {
       const pos = openPosition();
@@ -399,6 +395,20 @@ function drawOnTradingView(): void {
     })(),
   };
   postToFrames({ source: CONTENT_TAG, type: "draw", payload });
+}
+
+/** Highest close of a closed daily bar, in the price field (USD or quote) that matches the chart. */
+function athClose(candles: Candle[]): DrawPayload["ath"] {
+  const now = candles.at(-1)?.close;
+  if (!now || !daily.length) return null;
+  // The open daily bar's close is the current price: use it to pick the field.
+  const days = (["usd", "quote"] as const)
+    .map((f) => toCandles(daily, f))
+    .find((d) => d.length && Math.abs(d.at(-1)!.close / now - 1) < 0.05);
+  const closed = days?.filter((d) => d.time + 86_400_000 <= Date.now()) ?? [];
+  if (!closed.length) return null;
+  const top = closed.reduce((a, c) => (c.close > a.close ? c : a));
+  return { close: top.close, time: top.time / 1000, levels: [0.9, 0.95].map((pct) => ({ pct, price: top.close * (1 - pct) })) };
 }
 
 // ---------- notifications ----------
@@ -463,6 +473,7 @@ notifySignals.armed = false;
 // Bars from the feed request we captured. Used for volume when the chart has no Volume
 // study, and as the data source until the chart's own bars arrive.
 let fetched: { source: BarsSource; bars: Bar[] } | null = null;
+let daily: Bar[] = [];
 let chartBarsAt = 0;
 let usingChartBars: { hasVolume: boolean } | null = null;
 const CHART_BARS_FRESH_MS = 60_000;
@@ -574,7 +585,10 @@ function onChartBars(resolution: string, bars: ChartBar[], hasVolume: boolean): 
 }
 
 chrome.runtime.onMessage.addListener((msg: ToContent) => {
-  if (msg.type === "bars") onBars(msg.source, msg.bars);
+  if (msg.type === "bars") {
+    daily = msg.daily;
+    onBars(msg.source, msg.bars);
+  }
   else {
     errorText = msg.message;
     publish();
