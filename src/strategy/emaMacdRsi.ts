@@ -38,6 +38,10 @@ export interface DeepDipParams {
    *  1h +13.1% vs +30.3%, 4h +2.9% vs +18.0%); +20 points instead of +20% was worse still. */
   rsiBounce: number;
   rsiLowBars: number;
+  /** RSI swing low first: within the last `rsiSwingWithin` bars, an RSI low under the `rsiSwing`
+   *  bars either side of it (confirmed by now), and RSI above that low now. 0 = off. */
+  rsiSwing: number;
+  rsiSwingWithin: number;
   /** Require the support test when a support exists (case a). Off: rules 1–3 only. */
   useSupport: boolean;
   pivotBars: number;
@@ -124,6 +128,8 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   requireSlowEma: false,
   rsiBounce: 0,
   rsiLowBars: 96,
+  rsiSwing: 0,
+  rsiSwingWithin: 6,
   useSupport: true,
   pivotBars: 5,
   zoneTol: 0.04,
@@ -267,6 +273,16 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           .sort((a, b) => b.touches - a.touches || b.high - a.high)[0];
       };
 
+      /** The most recent confirmed RSI swing low within `rsiSwingWithin` bars of i, or null. */
+      const rsiSwingLow = (i: number): number | null => {
+        const k = p.rsiSwing;
+        for (let j = i - k; j >= Math.max(k, i - p.rsiSwingWithin); j--) {
+          let ok = Number.isFinite(r[j]!);
+          for (let q = j - k; ok && q <= j + k; q++) if (q !== j && !(r[q]! > r[j]!)) ok = false;
+          if (ok) return r[j]!;
+        }
+        return null;
+      };
       const indicatorChecks = (i: number) => {
         const px = close[i]!;
         const h = m.hist[i]!;
@@ -287,6 +303,18 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
             ok: rv > p.minRsi && rv <= p.maxRsi,
             detail: rv.toFixed(0),
           },
+          ...(p.rsiSwing > 0
+            ? (() => {
+                const low = rsiSwingLow(i);
+                return [
+                  {
+                    label: "RSI made a swing low",
+                    ok: low !== null && rv > low,
+                    detail: low === null ? "no RSI swing low yet" : `${low.toFixed(0)} → ${rv.toFixed(0)}`,
+                  },
+                ];
+              })()
+            : []),
           ...(p.rsiBounce > 0
             ? (() => {
                 let low = Infinity;
