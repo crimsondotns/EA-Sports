@@ -181,8 +181,8 @@ function timeOffset(anchors: DrawPayload["anchors"], bars: TvBar[]): number | nu
 // ATH −90% / −95% are real drawings: saved with the chart layout, editable, never cleared by a
 // redraw. Before adding one, look for a horizontal line already within 0.5% of its price (ours
 // from an earlier run, or the user's own) and leave it as it is.
-// Dashed white line with a white label.
-const ATH_STYLE = { linecolor: "#ffffff", linestyle: 2, linewidth: 1, showLabel: true, textcolor: "#ffffff" };
+// Solid red line with a white label.
+const ATH_STYLE = { linecolor: "#ef5350", linestyle: 0, linewidth: 1, showLabel: true, textcolor: "#ffffff" };
 
 async function drawAthLines(chart: TvChart, ath: NonNullable<DrawPayload["ath"]>, errors: string[]): Promise<void> {
   const existing: number[] = [];
