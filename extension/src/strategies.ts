@@ -130,11 +130,11 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
         emaStudy(DEEP_DIP_DEFAULTS.emaFast, "#fbbf24"),
         emaStudy(DEEP_DIP_DEFAULTS.emaMid, "#2196f3"),
         emaStudy(DEEP_DIP_DEFAULTS.emaSlow, "#ffffff"),
-        // New panes stack downwards in creation order: RSI, then MACD under it.
+        // New panes stack downwards in creation order: Volume (when the entry reads it), RSI,
+        // then MACD under it. The chart only exports volume with a Volume study on.
+        ...(dropPeak ? [{ name: "Volume", ownPane: true }] : []),
         { name: "Relative Strength Index", inputs: { length: 14 } },
         { name: "MACD" },
-        // The capitulation entry reads volume; the chart only exports it with this study on.
-        ...(dropPeak ? [{ name: "Volume" }] : []),
       ],
     };
   }

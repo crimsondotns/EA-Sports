@@ -134,4 +134,6 @@ export interface StudySpec {
   name: string;
   inputs?: Record<string, number>;
   color?: string;
+  /** Needs a pane of its own: a copy overlaid on the price pane (DEX Screener's Volume) doesn't count. */
+  ownPane?: boolean;
 }

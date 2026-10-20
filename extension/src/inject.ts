@@ -21,6 +21,7 @@ interface TvChart {
 interface TvPane {
   getHeight(): number;
   setHeight(height: number): void;
+  getStudies?(): { id: unknown }[];
 }
 
 interface TvStudy {
@@ -214,12 +215,23 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
     }
     ourStudies.delete(key);
   }
+  // Studies on the price pane; unknown when the library can't list a pane's studies.
+  const priceStudies = (() => {
+    try {
+      const list = chart.getPanes?.()[0]?.getStudies?.();
+      return list ? new Set(list.map((s) => s.id)) : null;
+    } catch {
+      return null;
+    }
+  })();
   const existing = chart.getAllStudies();
   let lastIndex = -1; // position in getAllStudies (creation order) of the previous spec's study
   for (const spec of specs) {
     const key = specKey(spec);
     // Reuse a matching study (the user's own, or ours saved with the chart layout).
-    const idx = existing.findIndex((s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec));
+    const idx = existing.findIndex(
+      (s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec) && !(spec.ownPane && priceStudies?.has(s.id)),
+    );
     const same = existing[idx];
     // Created before the previous spec, so its pane sits above it: re-create it to move it below.
     if (same && idx < lastIndex) {
