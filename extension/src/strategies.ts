@@ -75,7 +75,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
     // trade it made +$58,344 on 1h (+166%) by riding the one pair that pumped, -10.5% without it.
     // Other timeframes and New Launch use #1, cost back at 3x.
     const v = !launch && (resolutionMinutes === 15 || resolutionMinutes === 60) ? variant : 1;
-    const dropPeak = !launch && resolutionMinutes === 15;
+    const sharp = !launch && resolutionMinutes === 15;
     const signalExit = v >= 2;
     const exit =
       v === 2 ? { exitSignals: ["climaxTurn" as const], exitNeed: 1 }
@@ -101,7 +101,10 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
         // Trial (2026-10-20), 15m only: buy the capitulation swing low (drop >= 1% on a volume
         // peak, next bar holds its low, Deep Dip checks within the 3 bars before). ARROW, CASHCAT,
         // INU, ORBIO at $880 a trade: last 31 days -$955 -> -$122, after day 30 +$731 -> +$2,633.
-        ...(dropPeak ? { dropPeak: 0.01, dropPeakVol: 2 } : {}),
+        // Trial (2026-10-20, replaces the drop + volume peak entry): buy the sharp swing low (fell
+        // >= 10% in 6 bars, lowest low of 20 bars, close in the upper half). 41 pairs at $880 a
+        // trade, without the top pair: last 31 days -$1,839 -> -$490, after day 30 +$42,218 -> +$41,642.
+        ...(sharp ? { sharpLow: 0.1 } : {}),
         ...(signalExit ? { exitMode: "signals" as const, ...exit } : {}),
         ...(v >= 5 ? { breakevenAt: null } : {}),
         ...(v >= 6 ? { rsiSwing: 2, rsiSwingWithin: 6 } : {}),
@@ -120,7 +123,9 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
       },
       // EMA 200 is skipped until it exists, so MACD (26 + 9 bars) sets the minimum.
       minBars: 37,
-      shortLabels: ["Under EMAs", "MACD turn", "RSI", ...(v >= 7 ? ["Range low"] : []), ...(v >= 6 ? ["RSI swing low"] : []), "Support", ...(dropPeak ? ["Drop + vol peak", "Swing low held"] : [])],
+      shortLabels: sharp
+        ? ["Fell 10%", "20-bar low", "Upper-half close"]
+        : ["Under EMAs", "MACD turn", "RSI", ...(v >= 7 ? ["Range low"] : []), ...(v >= 6 ? ["RSI swing low"] : []), "Support"],
       note: launch
         ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
         : signalExit
@@ -132,7 +137,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
         emaStudy(DEEP_DIP_DEFAULTS.emaSlow, "#ffffff"),
         // New panes stack downwards in creation order: Volume (when the entry reads it), RSI,
         // then MACD under it. The chart only exports volume with a Volume study on.
-        ...(dropPeak ? [{ name: "Volume", ownPane: true }] : []),
+        ...(sharp ? [{ name: "Volume", ownPane: true }] : []),
         { name: "Relative Strength Index", inputs: { length: 14 } },
         { name: "MACD" },
       ],
