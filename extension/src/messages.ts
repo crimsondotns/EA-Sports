@@ -52,6 +52,8 @@ export interface Settings {
   strategy: "breakout" | "quiet" | "dip" | "launch" | "range";
   showTable: boolean;
   drawMarkers: boolean;
+  /** "31d": signals from a fixed point ~31 days back; "start": from the pair's first bar. */
+  calcFrom: CalcFrom;
   /** Draw the open trade's STOP line. */
   showStop: boolean;
   notify: boolean;
@@ -65,8 +67,14 @@ export interface Settings {
   tableOffsetY: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, showStop: true, notify: true, showIndicators: true, tableOpacity: 0.6, tableCollapsed: false, tableOffsetY: 0 };
+export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, calcFrom: "31d", showStop: true, notify: true, showIndicators: true, tableOpacity: 0.6, tableCollapsed: false, tableOffsetY: 0 };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
+
+export type CalcFrom = "31d" | "start";
+
+// popup -> background: load history for the pair on this tab (the only network requests we make).
+export type FromPopup = { type: "load"; tabId: number; from: CalcFrom };
+export interface LoadResult { ok: boolean; bars: number; firstTime: number | null; complete: boolean; error: string | null }
 
 // content <-> background (chrome.runtime messaging)
 export type ToBackground =
@@ -76,7 +84,8 @@ export type ToBackground =
   | { type: "notify"; title: string; message: string };
 
 export type ToContent =
-  | { type: "bars"; source: BarsSource; bars: Bar[] }
+  /** Stored history (loaded by Recalculate); `complete` = it reaches the pair's first bar. */
+  | { type: "bars"; source: BarsSource; bars: Bar[]; complete: boolean }
   | { type: "error"; message: string };
 
 // content <-> MAIN-world inject script (window.postMessage)

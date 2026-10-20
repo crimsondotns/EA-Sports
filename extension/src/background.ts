@@ -1,68 +1,93 @@
-// Watches the bars requests the DEX Screener page makes (including ones from its Web Worker),
-// then re-fetches the same URL and hands the decoded bars to the tab's content script.
+// Watches the bars requests the DEX Screener page makes (including ones from its Web Worker) to
+// learn each pair's bars URL. It fetches nothing on its own: DEX Screener blocks IPs that send
+// too many requests. History is loaded only when the user presses Recalculate in the popup, then
+// kept in local storage and handed to the tab's content script from there.
 import { decodeBars, type Bar } from "../../src/dexscreener/bars.ts";
-import { summaryKey, type BarsSource, type ToBackground, type ToContent } from "./messages.ts";
+import { summaryKey, type BarsSource, type CalcFrom, type FromPopup, type LoadResult, type ToBackground, type ToContent } from "./messages.ts";
 
 // Served from io.dexscreener.com or feed.dexscreener.com. With mc=1 the USD fields are market cap.
 const BARS_URL = /^https:\/\/(?:io|feed)\.dexscreener\.com\/dex\/chart\/amm\/v\d+\/([^/]+)\/bars\/([^/]+)\/([^/?]+)/;
 
 const MIN_BARS = 999;
 
-// The chart only loads a few days, so strategies would see less history than the backtest (EMA
-// 200, 30-day supports, earlier trades still open). Page back to about 31 days plus warm-up,
-// at most HISTORY_PAGES extra requests per pair and timeframe, cached for HISTORY_TTL_MS in
-// session storage (the service worker is stopped when idle, which would empty a Map). DEX
-// Screener has blocked an IP for bulk requests before: one paging run per key at a time, and
-// after a failed request no paging for HISTORY_COOLDOWN_MS.
-const HISTORY_PAGES = 4;
-const HISTORY_TTL_MS = 15 * 60_000;
-const HISTORY_COOLDOWN_MS = 10 * 60_000;
+// Recalculate pages back with `bbn` (one request at a time, PAGE_DELAY_MS apart) to about 31
+// days plus warm-up, or to the pair's first bar. Each run is capped; after a failed request no
+// loading for COOLDOWN_MS.
 const PAGE_DELAY_MS = 1500;
-const inFlight = new Map<string, Promise<Bar[]>>();
-let pagingBlockedUntil = 0;
+const COOLDOWN_MS = 10 * 60_000;
+const MAX_PAGES = { "31d": 12, start: 60 } as const;
+const inFlight = new Map<string, Promise<LoadResult>>();
+let blockedUntil = 0;
 
-async function olderBars(source: BarsSource, first: Bar): Promise<Bar[]> {
-  const key = `hist:${source.chain}:${source.pairId.toLowerCase()}:${source.resolution}:${source.marketCap}`;
+const histKey = (s: BarsSource) => `hist:${s.chain}:${s.pairId.toLowerCase()}:${s.resolution}:${s.marketCap}`;
+interface StoredHistory { at: number; bars: Bar[]; complete: boolean }
+
+async function storedHistory(source: BarsSource): Promise<StoredHistory | null> {
+  const key = histKey(source);
+  return ((await chrome.storage.local.get(key))[key] as StoredHistory | undefined) ?? null;
+}
+
+async function fetchPage(source: BarsSource, before: number | null): Promise<Bar[]> {
+  const u = new URL(source.url);
+  u.searchParams.set("cb", "999");
+  if (before === null) u.searchParams.delete("bbn");
+  else u.searchParams.set("bbn", String(before));
+  const res = await fetch(u, { cache: "no-store" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return decodeBars(new Uint8Array(await res.arrayBuffer()));
+}
+
+function loadHistory(source: BarsSource, from: CalcFrom): Promise<LoadResult> {
+  const key = `${histKey(source)}:${from}`;
   const running = inFlight.get(key);
   if (running) return running;
-  const run = pageBack(key, source, first).finally(() => inFlight.delete(key));
+  const run = pageBack(source, from).finally(() => inFlight.delete(key));
   inFlight.set(key, run);
   return run;
 }
 
-async function pageBack(key: string, source: BarsSource, first: Bar): Promise<Bar[]> {
-  const hit = (await chrome.storage.session.get(key))[key] as { at: number; bars: Bar[] } | undefined;
-  if (hit && Date.now() - hit.at < HISTORY_TTL_MS) return hit.bars;
-  if (Date.now() < pagingBlockedUntil) return hit?.bars ?? [];
+async function pageBack(source: BarsSource, from: CalcFrom): Promise<LoadResult> {
+  if (Date.now() < blockedUntil) {
+    return { ok: false, bars: 0, firstTime: null, complete: false, error: `DEX Screener refused a request; try again in ${Math.ceil((blockedUntil - Date.now()) / 60_000)} min.` };
+  }
   const need = Math.ceil((31 * 1440) / source.resolution) + 250;
   const pages: Bar[][] = [];
   let total = 0;
-  let before = first.blockNumberStart;
-  for (let k = 0; k < HISTORY_PAGES && total < need; k++) {
-    await new Promise((r) => setTimeout(r, PAGE_DELAY_MS));
-    const u = new URL(source.url);
-    u.searchParams.set("bbn", String(before));
-    u.searchParams.set("cb", "999");
+  let before: number | null = null;
+  let complete = false;
+  let error: string | null = null;
+  for (let k = 0; k < MAX_PAGES[from] && (from === "start" || total < need); k++) {
+    if (k > 0) await new Promise((r) => setTimeout(r, PAGE_DELAY_MS));
     let page: Bar[];
     try {
-      const res = await fetch(u, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      page = decodeBars(new Uint8Array(await res.arrayBuffer()));
-    } catch {
-      pagingBlockedUntil = Date.now() + HISTORY_COOLDOWN_MS;
+      page = await fetchPage(source, before);
+    } catch (e) {
+      blockedUntil = Date.now() + COOLDOWN_MS;
+      error = `DEX Screener refused a request (${(e as Error).message}); try again in 10 min.`;
       break;
     }
-    if (!page.length) break;
-    pages.unshift(page);
+    if (page.length) pages.unshift(page);
     total += page.length;
-    if (page.length < 999) break;
+    if (page.length < 999) {
+      complete = true;
+      break;
+    }
     before = page[0]!.blockNumberStart;
   }
-  const bars = pages.flat();
-  await chrome.storage.session.set({ [key]: { at: Date.now(), bars } }).catch(() => {
-    // Session storage is capped (10 MB); without the cache the next push pages again.
-  });
-  return bars;
+  const seen = new Set<number>();
+  const bars = pages.flat().filter((b) => !seen.has(b.timestamp) && seen.add(b.timestamp));
+  if (bars.length) {
+    // Keep the longer of what we had and what we got.
+    const old = await storedHistory(source);
+    const keepOld = old && old.bars.length && old.bars[0]!.timestamp < bars[0]!.timestamp && old.bars.at(-1)!.timestamp >= bars[0]!.timestamp;
+    const merged = keepOld ? [...old.bars.filter((b) => b.timestamp < bars[0]!.timestamp), ...bars] : bars;
+    const stored: StoredHistory = { at: Date.now(), bars: merged, complete: complete || !!(keepOld && old.complete) };
+    await chrome.storage.local.set({ [histKey(source)]: stored }).catch(() => {
+      error ??= "History too large to keep; it is used for this view only.";
+    });
+    return { ok: !error, bars: merged.length, firstTime: merged[0]!.timestamp, complete: stored.complete, error };
+  }
+  return { ok: false, bars: 0, firstTime: null, complete: false, error: error ?? "DEX Screener returned no bars." };
 }
 
 // The MV3 service worker is stopped when idle, so the latest source per pair lives in session storage.
@@ -87,19 +112,10 @@ function parseSource(url: string): BarsSource | null {
   };
 }
 
+/** Hands the stored history (no network) to the tab. */
 async function pushBars(tabId: number, source: BarsSource): Promise<void> {
-  let msg: ToContent;
-  try {
-    const res = await fetch(source.url, { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const latest = decodeBars(new Uint8Array(await res.arrayBuffer()));
-    const older = latest.length ? await olderBars(source, latest[0]!).catch(() => []) : [];
-    const seen = new Set<number>();
-    const bars = [...older, ...latest].filter((b) => !seen.has(b.timestamp) && seen.add(b.timestamp));
-    msg = { type: "bars", source, bars };
-  } catch (e) {
-    msg = { type: "error", message: `Fetching bars failed: ${(e as Error).message}` };
-  }
+  const h = await storedHistory(source);
+  const msg: ToContent = { type: "bars", source, bars: h?.bars ?? [], complete: h?.complete ?? false };
   chrome.tabs.sendMessage(tabId, msg).catch(() => {
     // Tab has no content script (yet); its startup refresh will pick the source up.
   });
@@ -121,7 +137,11 @@ function pairFromTabUrl(url: string | undefined): { chain: string; pairId: strin
 async function onBarsUrl(url: string, tabId: number): Promise<void> {
   const source = parseSource(url);
   if (!source) return;
-  await chrome.storage.session.set({ [storageKey(source.chain, source.pairId)]: source });
+  const key = storageKey(source.chain, source.pairId);
+  const prev = (await chrome.storage.session.get(key))[key] as BarsSource | undefined;
+  // The page polls every few seconds; only a new pair, timeframe or price view needs a push.
+  if (prev?.url === source.url) return;
+  await chrome.storage.session.set({ [key]: source });
   // Worker requests may have tabId -1, so match tabs by the pair in their URL.
   const tabIds = tabId >= 0 ? [tabId] : await tabsForPair(source.chain, source.pairId);
   for (const id of tabIds) await pushBars(id, source);
@@ -136,7 +156,27 @@ chrome.webRequest.onCompleted.addListener(
   { urls: ["https://io.dexscreener.com/dex/chart/*", "https://feed.dexscreener.com/dex/chart/*"] },
 );
 
-chrome.runtime.onMessage.addListener((msg: ToBackground, sender) => {
+async function sourceForTab(tabId: number): Promise<BarsSource | null> {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  const pair = pairFromTabUrl(tab?.url);
+  if (!pair) return null;
+  const key = storageKey(pair.chain, pair.pairId);
+  return ((await chrome.storage.session.get(key))[key] as BarsSource | undefined) ?? null;
+}
+
+chrome.runtime.onMessage.addListener((msg: ToBackground | FromPopup, sender, reply) => {
+  if (msg.type === "load") {
+    void sourceForTab(msg.tabId).then(async (source) => {
+      if (!source) {
+        reply({ ok: false, bars: 0, firstTime: null, complete: false, error: "No chart seen on this tab yet. Open a pair's chart first." } satisfies LoadResult);
+        return;
+      }
+      const result = await loadHistory(source, msg.from);
+      await pushBars(msg.tabId, source);
+      reply(result);
+    });
+    return true;
+  }
   const tabId = sender.tab?.id;
   if (tabId === undefined) return;
   if (msg.type === "summary") {
@@ -150,10 +190,6 @@ chrome.runtime.onMessage.addListener((msg: ToBackground, sender) => {
     void chrome.storage.session.get(key).then((r) => {
       const source = r[key] as BarsSource | undefined;
       if (source) void pushBars(tabId, source);
-      else
-        chrome.tabs
-          .sendMessage(tabId, { type: "error", message: "No chart request seen yet for this pair — reload the page." } satisfies ToContent)
-          .catch(() => {});
     });
   } else if (msg.type === "notify") {
     chrome.notifications.create({ type: "basic", iconUrl: "icon128.png", title: msg.title, message: msg.message });

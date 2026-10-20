@@ -94,13 +94,25 @@
   label.switch:has(input:disabled) { cursor: not-allowed; color: var(--color-text-disabled); }
   label.switch input:disabled { cursor: not-allowed; opacity: .45; }
 
+  /* Segmented choice (radio group) */
+  .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--color-surface);
+    border: 1px solid var(--color-border); border-radius: var(--radius-control); }
+  .segmented label { position: relative; display: flex; align-items: center; justify-content: center; min-height: 32px;
+    border-radius: 6px; color: var(--color-text-secondary); cursor: pointer; transition: background-color var(--transition-fast), color var(--transition-fast); }
+  .segmented input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  .segmented label:has(input:checked) { background: var(--color-surface-selected); color: var(--color-text-primary); font-weight: 600; }
+  .segmented label:active { background: var(--color-surface-pressed); }
+  .segmented label:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+  .hint { display: block; color: var(--color-text-muted); font-size: var(--font-size-small); padding-top: 8px; }
+
   /* Buttons */
   .button-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 18px;
     border: 1px solid transparent; border-radius: var(--radius-pill); background: var(--color-button-primary-bg);
     color: var(--color-button-primary-text); font-family: inherit; font-size: var(--font-size-control); font-weight: 600; line-height: 1.2;
     text-decoration: none; cursor: pointer; transition: background-color var(--transition-fast); }
-  .button-primary:active { background: var(--color-button-primary-pressed); }
+  .button-primary:active:not(:disabled) { background: var(--color-button-primary-pressed); }
   .button-primary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  .button-primary:disabled { opacity: .45; cursor: not-allowed; }
   .button-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 14px;
     border: 1px solid var(--color-border-control); border-radius: var(--radius-control); background: var(--color-button-secondary-bg);
     color: var(--color-button-secondary-text); font-family: inherit; font-size: var(--font-size-body); font-weight: 600; line-height: 1.2;
@@ -191,9 +203,10 @@
   @media (hover: hover) and (pointer: fine) {
     label.switch:hover { background: var(--color-surface-hover); }
     label.switch:has(input:disabled):hover { background: transparent; }
-    .button-primary:hover { background: var(--color-button-primary-hover); }
+    .button-primary:hover:not(:disabled) { background: var(--color-button-primary-hover); }
     .button-secondary:hover:not(:disabled) { background: var(--color-button-secondary-hover); }
     .icon-button:hover { background: var(--color-surface-hover); }
+    .segmented label:not(:has(input:checked)):hover { background: var(--color-surface-hover); color: var(--color-text-primary); }
     .dropdown-trigger:hover:not(:disabled) { background: var(--color-trigger-hover-bg); border-color: var(--color-border-strong); }
     .dropdown-menu li .info:hover { color: var(--color-text-primary); }
   }
@@ -263,6 +276,18 @@
       <button type="button" class="icon-button" id="closeSettings" aria-label="Back"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <h1 class="grow">Settings</h1>
     </header>
+    <section aria-labelledby="calcLabel">
+      <h2 id="calcLabel">Calculate from</h2>
+      <div class="segmented" role="radiogroup" aria-labelledby="calcLabel">
+        <label><input type="radio" name="calcFrom" value="31d"><span>Last 31 days</span></label>
+        <label><input type="radio" name="calcFrom" value="start"><span>Pair start</span></label>
+      </div>
+      <small class="hint" id="calcHint"></small>
+      <div class="test-row">
+        <button type="button" class="button-primary" id="recalc">Recalculate</button>
+        <small id="recalcStatus" role="status"></small>
+      </div>
+    </section>
     <section>
       <h2>Chart</h2>
     <label class="switch"><span>Table on chart<small>Compact table in the chart's top-right corner</small></span><input type="checkbox" id="showTable"></label>

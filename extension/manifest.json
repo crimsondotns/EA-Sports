@@ -6,7 +6,8 @@
   "permissions": [
     "webRequest",
     "notifications",
-    "storage"
+    "storage",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "https://dexscreener.com/*",

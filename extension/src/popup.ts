@@ -1,5 +1,5 @@
 // Popup: shows the summary the active tab's content script published, plus settings.
-import { DEFAULT_SETTINGS, summaryKey, type Settings, type Summary } from "./messages.ts";
+import { DEFAULT_SETTINGS, summaryKey, type CalcFrom, type FromPopup, type LoadResult, type Settings, type Summary } from "./messages.ts";
 
 const $ = (id: string) => document.getElementById(id)!;
 const fmt = (v: number) => (v === 0 ? "0" : Math.abs(v) >= 1e5 ? `${(v / 1e6).toFixed(3)}M` : Math.abs(v) >= 1 ? v.toFixed(4) : v.toPrecision(4));
@@ -292,6 +292,39 @@ async function main(): Promise<void> {
     void chrome.storage.local.set({ tableOpacity: Number(opacity.value) / 100 });
   });
   showTable.addEventListener("change", paintOpacity);
+
+  // Calculate from: the choice applies at once to the chart; Recalculate loads the history it
+  // needs (the only requests the extension sends to DEX Screener, one page every 1.5 s).
+  const hints = {
+    "31d": "Signals from a fixed point 31 days back. Loads up to 12 pages.",
+    start: "Signals from the pair's first bar. Loads the whole history once, up to 60 pages.",
+  } as const;
+  const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="calcFrom"]')];
+  const paintCalc = (v: CalcFrom) => ($("calcHint").textContent = hints[v]);
+  for (const radio of radios) {
+    radio.checked = radio.value === settings.calcFrom;
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      paintCalc(radio.value as CalcFrom);
+      void chrome.storage.local.set({ calcFrom: radio.value });
+    });
+  }
+  paintCalc(settings.calcFrom);
+  const recalc = $("recalc") as HTMLButtonElement;
+  recalc.disabled = !onDexScreener || tab?.id === undefined;
+  if (recalc.disabled) $("recalcStatus").textContent = "Open a pair's chart first.";
+  recalc.addEventListener("click", () => {
+    const from = (radios.find((r) => r.checked)?.value ?? "31d") as CalcFrom;
+    recalc.disabled = true;
+    recalc.textContent = "Loading…";
+    $("recalcStatus").textContent = "";
+    void chrome.runtime.sendMessage({ type: "load", tabId: tab!.id!, from } satisfies FromPopup).then((r: LoadResult) => {
+      const since = r.firstTime === null ? "" : ` from ${new Date(r.firstTime).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`;
+      $("recalcStatus").textContent = r.error ?? `${r.bars.toLocaleString()} bars${since}${from === "start" && !r.complete ? " (not the pair's start: page limit)" : ""}`;
+      recalc.disabled = false;
+      recalc.textContent = "Recalculate";
+    });
+  });
 
   // Shows a sample alert so the user can check Chrome / the OS let notifications through.
   $("testNotify").addEventListener("click", () => {

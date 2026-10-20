@@ -20,7 +20,6 @@ import {
   type ToContent,
 } from "./messages.ts";
 
-const REFRESH_MS = 20_000;
 const MAX_DRAWN_TRADES = 200;
 
 type ChartMode = "searching" | "tradingview" | "unavailable";
@@ -34,7 +33,6 @@ let lastInput: { source: BarsSource; candles: Candle[] } | null = null;
 let settings: Settings = { ...DEFAULT_SETTINGS };
 const notified = new Set<string>();
 
-let refreshTimer: ReturnType<typeof setInterval> | undefined;
 
 /** After the extension is reloaded, this old copy of the script can no longer talk to it. */
 function send(msg: ToBackground): void {
@@ -42,7 +40,6 @@ function send(msg: ToBackground): void {
     if (!chrome.runtime?.id) throw new Error("Extension context invalidated.");
     chrome.runtime.sendMessage(msg).catch(() => {});
   } catch {
-    clearInterval(refreshTimer);
     errorText = "The extension was reloaded — refresh this page.";
     renderTable();
   }
@@ -311,6 +308,7 @@ function renderTable(): void {
     `<tr class="sep"><td class="sub">Backtest</td><td class="${sum.stats.returnPct >= 0 ? "pos" : "neg"}">${pct(sum.stats.returnPct)}</td></tr>`,
     `<tr><td class="sub">Max DD · Trades</td><td>${sum.stats.maxDdPct.toFixed(1)}% · ${sum.stats.trades}</td></tr>`,
     ...(errorText ? [`<tr class="sep"><td colspan="2" class="neg msg">${errorText}</td></tr>`] : []),
+    ...(historyNote ? [`<tr class="sep"><td colspan="2" class="sub msg">${historyNote}</td></tr>`] : []),
   ];
   $("body").innerHTML = rows.join("");
 }
@@ -457,8 +455,10 @@ notifySignals.armed = false;
 
 // Bars from the feed request we captured. Used for volume when the chart has no Volume
 // study, and as the data source until the chart's own bars arrive.
-let fetched: { source: BarsSource; bars: Bar[] } | null = null;
+let fetched: { source: BarsSource; bars: Bar[]; complete: boolean } | null = null;
 let chartBarsAt = 0;
+/** Shown in the table when the history doesn't reach where the calculation should start. */
+let historyNote: string | null = null;
 let usingChartBars: { hasVolume: boolean } | null = null;
 const CHART_BARS_FRESH_MS = 60_000;
 
@@ -483,9 +483,9 @@ function notEnoughBars(setup: StrategySetup, resolution: number, candles: Candle
   if (fits) return `Not enough bars on ${resLabel(resolution)} for ${setup.name}. Switch the chart to ${resLabel(fits)}.`;
   // Already on a large timeframe: the loaded history is the pair's real age.
   if (ageDays < needDays) {
-    return `${setup.name} needs about ${Math.ceil(needDays)} days of history; the chart has ${ageDays.toFixed(1)} days loaded. Scroll the chart back, or the pair may be too new.`;
+    return `${setup.name} needs about ${Math.ceil(needDays)} days of history; the chart has ${ageDays.toFixed(1)} days loaded. Press Recalculate in the extension popup, or the pair may be too new.`;
   }
-  return `Not enough bars on ${resLabel(resolution)} for ${setup.name}. Scroll the chart back to load more.`;
+  return `Not enough bars on ${resLabel(resolution)} for ${setup.name}. Press Recalculate in the extension popup to load more.`;
 }
 
 function analyze(source: BarsSource, all: Candle[]): void {
@@ -498,9 +498,21 @@ function analyze(source: BarsSource, all: Candle[]): void {
   // (midnight UTC, ~31 days plus warm-up back): trades are path dependent, so starting wherever
   // the chart's loaded history happens to begin made signals jump when the user scrolled back.
   // Bars older than that are ignored even when the user scrolls back to them.
+  // "Pair start" begins at the pair's first bar, which is just as fixed once Recalculate has
+  // loaded the history down to it (until then it begins at the first bar we have).
   const dayMs = 86_400_000;
-  const start = Math.floor(Date.now() / dayMs) * dayMs - (Math.ceil((31 * 1440) / source.resolution) + 250) * barMs;
+  const start =
+    settings.calcFrom === "start"
+      ? all[0]!.time
+      : Math.floor(Date.now() / dayMs) * dayMs - (Math.ceil((31 * 1440) / source.resolution) + 250) * barMs;
   const candles = all.filter((c) => c.time >= start && c.time + barMs <= Date.now());
+  const feed = fetched?.source.resolution === source.resolution ? fetched : null;
+  historyNote =
+    settings.calcFrom === "start" && !feed?.complete
+      ? "Not from the pair's start yet: press Recalculate in the extension popup."
+      : settings.calcFrom === "31d" && candles.length && candles[0]!.time > start + 250 * barMs
+        ? "Less than 31 days loaded: press Recalculate in the extension popup."
+        : null;
   const sameChart =
     last &&
     last.source.pairId === source.pairId &&
@@ -522,8 +534,9 @@ function analyze(source: BarsSource, all: Candle[]): void {
   notifySignals();
 }
 
-function onBars(source: BarsSource, bars: Bar[]): void {
-  fetched = { source, bars };
+function onBars(source: BarsSource, bars: Bar[], complete: boolean): void {
+  fetched = { source, bars, complete };
+  if (!bars.length) return;
   // The chart's own bars are authoritative; only fall back to the feed when they're missing.
   if (Date.now() - chartBarsAt < CHART_BARS_FRESH_MS) return;
   analyze(source, toCandles(bars, "usd"));
@@ -570,7 +583,7 @@ function onChartBars(resolution: string, bars: ChartBar[], hasVolume: boolean): 
 }
 
 chrome.runtime.onMessage.addListener((msg: ToContent) => {
-  if (msg.type === "bars") onBars(msg.source, msg.bars);
+  if (msg.type === "bars") onBars(msg.source, msg.bars, msg.complete);
   else {
     errorText = msg.message;
     publish();
@@ -612,11 +625,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
     paintCollapsed();
     renderTable();
   }
-  if (prev.strategy !== settings.strategy && lastInput) {
+  if ((prev.strategy !== settings.strategy || prev.calcFrom !== settings.calcFrom) && lastInput) {
     last = null;
     analyze(lastInput.source, lastInput.candles);
   } else if (prev.drawMarkers !== settings.drawMarkers || prev.showStop !== settings.showStop || prev.showIndicators !== settings.showIndicators) drawOnTradingView();
 });
 
+// Picks up the stored history once; new pairs / timeframes arrive from the background script.
 send({ type: "refresh" });
-refreshTimer = setInterval(() => send({ type: "refresh" }), REFRESH_MS);
