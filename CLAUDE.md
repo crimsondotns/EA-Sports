@@ -7,7 +7,7 @@ EA (automated trading) tooling for meme coins on DEX Screener: a Volume Breakout
 - `src/dexscreener/` — candle data from DEX Screener's unofficial chart endpoint (Avro-encoded; `bars.ts`, `avro.ts`), history paging (`history.ts`)
 - `src/indicators.ts` — SMA / EMA / ATR / breakout high, `toCandles()`
 - `src/strategy/` — `volumeBreakout.ts`, `quietAccumulation.ts` (S/R + reversal), `emaMacdRsi.ts` (Deep Dip, and New Launch = the same at 5% size for a pair's first week on 5m: at a support if one exists below, under EMA 9/21/200, MACD & signal below the histogram, RSI 30–60; EMA 200 skipped until it exists)
-- `docs/strategies.md` — every preset's entry rules, trade management, backtest results and confirm point (Thai)
+- `docs/strategies/` — one short file per strategy (entry rules, confirm point, exits, backtest; Thai), `README.md` index, `exits.md` shared exits, `research.md` full test log
 - `src/universe.txt` — pairs for the multi-coin test (DEX Screener export rows: chain, dex, quote, base, pair)
 - `src/backtest/engine.ts` — backtester (signal on bar close, fill at next open, fees + slippage, optional free ride)
 - `src/report/html.ts` — HTML chart report (lightweight-charts)
@@ -40,7 +40,7 @@ Node 24 runs the `.ts` files directly (type stripping), so code must use erasabl
 
 - **Every time a strategy change or strategy test is finished, explain the confirm points** for both entry and exit in the reply: the exact bar on which the entry is confirmed, which conditions must all be true on that bar's close (and any that may already have happened earlier, such as the support test), when the order fills (the next bar's open), and where the stop, cost back and exits sit. Use a concrete example (prices or a chart moment) when one is available.
 - Say which rules are on in the shipped preset and which were only tested.
-- **When a strategy's rules, sizing, exits or preset defaults change, update `docs/strategies.md` in the same commit**: the conditions, the trade-management table, the exit rules (when each exit triggers and at what price), the backtest line, the entry and exit confirm points and their examples. Keep its format.
+- **When a strategy's rules, sizing, exits or preset defaults change, update that strategy's file in `docs/strategies/` in the same commit** (and the `README.md` table): the conditions, the exits, the backtest line, the entry and exit confirm points and their examples. One strategy per file, kept short: buy rules, confirm bar with an example, exits, backtest, chart marks. Shared exits go in `exits.md`; long test results and rejected variants go in `research.md`.
 
 ## Git workflow
 

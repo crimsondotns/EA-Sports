@@ -122,7 +122,7 @@ function baseSetup(id: StrategyId, resolutionMinutes: number, variant: number): 
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
     const launch = id === "launch";
     const hourly = resolutionMinutes === 60;
-    // On 15m and 1h Deep Dip runs variant #3 of the #1–#8 compared in docs/strategies.md (the
+    // On 15m and 1h Deep Dip runs variant #3 of the #1–#8 compared in docs/strategies/research.md (the
     // others stay available to scripts through `variant`). #3 (sell 10% on each RSI >= 80 close): over the last 30 days of 40 pairs at $880 a
     // trade it made +$58,344 on 1h (+166%) by riding the one pair that pumped, -10.5% without it.
     // Other timeframes and New Launch use #1, cost back at 3x.
