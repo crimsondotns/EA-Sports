@@ -313,12 +313,19 @@ async function draw(p: DrawPayload): Promise<void> {
   // so markers sit next to the candles even if the chart's timestamps or values differ from ours.
   const bars = await chartBars(chart);
   const offset = bars ? timeOffset(p.anchors, bars) : null;
-  const barAt = new Map((bars ?? []).map((b) => [b.time, b]));
+  const indexAt = new Map((bars ?? []).map((b, k) => [b.time, k]));
+  // Buy arrows always under the candles, sell arrows always over them: the arrow's tip goes
+  // below the lowest low (above the highest high) of the bar and its 2 neighbours each side, plus
+  // a gap of the typical bar range there, so a small bar next to big ones isn't covered either.
   const place = (a: DrawPayload["arrows"][number]) => {
-    const b = offset === null ? undefined : barAt.get(a.time + offset);
-    if (!b) return { time: a.time, price: a.price };
-    const pad = (b.high - b.low) * 0.4 || b.close * 0.002;
-    return { time: b.time, price: a.side === "buy" ? b.low - pad : b.high + pad };
+    const k = offset === null ? undefined : indexAt.get(a.time + offset);
+    if (k === undefined || !bars) return { time: a.time, price: a.price };
+    const near = bars.slice(Math.max(0, k - 2), k + 3);
+    const ranges = bars.slice(Math.max(0, k - 10), k + 11).map((b) => b.high - b.low).sort((x, y) => x - y);
+    const pad = Math.max(ranges[Math.floor(ranges.length / 2)] ?? 0, bars[k]!.close * 0.003);
+    return a.side === "buy"
+      ? { time: bars[k]!.time, price: Math.min(...near.map((b) => b.low)) - pad }
+      : { time: bars[k]!.time, price: Math.max(...near.map((b) => b.high)) + pad };
   };
   const note = bars === null ? "chart bars unavailable" : offset === null ? "couldn't match chart bars" : offset ? `time offset ${offset / 3600}h` : "aligned";
   console.debug("[EA] chart bars", bars?.length, "offset", offset);

@@ -331,16 +331,18 @@ function drawOnTradingView(): void {
   }
   const { candles, result } = last;
   const sec = (ms: number) => Math.floor(ms / 1000);
-  const byTime = new Map(candles.map((c) => [c.time, c]));
-  // Keep markers just outside the candle so they don't sit on top of it.
-  const below = (t: number) => {
-    const c = byTime.get(t)!;
-    return c.low - (c.high - c.low) * 0.3;
+  // Fallback placement (inject.ts re-places them on the chart's own bars): buy under, sell over
+  // the bar and its 2 neighbours each side, by the typical bar range there.
+  const indexOf = new Map(candles.map((c, k) => [c.time, k]));
+  const around = (t: number) => {
+    const k = indexOf.get(t)!;
+    const near = candles.slice(Math.max(0, k - 2), k + 3);
+    const ranges = candles.slice(Math.max(0, k - 10), k + 11).map((c) => c.high - c.low).sort((x, y) => x - y);
+    const pad = Math.max(ranges[Math.floor(ranges.length / 2)] ?? 0, candles[k]!.close * 0.003);
+    return { low: Math.min(...near.map((c) => c.low)) - pad, high: Math.max(...near.map((c) => c.high)) + pad };
   };
-  const above = (t: number) => {
-    const c = byTime.get(t)!;
-    return c.high + (c.high - c.low) * 0.3;
-  };
+  const below = (t: number) => around(t).low;
+  const above = (t: number) => around(t).high;
   const trades = result.trades.slice(-MAX_DRAWN_TRADES);
   const payload: DrawPayload = {
     arrows: trades.flatMap((tr) => [
