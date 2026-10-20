@@ -75,7 +75,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
     // trade it made +$58,344 on 1h (+166%) by riding the one pair that pumped, -10.5% without it.
     // Other timeframes and New Launch use #1, cost back at 3x.
     const v = !launch && (resolutionMinutes === 15 || resolutionMinutes === 60) ? variant : 1;
-    const sharp = !launch && resolutionMinutes === 15;
+    const sharp = !launch && (resolutionMinutes === 15 || resolutionMinutes === 60);
     const signalExit = v >= 2;
     const exit =
       v === 2 ? { exitSignals: ["climaxTurn" as const], exitNeed: 1 }
@@ -104,6 +104,8 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
         // Trial (2026-10-20, replaces the drop + volume peak entry): buy the sharp swing low (fell
         // >= 10% in 6 bars, lowest low of 20 bars, close in the upper half). 41 pairs at $880 a
         // trade, without the top pair: last 31 days -$1,839 -> -$490, after day 30 +$42,218 -> +$41,642.
+        // Also on 1h (trial from 2026-10-20): after day 30 without the top pair +$66,192, median
+        // +$160, 21/38 pairs (the RSI 10-49.9 #3 preset it replaces: +$88,707, median +$62, 19/38).
         ...(sharp ? { sharpLow: 0.1 } : {}),
         ...(signalExit ? { exitMode: "signals" as const, ...exit } : {}),
         ...(v >= 5 ? { breakevenAt: null } : {}),
