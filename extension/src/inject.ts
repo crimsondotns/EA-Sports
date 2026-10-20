@@ -261,7 +261,10 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
       console.warn("[EA] could not add study", spec.name, e);
     }
   }
-  if (specs.length) fitPanes(chart);
+  if (!specs.length) return;
+  // New panes are laid out after createStudy returns, so their heights settle a moment later.
+  fitPanes(chart);
+  for (const ms of [500, 1500]) setTimeout(() => fitPanes(chart), ms);
 }
 
 /**
