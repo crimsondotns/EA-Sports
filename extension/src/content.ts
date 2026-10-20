@@ -358,7 +358,7 @@ function drawOnTradingView(): void {
           const drop = (candles[j]!.close / candles[j - 1]!.close - 1) * 100;
           return [{ time: sec(candles[j]!.time), price: above(candles[j]!.time), text: `DROP ${drop.toFixed(1)}% · VOL ${sum > 0 ? (candles[j]!.volumeUsd / (sum / 20)).toFixed(1) : "–"}x`, color: "#b4b4b4" }];
         })
-      : last.setup.shortLabels.includes("Fell 10%")
+      : last.setup.shortLabels[0]!.startsWith("Fell ")
       ? trades.flatMap((tr) => {
           const k = indexOf.get(tr.entryTime);
           if (k === undefined || k < 8) return [];

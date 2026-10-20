@@ -21,7 +21,7 @@
 //   - time stop once `maxHoldBars` bars of time have passed (measured by the clock, not the bar
 //     count: quiet pairs skip bars) if the cost never came back
 
-import { barInterval, clusterZones, ema, macd, pivotLows, rsi, sma, type Candle, type Zone } from "../indicators.ts";
+import { atr, barInterval, clusterZones, ema, macd, pivotLows, rsi, sma, type Candle, type Zone } from "../indicators.ts";
 import type { Strategy } from "../backtest/engine.ts";
 
 export interface DeepDipParams {
@@ -59,6 +59,14 @@ export interface DeepDipParams {
    *  low (0.1 = a 10% fall), and bar i closes in the upper half of its range. 45% of these bars
    *  turned out to be sharp swing lows on 41 pairs (15m), against 0.45% of all bars. 0 = off. */
   sharpLow: number;
+  /** Sharp-low variants. `sharpLow20`: require the 20-bar low (off for Flush Low). `sharpUpper`:
+   *  the close's minimum position in the bar's range (0.5 = upper half). `sharpRsi7`: RSI(7)
+   *  under this (0 = off). `sharpStretchAtr`: the close at least this many ATR(14) under EMA 50
+   *  on bar i or one of the 2 bars before (0 = off). */
+  sharpLow20: boolean;
+  sharpUpper: number;
+  sharpRsi7: number;
+  sharpStretchAtr: number;
   /** Big-picture range bottom: the close within `rangeLowTol` of the lowest low of the last
    *  `rangeLowBars` bars (e.g. a week), so it buys near the floor of the range, not mid-range.
    *  0 = off. */
@@ -175,6 +183,10 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   dropPeak: 0,
   dropPeakVol: 2,
   sharpLow: 0,
+  sharpLow20: true,
+  sharpUpper: 0.5,
+  sharpRsi7: 0,
+  sharpStretchAtr: 0,
   rangeLowBars: 0,
   rangeLowTol: 0.05,
   trendBars: 0,
@@ -237,6 +249,7 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       const e3 = ema(close, p.emaSlow);
       const m = macd(close);
       const r = rsi(close);
+      const r7 = rsi(close, 7), e50 = ema(close, 50), a14 = atr(c, 14);
       const lows = pivotLows(c, p.pivotBars);
       // MACD's signal line is the slowest series that must exist; EMA 200 joins when it can.
       const holdMs = p.maxHoldBars * barInterval(c);
@@ -452,10 +465,14 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         for (let k = i - 20; lowest && k < i; k++) if (c[k]!.low <= b.low) lowest = false;
         const range = b.high - b.low;
         const upper = range > 0 ? (b.close - b.low) / range : 0;
+        let stretch = 0;
+        for (let k = Math.max(0, i - 2); k <= i; k++) stretch = Math.max(stretch, (e50[k]! - close[k]!) / (a14[k]! || Infinity));
         return [
           { label: `Fell ≥${p.sharpLow * 100}% in 6 bars`, ok: hi >= b.low * (1 + p.sharpLow), detail: `${((hi / b.low - 1) * 100).toFixed(1)}%` },
-          { label: "Lowest low of 20 bars", ok: lowest, detail: fmt(b.low) },
-          { label: "Closed in the upper half", ok: upper >= 0.5, detail: `${Math.round(upper * 100)}% of the bar` },
+          ...(p.sharpLow20 ? [{ label: "Lowest low of 20 bars", ok: lowest, detail: fmt(b.low) }] : []),
+          { label: p.sharpUpper === 0.5 ? "Closed in the upper half" : `Closed above ${Math.round(p.sharpUpper * 100)}% of the bar`, ok: upper >= p.sharpUpper, detail: `${Math.round(upper * 100)}% of the bar` },
+          ...(p.sharpRsi7 > 0 ? [{ label: `RSI 7 < ${p.sharpRsi7}`, ok: r7[i]! < p.sharpRsi7, detail: r7[i]!.toFixed(0) }] : []),
+          ...(p.sharpStretchAtr > 0 ? [{ label: `≥${p.sharpStretchAtr} ATR under EMA 50`, ok: stretch >= p.sharpStretchAtr, detail: `${stretch.toFixed(1)} ATR` }] : []),
         ];
       };
       const allChecks = (j: number) => j >= warmup && indicatorChecks(j).every((x) => x.ok) && (!p.useSupport || support(j) !== undefined);

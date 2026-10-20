@@ -3,9 +3,10 @@ import { DEFAULT_CONFIG, FREE_LADDER, type BacktestConfig, type Strategy } from 
 import { DEFAULT_PARAMS, volumeBreakout } from "../../src/strategy/volumeBreakout.ts";
 import { quietAccumulation } from "../../src/strategy/quietAccumulation.ts";
 import type { StudySpec } from "./messages.ts";
-import { DEEP_DIP_DEFAULTS, deepDip } from "../../src/strategy/emaMacdRsi.ts";
+import { DEEP_DIP_DEFAULTS, deepDip, type DeepDipParams } from "../../src/strategy/emaMacdRsi.ts";
+import { lowScore } from "../../src/strategy/lowScore.ts";
 
-export type StrategyId = "breakout" | "quiet" | "dip" | "launch" | "range" | "dropvol";
+export type StrategyId = "breakout" | "quiet" | "dip" | "launch" | "range" | "dropvol" | "sharp" | "stretch" | "flush" | "score";
 
 export interface StrategySetup {
   id: StrategyId;
@@ -33,9 +34,55 @@ export const STRATEGY_NAMES: Record<StrategyId, string> = {
   launch: "New Launch",
   range: "Range Swing",
   dropvol: "Drop + Volume",
+  sharp: "Sharp Low",
+  stretch: "Stretched Low",
+  flush: "Flush Low",
+  score: "Low Score",
 };
 
 export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant = 3): StrategySetup {
+  if (id === "sharp" || id === "stretch" || id === "flush" || id === "score") {
+    // Swing-low entries from the 2026-10-20 research (42 pairs 15m, picked on bars before
+    // 2026-09-01, $880 a trade, out of sample after 09-01 without the top pair). #3 exits.
+    //   Sharp Low: fell >= 10% in 6 bars + 20-bar low + upper-half close: +$13,285, 1.5 trades/pair/month.
+    //   Stretched Low: Sharp Low + close >= 2 ATR under EMA 50 (bar or 2 before): +$13,635, 16/42 pairs.
+    //   Flush Low: fell >= 15% in 6 bars + close above the bottom 30% + RSI 7 < 25: +$13,650.
+    //   Low Score: logistic-regression score >= -1.52 (src/strategy/lowScore.ts): +$10,428, picks
+    //   true lows 18% of the time (Sharp Low 10%). Every one makes $0 on the median pair.
+    const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
+    const dip = setupStrategy("dip", resolutionMinutes);
+    const exits: Partial<DeepDipParams> = { srLookback: perDay * 30, maxHoldBars: perDay * 30, rsiLowBars: perDay, exitMode: "signals", exitSignals: ["rsiOver"], exitNeed: 1, exitRsiOver: 80 };
+    const entry: Partial<DeepDipParams> =
+      id === "sharp" ? { sharpLow: 0.1 }
+      : id === "stretch" ? { sharpLow: 0.1, sharpStretchAtr: 2 }
+      : id === "flush" ? { sharpLow: 0.15, sharpLow20: false, sharpUpper: 0.3, sharpRsi7: 25 }
+      : { sharpLow: 0.1 };
+    const strategy = id === "score" ? lowScore({ threshold: -1.52 }, deepDip(exits)) : deepDip({ ...exits, ...entry });
+    const labels: Record<typeof id, string[]> = {
+      sharp: ["Fell 10%", "20-bar low", "Upper-half close"],
+      stretch: ["Fell 10%", "20-bar low", "Upper-half close", "2 ATR under EMA 50"],
+      flush: ["Fell 15%", "Close above 30%", "RSI 7 < 25"],
+      score: ["Low score"],
+    };
+    const how: Record<typeof id, string> = {
+      sharp: "fell >= 10% in 6 bars, 20-bar low, upper-half close",
+      stretch: "Sharp Low and >= 2 ATR under EMA 50",
+      flush: "fell >= 15% in 6 bars, close above 30% of the bar, RSI 7 < 25",
+      score: "swing-low model score >= -1.52 · trained on 15m",
+    };
+    return {
+      ...dip,
+      id,
+      name: STRATEGY_NAMES[id],
+      strategy,
+      config: setupStrategy("dip", resolutionMinutes, 3).config,
+      minBars: id === "score" ? 61 : dip.minBars,
+      shortLabels: labels[id],
+      // Low Score reads volume, and the chart only exports volume with a Volume study on.
+      studies: id === "score" ? [{ name: "Volume", ownPane: true }, ...dip.studies] : dip.studies,
+      note: `10% per trade · ${how[id]} · sell 10% on each close with RSI ≥ 80 · keep 10% free`,
+    };
+  }
   if (id === "dropvol") {
     // Shown next to Deep Dip for comparison on the chart: Deep Dip's checks (RSI 10-49.9) on the
     // drop bar or up to 3 bars before, the drop bar closes >= 1% under the bar before on a volume
