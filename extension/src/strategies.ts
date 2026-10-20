@@ -38,6 +38,12 @@ export const STRATEGY_NAMES: Record<StrategyId, string> = {
 };
 
 export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant = 3): StrategySetup {
+  // Every strategy shows Volume in its own pane, the first pane under the price (above RSI / MACD).
+  const setup = baseSetup(id, resolutionMinutes, variant);
+  return { ...setup, studies: [{ name: "Volume", ownPane: true }, ...setup.studies.filter((s) => s.name !== "Volume")] };
+}
+
+function baseSetup(id: StrategyId, resolutionMinutes: number, variant: number): StrategySetup {
   // A strategy saved before it was removed from the picker (Quiet Accumulation, Range Swing).
   if (!(id in STRATEGY_NAMES)) id = "dip";
   if (id === "sharp" || id === "stretch" || id === "flush" || id === "score") {
@@ -77,8 +83,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
       config: setupStrategy("dip", resolutionMinutes, 3).config,
       minBars: id === "score" ? 61 : dip.minBars,
       shortLabels: labels[id],
-      // Low Score reads volume, and the chart only exports volume with a Volume study on.
-      studies: id === "score" ? [{ name: "Volume", ownPane: true }, ...dip.studies] : dip.studies,
+      studies: dip.studies,
       note: `10% per trade · ${how[id]} · sell 10% on each close with RSI ≥ 80 · keep 10% free`,
     };
   }
@@ -110,7 +115,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
       config: setupStrategy("dip", resolutionMinutes, 3).config,
       shortLabels: ["Under EMAs", "MACD turn", "RSI", "Support", "Drop + vol peak", "Swing low held"],
       note: "10% per trade · drop >= 1% on a volume peak, next bar holds the low · sell 10% on each close with RSI ≥ 80 · keep 10% free",
-      studies: [...dip.studies.filter((s) => s.name !== "Volume"), { name: "Volume", ownPane: true }].sort((a, b) => (a.name === "Volume" ? -1 : b.name === "Volume" ? 1 : 0)),
+      studies: dip.studies,
     };
   }
   if (id === "dip" || id === "launch") {
