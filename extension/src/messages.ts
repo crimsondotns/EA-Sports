@@ -104,6 +104,8 @@ export interface ChartBar {
 
 export interface DrawPayload {
   arrows: { time: number; price: number; side: "buy" | "sell"; text: string; color: string }[];
+  /** Small text under a bar: the drop bar and the confirm bar behind a capitulation BUY. */
+  labels: { time: number; price: number; text: string; color: string }[];
   segments: { from: { time: number; price: number }; to: { time: number; price: number }; color: string }[];
   stop: number | null;
   /** Resting limit for the next 10% sell while holding, if the strategy uses one. */

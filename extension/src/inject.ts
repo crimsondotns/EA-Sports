@@ -342,6 +342,11 @@ async function draw(p: DrawPayload): Promise<void> {
   const note = bars === null ? "chart bars unavailable" : offset === null ? "couldn't match chart bars" : offset ? `time offset ${offset / 3600}h` : "aligned";
   console.debug("[EA] chart bars", bars?.length, "offset", offset);
 
+  for (const l of p.labels) {
+    await add("label", () =>
+      chart.createShape(place({ ...l, side: "buy" }), { ...opts, shape: "text", text: l.text, overrides: { color: l.color, fontsize: 10 } }),
+    );
+  }
   for (const a of p.arrows) {
     await add(a.side === "buy" ? "arrow_up" : "arrow_down", () =>
       chart.createShape(
