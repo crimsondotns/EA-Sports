@@ -52,6 +52,8 @@ export interface Settings {
   strategy: "breakout" | "quiet" | "dip" | "launch" | "range";
   showTable: boolean;
   drawMarkers: boolean;
+  /** Draw the open trade's STOP line. */
+  showStop: boolean;
   notify: boolean;
   /** Add the active strategy's indicators to the chart. */
   showIndicators: boolean;
@@ -63,7 +65,7 @@ export interface Settings {
   tableOffsetY: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, notify: true, showIndicators: true, tableOpacity: 0.6, tableCollapsed: false, tableOffsetY: 0 };
+export const DEFAULT_SETTINGS: Settings = { strategy: "dip", showTable: true, drawMarkers: true, showStop: true, notify: true, showIndicators: true, tableOpacity: 0.6, tableCollapsed: false, tableOffsetY: 0 };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 // content <-> background (chrome.runtime messaging)

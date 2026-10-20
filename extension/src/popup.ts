@@ -268,7 +268,7 @@ async function main(): Promise<void> {
   });
 
   const settings = (await chrome.storage.local.get(DEFAULT_SETTINGS)) as Settings;
-  for (const name of ["showTable", "drawMarkers", "showIndicators", "notify"] as const) {
+  for (const name of ["showTable", "drawMarkers", "showStop", "showIndicators", "notify"] as const) {
     const input = $(name) as HTMLInputElement;
     input.checked = settings[name];
     input.addEventListener("change", () => void chrome.storage.local.set({ [name]: input.checked }));

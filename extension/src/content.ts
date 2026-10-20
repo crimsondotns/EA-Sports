@@ -385,7 +385,7 @@ function drawOnTradingView(): void {
       time: sec(candles[l.from]!.time),
     })),
     anchors: candles.slice(-300).map((c) => ({ time: sec(c.time), close: c.close })),
-    stop: result.trades.at(-1)?.reason === "end" ? (result.stops.at(-1) ?? null) : null,
+    stop: !settings.showStop ? null : result.trades.at(-1)?.reason === "end" ? (result.stops.at(-1) ?? null) : null,
     rangeLow: last.setup.strategy.prepare(candles).rangeLow?.(candles.length - 1) ?? null,
     sellLabel: last.setup.sellLabel ?? "SELL 10%",
     sellLimit: (() => {
@@ -617,7 +617,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (prev.strategy !== settings.strategy && lastInput) {
     last = null;
     analyze(lastInput.source, lastInput.candles);
-  } else if (prev.drawMarkers !== settings.drawMarkers || prev.showIndicators !== settings.showIndicators) drawOnTradingView();
+  } else if (prev.drawMarkers !== settings.drawMarkers || prev.showStop !== settings.showStop || prev.showIndicators !== settings.showIndicators) drawOnTradingView();
 });
 
 send({ type: "refresh" });
