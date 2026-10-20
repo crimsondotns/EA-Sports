@@ -19,13 +19,6 @@
 | [Drop + Volume](drop-volume.md) | แท่งดิ่ง ≥ 1% บน volume พีค + แท่งถัดไปไม่หลุด low | #3 | ทดลอง |
 | [Volume Breakout](volume-breakout.md) | ทะลุ high 20 แท่ง + volume ≥ 2.5 เท่า | ATR trailing | ไม่แนะนำ |
 
-## เอาออกจาก extension แล้ว (ยังรันใน backtest ได้)
-
-| Strategy | เหตุผล |
-|---|---|
-| [Quiet Accumulation](quiet-accumulation.md) | แพ้ Deep Dip ทุก timeframe |
-| [Range Swing](range-swing.md) | backtest ขาดทุน |
-
 ## ผลรวมล่าสุด (15m, 42 เหรียญ, หลัง 1 ก.ย. 2026, ไม่นับเหรียญท็อป, ไม้ละ $880)
 
 | Strategy | กำไร | ไม้ | เหรียญที่กำไร |
@@ -38,4 +31,4 @@
 
 ทุกตัวเหรียญตรงกลางกำไร $0 และ 31 วันล่าสุด (ตลาดขาลง) ขาดทุน ความต่างระหว่าง 4 ตัวบนสุดอยู่ในระดับ noise
 
-ผลทดสอบเก่าและแบบที่ลองแล้วไม่ใช้ทั้งหมดอยู่ใน [research.md](research.md)
+ผลทดสอบเก่า แบบที่ลองแล้วไม่ใช้ และ Strategy ที่เอาออกแล้ว (Quiet Accumulation, Range Swing) อยู่ใน [research.md](research.md)
