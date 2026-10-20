@@ -49,7 +49,7 @@ export interface Summary {
 }
 
 export interface Settings {
-  strategy: "breakout" | "quiet" | "dip" | "launch" | "range";
+  strategy: "breakout" | "quiet" | "dip" | "launch" | "range" | "dropvol";
   showTable: boolean;
   drawMarkers: boolean;
   /** "31d": signals from a fixed point ~31 days back; "start": from the pair's first bar. */

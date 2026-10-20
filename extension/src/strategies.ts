@@ -5,7 +5,7 @@ import { quietAccumulation } from "../../src/strategy/quietAccumulation.ts";
 import type { StudySpec } from "./messages.ts";
 import { DEEP_DIP_DEFAULTS, deepDip } from "../../src/strategy/emaMacdRsi.ts";
 
-export type StrategyId = "breakout" | "quiet" | "dip" | "launch" | "range";
+export type StrategyId = "breakout" | "quiet" | "dip" | "launch" | "range" | "dropvol";
 
 export interface StrategySetup {
   id: StrategyId;
@@ -32,9 +32,41 @@ export const STRATEGY_NAMES: Record<StrategyId, string> = {
   dip: "Deep Dip",
   launch: "New Launch",
   range: "Range Swing",
+  dropvol: "Drop + Volume",
 };
 
 export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant = 3): StrategySetup {
+  if (id === "dropvol") {
+    // Shown next to Deep Dip for comparison on the chart: Deep Dip's checks (RSI 10-49.9) on the
+    // drop bar or up to 3 bars before, the drop bar closes >= 1% under the bar before on a volume
+    // peak (>= 2x the 20-bar average, highest of 20), the next bar holds its low; buy the open
+    // after that. #3 exits. 41 pairs 15m from 2026-09-01 (not used to pick it), $880 a trade,
+    // without the top pair: +$5,010, 2.7 trades a pair a month (sharp low: +$4,230, 1.6).
+    const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
+    const dip = setupStrategy("dip", resolutionMinutes);
+    return {
+      ...dip,
+      id,
+      name: STRATEGY_NAMES.dropvol,
+      strategy: deepDip({
+        srLookback: perDay * 30,
+        maxHoldBars: perDay * 30,
+        rsiLowBars: perDay,
+        exitMode: "signals",
+        exitSignals: ["rsiOver"],
+        exitNeed: 1,
+        exitRsiOver: 80,
+        minRsi: 10,
+        maxRsi: 49.9,
+        dropPeak: 0.01,
+        dropPeakVol: 2,
+      }),
+      config: setupStrategy("dip", resolutionMinutes, 3).config,
+      shortLabels: ["Under EMAs", "MACD turn", "RSI", "Support", "Drop + vol peak", "Swing low held"],
+      note: "10% per trade · drop >= 1% on a volume peak, next bar holds the low · sell 10% on each close with RSI ≥ 80 · keep 10% free",
+      studies: [...dip.studies.filter((s) => s.name !== "Volume"), { name: "Volume", ownPane: true }].sort((a, b) => (a.name === "Volume" ? -1 : b.name === "Volume" ? 1 : 0)),
+    };
+  }
   if (id === "range") {
     // Trade the range: Deep Dip's entry, but always within 3% of the 7-day low, then sell the
     // whole position at a limit 3% under the 7-day high (at least +5%). Tested and losing:

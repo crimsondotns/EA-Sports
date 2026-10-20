@@ -347,7 +347,18 @@ function drawOnTradingView(): void {
   const payload: DrawPayload = {
     // Sharp swing-low entries: how far price fell into the signal bar (the bar before the BUY,
     // which sits on the fill bar). Above the candles, clear of the arrow.
-    labels: last.setup.shortLabels.includes("Fell 10%")
+    labels: last.setup.shortLabels.includes("Drop + vol peak")
+      ? trades.flatMap((tr) => {
+          // Drop + Volume: the drop bar is two bars before the BUY (then the bar that held its low).
+          const k = indexOf.get(tr.entryTime);
+          if (k === undefined || k < 23) return [];
+          const j = k - 2;
+          let sum = 0;
+          for (let q = j - 20; q < j; q++) sum += candles[q]!.volumeUsd;
+          const drop = (candles[j]!.close / candles[j - 1]!.close - 1) * 100;
+          return [{ time: sec(candles[j]!.time), price: above(candles[j]!.time), text: `DROP ${drop.toFixed(1)}% · VOL ${sum > 0 ? (candles[j]!.volumeUsd / (sum / 20)).toFixed(1) : "–"}x`, color: "#b4b4b4" }];
+        })
+      : last.setup.shortLabels.includes("Fell 10%")
       ? trades.flatMap((tr) => {
           const k = indexOf.get(tr.entryTime);
           if (k === undefined || k < 8) return [];
