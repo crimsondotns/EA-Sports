@@ -344,7 +344,7 @@ async function draw(p: DrawPayload): Promise<void> {
 
   for (const l of p.labels) {
     await add("label", () =>
-      chart.createShape(place({ ...l, side: "buy" }), { ...opts, shape: "text", text: l.text, overrides: { color: l.color, fontsize: 10 } }),
+      chart.createShape(place({ ...l, side: "sell" }), { ...opts, shape: "text", text: l.text, overrides: { color: l.color, fontsize: 10 } }),
     );
   }
   for (const a of p.arrows) {

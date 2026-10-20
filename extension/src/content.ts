@@ -346,7 +346,7 @@ function drawOnTradingView(): void {
   const trades = result.trades.slice(-MAX_DRAWN_TRADES);
   const payload: DrawPayload = {
     // Capitulation entries: mark the drop bar and the bar that held its low, two and one bars
-    // before the BUY (the arrow sits on the fill bar).
+    // before the BUY (the arrow sits on the fill bar). Above the candles, clear of the arrow.
     labels: last.setup.shortLabels.includes("Drop + vol peak")
       ? trades.flatMap((tr) => {
           const k = indexOf.get(tr.entryTime);
@@ -357,8 +357,7 @@ function drawOnTradingView(): void {
           const drop = (candles[j]!.close / candles[j - 1]!.close - 1) * 100;
           const vol = sum > 0 ? candles[j]!.volumeUsd / (sum / 20) : 0;
           return [
-            { time: sec(candles[j]!.time), price: below(candles[j]!.time), text: `DROP ${drop.toFixed(1)}% · VOL ${vol.toFixed(1)}x`, color: "#b4b4b4" },
-            { time: sec(candles[k - 1]!.time), price: below(candles[k - 1]!.time), text: "HELD", color: "#b4b4b4" },
+            { time: sec(candles[j]!.time), price: above(candles[j]!.time), text: `DROP ${drop.toFixed(1)}% · VOL ${vol.toFixed(1)}x`, color: "#b4b4b4" },
           ];
         })
       : [],
