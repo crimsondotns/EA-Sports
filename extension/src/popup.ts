@@ -256,6 +256,45 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
   select(initial, false);
 }
 
+// ---------- watchlist: every open DEX Screener tab's latest summary ----------
+
+const RANK = { buy: 0, zone: 1, hold: 2, flat: 3 } as const;
+
+async function renderWatchlist(): Promise<void> {
+  const tabs = await chrome.tabs.query({ url: "https://dexscreener.com/*" });
+  const stored = await chrome.storage.session.get(tabs.map((t) => summaryKey(t.id!)));
+  const rows = tabs
+    .map((t) => ({ tab: t, s: stored[summaryKey(t.id!)] as Summary | undefined }))
+    .filter((r): r is { tab: chrome.tabs.Tab; s: Summary } => !!r.s)
+    .map((r) => ({ ...r, rank: RANK[r.s.signal === "flat" && r.s.plan?.inZone ? "zone" : r.s.signal] }))
+    // BUY first, then price in the buy zone, then open trades by P/L, then waiting.
+    .sort((a, b) => a.rank - b.rank || (b.s.openPnlPct ?? 0) - (a.s.openPnlPct ?? 0));
+  $("watchCount").textContent = `${rows.length} of ${tabs.length} DEX Screener tab${tabs.length === 1 ? "" : "s"} with a chart`;
+  if (!rows.length) {
+    $("watchlist").innerHTML = `<li><p class="watch-empty">Open pairs on DEX Screener in other tabs; each one shows up here with its signal.</p></li>`;
+    return;
+  }
+  const ago = (t: number) => {
+    const m = Math.round((Date.now() - t) / 60_000);
+    return m < 1 ? "now" : m < 60 ? `${m}m ago` : `${Math.round(m / 60)}h ago`;
+  };
+  $("watchlist").innerHTML = rows
+    .map(({ tab, s, rank }) => {
+      const state =
+        rank === 0
+          ? `<strong class="pos">▲ BUY</strong><small>next bar open</small>`
+          : rank === 1
+            ? `<strong class="pos">In zone</strong><small>waiting for the trigger</small>`
+            : rank === 2
+              ? `<strong class="${(s.openPnlPct ?? 0) >= 0 ? "pos" : "neg"}">${pct(s.openPnlPct ?? 0, 2)}</strong><small>${s.costRecovered ? "Free ride" : "Holding"}</small>`
+              : `<strong class="muted">Waiting</strong><small>${s.plan ? `${pct(s.plan.distancePct)} to zone` : "no setup"}</small>`;
+      return `<li><button type="button" data-tab="${tab.id}" data-window="${tab.windowId}">
+        <span class="name"><strong>${esc(s.pair)}</strong><small>${esc(s.resolution)} · ${esc(s.strategy)} · ${ago(s.updatedAt)}${s.error ? " · error" : ""}</small></span>
+        <span class="state">${state}</span></button></li>`;
+    })
+    .join("");
+}
+
 async function main(): Promise<void> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const onDexScreener = !!tab?.url?.startsWith("https://dexscreener.com/");
@@ -342,16 +381,35 @@ async function main(): Promise<void> {
     });
   });
 
-  // Settings is its own page inside the popup.
-  const showPage = (settingsOpen: boolean) => {
-    $("homePage").hidden = settingsOpen;
-    $("settingsPage").hidden = !settingsOpen;
-    $(settingsOpen ? "closeSettings" : "openSettings").focus();
+  // Settings and Watchlist are their own pages inside the popup.
+  type Page = "home" | "settings" | "watchlist";
+  let page: Page = "home";
+  const showPage = (next: Page) => {
+    const from = page;
+    page = next;
+    $("homePage").hidden = next !== "home";
+    $("settingsPage").hidden = next !== "settings";
+    $("watchlistPage").hidden = next !== "watchlist";
+    if (next === "watchlist") void renderWatchlist();
+    $(next === "home" ? (from === "watchlist" ? "openWatchlist" : "openSettings") : next === "settings" ? "closeSettings" : "closeWatchlist").focus();
   };
-  $("openSettings").addEventListener("click", () => showPage(true));
-  $("closeSettings").addEventListener("click", () => showPage(false));
+  $("openSettings").addEventListener("click", () => showPage("settings"));
+  $("closeSettings").addEventListener("click", () => showPage("home"));
+  $("openWatchlist").addEventListener("click", () => showPage("watchlist"));
+  $("closeWatchlist").addEventListener("click", () => showPage("home"));
+  // A row switches to its tab (and window).
+  $("watchlist").addEventListener("click", (e) => {
+    const b = (e.target as Element).closest<HTMLButtonElement>("button[data-tab]");
+    if (!b) return;
+    void chrome.tabs.update(Number(b.dataset.tab), { active: true });
+    void chrome.windows.update(Number(b.dataset.window), { focused: true });
+    window.close();
+  });
+  chrome.storage.session.onChanged.addListener((changes) => {
+    if (page === "watchlist" && Object.keys(changes).some((k) => k.startsWith("summary:"))) void renderWatchlist();
+  });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !$("settingsPage").hidden && $("strategyMenu").hidden) showPage(false);
+    if (e.key === "Escape" && page !== "home" && $("strategyMenu").hidden) showPage("home");
   });
 }
 

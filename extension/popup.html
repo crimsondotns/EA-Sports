@@ -77,6 +77,19 @@
   .empty { color: var(--color-text-secondary); }
   .empty p { margin: 0 0 12px; }
   .grow { flex: 1; min-width: 0; }
+  /* Watchlist: one row per open DEX Screener tab; the row switches to that tab */
+  .watch { list-style: none; margin: 0 -10px; padding: 0; }
+  .watch button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 10px; border: 0;
+    border-radius: var(--radius-control); background: transparent; color: var(--color-text-primary); font: inherit; text-align: left;
+    cursor: pointer; transition: background-color var(--transition-fast); }
+  .watch button:active { background: var(--color-surface-pressed); }
+  .watch button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+  .watch .name { flex: 1; min-width: 0; }
+  .watch .name strong { display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .watch .name small { display: block; color: var(--color-text-muted); font-size: var(--font-size-small); }
+  .watch .state { flex: none; text-align: right; font-variant-numeric: tabular-nums; }
+  .watch .state small { display: block; color: var(--color-text-muted); font-size: var(--font-size-small); }
+  .watch-empty { color: var(--color-text-secondary); margin: 0; }
   footer { color: var(--color-text-muted); font-size: var(--font-size-small); padding-top: 8px; }
 
   /* Switch rows: the whole label is clickable */
@@ -206,6 +219,7 @@
     .button-primary:hover:not(:disabled) { background: var(--color-button-primary-hover); }
     .button-secondary:hover:not(:disabled) { background: var(--color-button-secondary-hover); }
     .icon-button:hover { background: var(--color-surface-hover); }
+    .watch button:hover { background: var(--color-surface-hover); }
     .segmented label:not(:has(input:checked)):hover { background: var(--color-surface-hover); color: var(--color-text-primary); }
     .dropdown-trigger:hover:not(:disabled) { background: var(--color-trigger-hover-bg); border-color: var(--color-border-strong); }
     .dropdown-menu li .info:hover { color: var(--color-text-primary); }
@@ -222,6 +236,7 @@
   <header>
     <img src="icon48.png" alt="">
     <div class="grow"><h1 id="title">EA Signals</h1><p id="subtitle">DEX Screener signals</p></div>
+    <button type="button" class="icon-button" id="openWatchlist" aria-label="Watchlist" title="Watchlist"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
     <button type="button" class="icon-button" id="openSettings" aria-label="Settings" title="Settings"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 10.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z M6.6 1.75h2.8l.4 1.7 1.3.75 1.65-.55 1.4 2.4-1.25 1.2v1.5l1.25 1.2-1.4 2.4-1.65-.55-1.3.75-.4 1.7H6.6l-.4-1.7-1.3-.75-1.65.55-1.4-2.4 1.25-1.2v-1.5L1.85 6.05l1.4-2.4 1.65.55 1.3-.75.4-1.7Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg></button>
   </header>
   <section>
@@ -269,6 +284,14 @@
     </div>
   </section>
   <main id="main"></main>
+  </div>
+
+  <div id="watchlistPage" hidden>
+    <header>
+      <button type="button" class="icon-button" id="closeWatchlist" aria-label="Back"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="grow"><h1>Watchlist</h1><p id="watchCount">Open DEX Screener tabs</p></div>
+    </header>
+    <ul class="watch" id="watchlist" aria-labelledby="watchCount"></ul>
   </div>
 
   <div id="settingsPage" hidden>
