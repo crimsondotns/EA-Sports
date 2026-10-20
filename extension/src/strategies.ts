@@ -94,6 +94,9 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
         srLookback: perDay * 30,
         maxHoldBars: perDay * 30,
         rsiLowBars: perDay,
+        // Trial (2026-10-20): RSI band 10–49.9 instead of 30–60 on Deep Dip, to buy deeper dips.
+        // ASTEROID + CASHCAT at $880 a trade: 15m +$289 -> -$500, 1h +$1,032 -> +$1,062.
+        ...(launch ? {} : { minRsi: 10, maxRsi: 49.9 }),
         ...(signalExit ? { exitMode: "signals" as const, ...exit } : {}),
         ...(v >= 5 ? { breakevenAt: null } : {}),
         ...(v >= 6 ? { rsiSwing: 2, rsiSwingWithin: 6 } : {}),
