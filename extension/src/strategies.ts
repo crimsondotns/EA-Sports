@@ -75,6 +75,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
     // trade it made +$58,344 on 1h (+166%) by riding the one pair that pumped, -10.5% without it.
     // Other timeframes and New Launch use #1, cost back at 3x.
     const v = !launch && (resolutionMinutes === 15 || resolutionMinutes === 60) ? variant : 1;
+    const dropPeak = !launch && resolutionMinutes === 15;
     const signalExit = v >= 2;
     const exit =
       v === 2 ? { exitSignals: ["climaxTurn" as const], exitNeed: 1 }
@@ -97,6 +98,10 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
         // Trial (2026-10-20): RSI band 10–49.9 instead of 30–60 on Deep Dip, to buy deeper dips.
         // ASTEROID + CASHCAT at $880 a trade: 15m +$289 -> -$500, 1h +$1,032 -> +$1,062.
         ...(launch ? {} : { minRsi: 10, maxRsi: 49.9 }),
+        // Trial (2026-10-20), 15m only: buy the capitulation swing low (drop >= 1% on a volume
+        // peak, next bar holds its low, Deep Dip checks within the 3 bars before). ARROW, CASHCAT,
+        // INU, ORBIO at $880 a trade: last 31 days -$955 -> -$122, after day 30 +$731 -> +$2,633.
+        ...(dropPeak ? { dropPeak: 0.01, dropPeakVol: 2 } : {}),
         ...(signalExit ? { exitMode: "signals" as const, ...exit } : {}),
         ...(v >= 5 ? { breakevenAt: null } : {}),
         ...(v >= 6 ? { rsiSwing: 2, rsiSwingWithin: 6 } : {}),
@@ -115,7 +120,7 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
       },
       // EMA 200 is skipped until it exists, so MACD (26 + 9 bars) sets the minimum.
       minBars: 37,
-      shortLabels: ["Under EMAs", "MACD turn", "RSI", ...(v >= 7 ? ["Range low"] : []), ...(v >= 6 ? ["RSI swing low"] : []), "Support"],
+      shortLabels: ["Under EMAs", "MACD turn", "RSI", ...(v >= 7 ? ["Range low"] : []), ...(v >= 6 ? ["RSI swing low"] : []), "Support", ...(dropPeak ? ["Drop + vol peak", "Swing low held"] : [])],
       note: launch
         ? `5% per trade · cost back at 3x · keep 10% free · for a pair's first week${resolutionMinutes === 5 ? "" : " · best on 5m"}`
         : signalExit
@@ -128,6 +133,8 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
         // New panes stack downwards in creation order: RSI, then MACD under it.
         { name: "Relative Strength Index", inputs: { length: 14 } },
         { name: "MACD" },
+        // The capitulation entry reads volume; the chart only exports it with this study on.
+        ...(dropPeak ? [{ name: "Volume" }] : []),
       ],
     };
   }

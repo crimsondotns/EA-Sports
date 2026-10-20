@@ -48,6 +48,12 @@ export interface DeepDipParams {
   /** Reversal on the signal bar: "rsi" = RSI above the previous bar's, "green" = close above
    *  open, "both" = both. "off" buys on any bar that passes the other checks. */
   turnUp: "off" | "rsi" | "green" | "both";
+  /** Capitulation swing low: bar i - 1 closed at least `dropPeak` under the bar before it on a
+   *  volume peak (>= `dropPeakVol` x the 20-bar average and the highest of the last 20 bars),
+   *  bar i's low held above that bar's low, and Deep Dip's checks all held on the drop bar or one
+   *  of the 3 bars before it. Replaces the usual "all checks on bar i" entry. 0 = off. */
+  dropPeak: number;
+  dropPeakVol: number;
   /** Big-picture range bottom: the close within `rangeLowTol` of the lowest low of the last
    *  `rangeLowBars` bars (e.g. a week), so it buys near the floor of the range, not mid-range.
    *  0 = off. */
@@ -161,6 +167,8 @@ export const DEEP_DIP_DEFAULTS: DeepDipParams = {
   rsiSwingWithin: 6,
   priceSwing: 0,
   turnUp: "off",
+  dropPeak: 0,
+  dropPeakVol: 2,
   rangeLowBars: 0,
   rangeLowTol: 0.05,
   trendBars: 0,
@@ -419,6 +427,19 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
         ];
       };
 
+      /** Bar j closed `dropPeak` under the bar before on the highest volume of the last 20 bars. */
+      const dropPeakBar = (j: number) => {
+        if (j < 21) return false;
+        let sum = 0, max = 0;
+        for (let k = j - 20; k < j; k++) {
+          sum += c[k]!.volumeUsd;
+          max = Math.max(max, c[k]!.volumeUsd);
+        }
+        const v = c[j]!.volumeUsd;
+        return close[j]! <= close[j - 1]! * (1 - p.dropPeak) && v >= p.dropPeakVol * (sum / 20) && v > max;
+      };
+      const allChecks = (j: number) => j >= warmup && indicatorChecks(j).every((x) => x.ok) && (!p.useSupport || support(j) !== undefined);
+
       // Last bar that signalled; the engine only asks while flat, in time order.
       let lastSignal = -1;
       /** Re-entry rule: false when an earlier, higher signal failed and this bar doesn't diverge. */
@@ -431,7 +452,13 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
       return {
         shouldEnter(i) {
           // Indicators first: the support search is the expensive part.
-          if (p.priceSwing > 0) {
+          if (p.dropPeak > 0) {
+            const j = i - 1;
+            if (j < warmup || !dropPeakBar(j) || !(c[i]!.low > c[j]!.low)) return false;
+            let setup = false;
+            for (let k = j; k >= Math.max(warmup, j - 3) && !setup; k--) setup = allChecks(k);
+            if (!setup) return false;
+          } else if (p.priceSwing > 0) {
             const k = p.priceSwing, j = i - k;
             if (j < warmup) return false;
             for (let q = j - k; q <= i; q++) if (q !== j && !(c[q]!.low > c[j]!.low)) return false;
@@ -479,7 +506,21 @@ export function deepDip(params: Partial<DeepDipParams> = {}): Strategy {
           return p.hhExit !== "off" && p.exitSignals.length === 0 ? p.sellPct : exitFired(i) ? p.sellPct : 0;
         },
         conditions(i) {
-          return i >= warmup ? checks(i) : [];
+          if (i < warmup) return [];
+          if (p.dropPeak <= 0) return checks(i);
+          const j = i - 1;
+          const v = c[j]!.volumeUsd;
+          let sum = 0;
+          for (let k = Math.max(0, j - 20); k < j; k++) sum += c[k]!.volumeUsd;
+          return [
+            ...checks(j).map((x) => ({ ...x, label: `${x.label} (drop bar)` })),
+            {
+              label: `Drop ≥${p.dropPeak * 100}% on a volume peak`,
+              ok: dropPeakBar(j),
+              detail: `${((close[j]! / close[j - 1]! - 1) * 100).toFixed(1)}% · vol ${sum > 0 ? (v / (sum / 20)).toFixed(1) : "–"}x`,
+            },
+            { label: "Swing low held", ok: c[i]!.low > c[j]!.low, detail: `${fmt(c[i]!.low)} vs ${fmt(c[j]!.low)}` },
+          ];
         },
         rangeLow(i) {
           return p.rangeLowBars > 0 && i >= 0 ? { price: rangeLow(i), uptrend: uptrend(i) } : null;
