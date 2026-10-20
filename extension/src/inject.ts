@@ -265,9 +265,9 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
 }
 
 /**
- * New indicator panes get as much height as the price pane, which squeezes the chart. Shrink
- * any indicator pane taller than ~14% of the chart and give the room back to the price pane.
- * Panes the user made smaller are left alone.
+ * New indicator panes get as much height as the price pane, which squeezes the chart, and adding
+ * or removing a pane (Volume) can leave RSI / MACD a few pixels tall. Set every indicator pane
+ * that is far from ~14% of the chart (at least 80px) to that height; the price pane takes the rest.
  */
 function fitPanes(chart: TvChart): void {
   try {
@@ -275,10 +275,10 @@ function fitPanes(chart: TvChart): void {
     if (!panes || panes.length < 2) return;
     const heights = panes.map((p) => p.getHeight());
     const total = heights.reduce((a, b) => a + b, 0);
-    const target = Math.max(70, Math.round(total * 0.14));
+    const target = Math.max(80, Math.round(total * 0.14));
     let changed = false;
     for (let k = 1; k < panes.length; k++) {
-      if (heights[k]! > target * 1.3) {
+      if (heights[k]! > target * 1.3 || heights[k]! < target * 0.7) {
         heights[k] = target;
         panes[k]!.setHeight(target);
         changed = true;
