@@ -1,12 +1,11 @@
 // Strategies the extension can run, with the backtest settings each one is meant to use.
 import { DEFAULT_CONFIG, FREE_LADDER, type BacktestConfig, type Strategy } from "../../src/backtest/engine.ts";
 import { DEFAULT_PARAMS, volumeBreakout } from "../../src/strategy/volumeBreakout.ts";
-import { quietAccumulation } from "../../src/strategy/quietAccumulation.ts";
 import type { StudySpec } from "./messages.ts";
 import { DEEP_DIP_DEFAULTS, deepDip, type DeepDipParams } from "../../src/strategy/emaMacdRsi.ts";
 import { lowScore } from "../../src/strategy/lowScore.ts";
 
-export type StrategyId = "breakout" | "quiet" | "dip" | "launch" | "range" | "dropvol" | "sharp" | "stretch" | "flush" | "score";
+export type StrategyId = "breakout" | "dip" | "launch" | "dropvol" | "sharp" | "stretch" | "flush" | "score";
 
 export interface StrategySetup {
   id: StrategyId;
@@ -29,10 +28,8 @@ const emaStudy = (length: number, color: string): StudySpec => ({ name: "Moving 
 
 export const STRATEGY_NAMES: Record<StrategyId, string> = {
   breakout: "Volume Breakout",
-  quiet: "Quiet Accumulation",
   dip: "Deep Dip",
   launch: "New Launch",
-  range: "Range Swing",
   dropvol: "Drop + Volume",
   sharp: "Sharp Low",
   stretch: "Stretched Low",
@@ -41,6 +38,8 @@ export const STRATEGY_NAMES: Record<StrategyId, string> = {
 };
 
 export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant = 3): StrategySetup {
+  // A strategy saved before it was removed from the picker (Quiet Accumulation, Range Swing).
+  if (!(id in STRATEGY_NAMES)) id = "dip";
   if (id === "sharp" || id === "stretch" || id === "flush" || id === "score") {
     // Swing-low entries from the 2026-10-20 research (42 pairs 15m, picked on bars before
     // 2026-09-01, $880 a trade, out of sample after 09-01 without the top pair). #3 exits.
@@ -114,37 +113,6 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
       studies: [...dip.studies.filter((s) => s.name !== "Volume"), { name: "Volume", ownPane: true }].sort((a, b) => (a.name === "Volume" ? -1 : b.name === "Volume" ? 1 : 0)),
     };
   }
-  if (id === "range") {
-    // Trade the range: Deep Dip's entry, but always within 3% of the 7-day low, then sell the
-    // whole position at a limit 3% under the 7-day high (at least +5%). Tested and losing:
-    // 41 pairs 15m median -0.5% (18/41 profitable, 65% of trades win), 1h -1.7%. Shown so the
-    // trades can be inspected on the chart; Deep Dip stays the default.
-    const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
-    const dip = setupStrategy("dip", resolutionMinutes);
-    return {
-      ...dip,
-      id,
-      name: STRATEGY_NAMES.range,
-      strategy: deepDip({
-        srLookback: perDay * 30,
-        maxHoldBars: perDay * 30,
-        rsiLowBars: perDay,
-        exitMode: "signals",
-        exitSignals: [],
-        breakevenAt: null,
-        rsiSwing: 2,
-        rsiSwingWithin: 6,
-        rangeLowBars: perDay * 7,
-        rangeLowTol: 0.03,
-        rangeSellTol: 0.03,
-        rangeSellMinGain: 0.05,
-      }),
-      config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideKeep: 0 },
-      shortLabels: ["Under EMAs", "MACD turn", "RSI", "Range low", "RSI swing low", "Support"],
-      sellLabel: "SELL ALL",
-      note: "10% per trade · buy within 3% of the 7-day low · sell all at the 7-day high −3% · stop −20% · backtest: loses on most pairs",
-    };
-  }
   if (id === "dip" || id === "launch") {
     const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
     const launch = id === "launch";
@@ -205,23 +173,6 @@ export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant
         { name: "Relative Strength Index", inputs: { length: 14 } },
         { name: "MACD" },
       ],
-    };
-  }
-  if (id === "quiet") {
-    // Quiet Accumulation thinks in days; convert to bars for this timeframe.
-    const perDay = Math.max(1, Math.round(1440 / resolutionMinutes));
-    const volSlow = perDay * 5;
-    return {
-      id,
-      name: STRATEGY_NAMES.quiet,
-      strategy: quietAccumulation({ volFast: perDay, volSlow, srLookback: perDay * 30, maxHoldBars: perDay * 30 }),
-      // Best setting in the backtests: 10% per trade, sell the cost back at 3x, keep 10% free.
-      config: { ...DEFAULT_CONFIG, positionSize: 0.1, freeRideAt: 2, freeRideKeep: 0.1, freeLadder: FREE_LADDER },
-      minBars: volSlow + 2,
-      shortLabels: ["Below ATH", "Support", "Reversal", "Selling faded"],
-      note: "10% per trade · cost back at 3x · keep 10% free, sold at 10x/30x/100x",
-      // Support / resistance are drawn as levels; volume shows the "selling faded" rule.
-      studies: [{ name: "Volume" }],
     };
   }
   return {

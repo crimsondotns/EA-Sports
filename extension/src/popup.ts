@@ -312,7 +312,9 @@ async function main(): Promise<void> {
     input.checked = settings[name];
     input.addEventListener("change", () => void chrome.storage.local.set({ [name]: input.checked }));
   }
-  dropdown("strategy", settings.strategy, (value) => void chrome.storage.local.set({ strategy: value }));
+  // A removed strategy (Quiet Accumulation, Range Swing) shows as Deep Dip, like the chart runs it.
+  const strategy = document.getElementById(`opt-${settings.strategy}`) ? settings.strategy : "dip";
+  dropdown("strategy", strategy, (value) => void chrome.storage.local.set({ strategy: value }));
 
   // Table opacity: 20–100% in 5% steps; greyed out while the table is hidden.
   const opacity = $("tableOpacity") as HTMLInputElement;
