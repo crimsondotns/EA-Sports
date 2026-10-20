@@ -157,7 +157,7 @@
   .dropdown-trigger svg { flex: none; width: 16px; height: 16px; color: var(--color-text-secondary); transition: transform var(--transition-fast); }
   .dropdown-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
   .dropdown-menu { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px;
-    max-height: min(320px, 60vh); overflow-y: auto; list-style: none; background: var(--color-surface-elevated);
+    max-height: min(320px, 60vh); overflow-y: auto; overscroll-behavior: contain; list-style: none; background: var(--color-surface-elevated);
     border: 0; border-radius: var(--radius-control); box-shadow: var(--shadow-picker); }
   .dropdown-menu.above { top: auto; bottom: calc(100% + 4px); }
   .dropdown-menu[hidden] { display: none; }

@@ -60,6 +60,7 @@ All UI in this project (extension panel, HTML reports, any future pages) follows
 - Every interactive control has hover, focus-visible, active and disabled states; respect `prefers-reduced-motion`.
 - Tooltips: one short line in a pill (project override): `#303030` surface, no border, 999px radius, white 12px / 16px text, 4px × 10px padding, never wraps; keep the text to a few words. Open after ~500ms hover, promptly on keyboard focus, close after 100ms; prefer top placement and flip to stay in view. `role="tooltip"` + `aria-describedby`, never interactive, never the only place essential info or a label lives.
 - Dropdowns / pickers: panel `#171717` with **no border** (project override of the spec; the shadow and the lighter surface separate it), shadow `0 8px 24px rgb(0 0 0 / 32%)`, 4px padding, rows 36–40px with 6px radius. Row hover `#202020`, selected `#262626` plus a checkmark, selected + hover `#303030`, pressed `#2A2A2A`. Trigger border `#2A2A2A`, hover `#444444` on `#111111`. Open on click (never hover alone); Escape closes and refocuses the trigger.
+- Scrollable panels (dropdowns, lists, the side panel) set `overscroll-behavior: contain`: scrolling to a panel's end must not scroll the page behind it.
 - Hover is neutral and fast (120–160ms), never scales or shifts layout; pointer-only polish goes under `@media (hover: hover) and (pointer: fine)`.
 - Follow the spec's implementation rules and definition of done, and only report checks that were actually run.
 
