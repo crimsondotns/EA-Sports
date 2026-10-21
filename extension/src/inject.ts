@@ -19,12 +19,6 @@ interface TvChart {
 }
 
 interface TvPane {
-  getHeight(): number;
-  setHeight(height: number): void;
-  // Newer library versions can collapse a pane to a thin strip; setHeight doesn't undo that.
-  isCollapsed?(): boolean;
-  restore?(): void;
-  expand?(): void;
   getStudies?(): { id: unknown }[];
 }
 
@@ -264,40 +258,6 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
     } catch (e) {
       console.warn("[EA] could not add study", spec.name, e);
     }
-  }
-  if (!specs.length) return;
-  // New panes are laid out after createStudy returns, so their heights settle a moment later.
-  fitPanes(chart);
-  for (const ms of [500, 1500]) setTimeout(() => fitPanes(chart), ms);
-}
-
-/**
- * New indicator panes get as much height as the price pane, which squeezes the chart, and adding
- * or removing a pane (Volume) can leave RSI / MACD a few pixels tall. Set every indicator pane
- * that is far from ~14% of the chart (at least 80px) to that height; the price pane takes the rest.
- */
-function fitPanes(chart: TvChart): void {
-  try {
-    const panes = chart.getPanes?.();
-    if (!panes || panes.length < 2) return;
-    for (const p of panes.slice(1)) {
-      if (p.isCollapsed?.()) (p.restore ?? p.expand)?.call(p);
-    }
-    const heights = panes.map((p) => p.getHeight());
-    console.debug("[EA] pane heights", heights.join(" / "));
-    const total = heights.reduce((a, b) => a + b, 0);
-    const target = Math.max(80, Math.round(total * 0.14));
-    let changed = false;
-    for (let k = 1; k < panes.length; k++) {
-      if (heights[k]! > target * 1.3 || heights[k]! < target * 0.7) {
-        heights[k] = target;
-        panes[k]!.setHeight(target);
-        changed = true;
-      }
-    }
-    if (changed) panes[0]!.setHeight(total - heights.slice(1).reduce((a, b) => a + b, 0));
-  } catch (e) {
-    console.debug("[EA] could not resize panes", e);
   }
 }
 
