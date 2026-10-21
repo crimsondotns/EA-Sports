@@ -38,9 +38,10 @@ export const STRATEGY_NAMES: Record<StrategyId, string> = {
 };
 
 export function setupStrategy(id: StrategyId, resolutionMinutes: number, variant = 3): StrategySetup {
-  // Every strategy shows Volume in its own pane, the first pane under the price (above RSI / MACD).
+  // Every strategy shows Volume on the price pane (like "Move to: existing pane above"), so it
+  // adds no pane of its own.
   const setup = baseSetup(id, resolutionMinutes, variant);
-  return { ...setup, studies: [{ name: "Volume", ownPane: true }, ...setup.studies.filter((s) => s.name !== "Volume")] };
+  return { ...setup, studies: [{ name: "Volume", overlay: true }, ...setup.studies.filter((s) => s.name !== "Volume")] };
 }
 
 function baseSetup(id: StrategyId, resolutionMinutes: number, variant: number): StrategySetup {

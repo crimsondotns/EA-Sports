@@ -228,7 +228,7 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
     const key = specKey(spec);
     // Reuse a matching study (the user's own, or ours saved with the chart layout).
     const idx = existing.findIndex(
-      (s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec) && !(spec.ownPane && priceStudies?.has(s.id)),
+      (s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec) && (!spec.overlay || priceStudies === null || priceStudies.has(s.id)),
     );
     const same = existing[idx];
     // Created before the previous spec, so its pane sits above it: re-create it to move it below.
@@ -243,9 +243,18 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
       if (ourStudies.has(key)) ourStudies.set(key, same.id);
       continue;
     }
+    // Ours from an earlier version in the wrong pane (e.g. Volume in its own pane): replace it.
+    const old = ourStudies.get(key);
+    if (old !== undefined) {
+      try {
+        chart.removeEntity(old);
+      } catch {
+        // already gone
+      }
+    }
     try {
       const id = await Promise.race([
-        Promise.resolve(chart.createStudy(spec.name, false, false)),
+        Promise.resolve(chart.createStudy(spec.name, !!spec.overlay, false)),
         new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), SHAPE_TIMEOUT_MS)),
       ]);
       if (id === null || id === undefined) continue;
