@@ -323,8 +323,11 @@ function publish(): void {
 
 function drawOnTradingView(): void {
   if (mode !== "tradingview") return;
-  // Sent every time: the chart object is replaced on symbol / timeframe changes.
-  postToFrames({ source: CONTENT_TAG, type: "studies", studies: settings.showIndicators && last ? last.setup.studies : [] });
+  // Sent every time: the chart object is replaced on symbol / timeframe changes. With no result
+  // yet (loading, re-analysing, too few bars) leave the studies alone: an empty list removes
+  // RSI / MACD, and re-adding them later loses the user's pane heights.
+  if (!settings.showIndicators) postToFrames({ source: CONTENT_TAG, type: "studies", studies: [] });
+  else if (last) postToFrames({ source: CONTENT_TAG, type: "studies", studies: last.setup.studies });
   if (!settings.drawMarkers || !last) {
     postToFrames({ source: CONTENT_TAG, type: "clear" });
     return;
