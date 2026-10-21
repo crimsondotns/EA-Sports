@@ -19,6 +19,8 @@ interface TvChart {
 }
 
 interface TvPane {
+  getHeight?(): number;
+  setHeight?(height: number): void;
   getStudies?(): { id: unknown }[];
 }
 
@@ -239,9 +241,28 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
       const ids = inputIds(study, spec);
       if (ids.size) study.setInputValues([...ids].map(([k, inputId]) => ({ id: inputId, value: spec.inputs![k] })));
       if (spec.color) study.applyOverrides?.({ "Plot.color": spec.color, "plot.color": spec.color });
+      if (!spec.overlay) setTimeout(() => sizeNewPane(chart, id), 500);
     } catch (e) {
       console.warn("[EA] could not add study", spec.name, e);
     }
+  }
+}
+
+/**
+ * Once, right after the extension creates a study in a new pane: if the library gave that pane
+ * only a sliver, make it ~14% of the chart (at least 80px). Panes that already exist, or that the
+ * user sized later, are never touched.
+ */
+function sizeNewPane(chart: TvChart, id: unknown): void {
+  try {
+    const panes = chart.getPanes?.() ?? [];
+    const pane = panes.find((p, k) => k > 0 && p.getStudies?.()?.some((s) => String(s.id) === String(id)));
+    if (!pane?.getHeight || !pane.setHeight) return;
+    const total = panes.reduce((a, p) => a + (p.getHeight?.() ?? 0), 0);
+    const target = Math.max(80, Math.round(total * 0.14));
+    if (pane.getHeight() < target * 0.6) pane.setHeight(target);
+  } catch (e) {
+    console.debug("[EA] could not size the new pane", e);
   }
 }
 
