@@ -132,7 +132,18 @@ function paintCollapsed(): void {
   t.setAttribute("aria-label", collapsed ? "Expand table" : "Collapse table");
   t.title = collapsed ? "Expand table" : "Collapse table";
 }
-$("toggle").addEventListener("click", () => void chrome.storage.local.set({ tableCollapsed: !settings.tableCollapsed }));
+// Toggle right away, then save: after the extension is reloaded this old content script can't
+// reach chrome.storage any more (the call throws), and the button used to do nothing then.
+$("toggle").addEventListener("click", () => {
+  settings = { ...settings, tableCollapsed: !settings.tableCollapsed };
+  paintCollapsed();
+  renderTable();
+  try {
+    void chrome.storage.local.set({ tableCollapsed: settings.tableCollapsed }).catch(() => {});
+  } catch {
+    // extension context invalidated: the page needs a refresh to save settings again
+  }
+});
 
 /** Offset while the table is being dragged (null otherwise); saved to settings on release. */
 let dragOffset: number | null = null;
