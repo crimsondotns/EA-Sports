@@ -213,55 +213,20 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
     }
     ourStudies.delete(key);
   }
-  // Studies on the price pane; unknown when the library can't list a pane's studies.
-  const priceStudies = (() => {
-    try {
-      const list = chart.getPanes?.()[0]?.getStudies?.();
-      return list ? new Set(list.map((s) => s.id)) : null;
-    } catch {
-      return null;
-    }
-  })();
-  const onPricePane = (id: unknown) => {
-    try {
-      return chart.getPanes?.()[0]?.getStudies?.()?.some((s) => s.id === id) ?? false;
-    } catch {
-      return false;
-    }
-  };
+  // Never remove or re-create a study that is already on the chart: a re-created pane loses the
+  // user's height, and this runs on every redraw (re-creating here once made RSI / MACD shrink
+  // and snap back while being dragged). Only add what is missing, in spec order.
   const existing = chart.getAllStudies();
-  // Position in getAllStudies (creation order) of the previous spec's study in a pane of its own.
-  // Price-pane studies (EMAs, Volume) don't count: their order doesn't move any pane, and counting
-  // them re-created RSI / MACD (losing the user's pane heights) every time one was added.
-  let lastIndex = -1;
+  const alive = new Set(existing.map((s) => String(s.id)));
   for (const spec of specs) {
     const key = specKey(spec);
-    // Reuse a matching study (the user's own, or ours saved with the chart layout).
-    const idx = existing.findIndex(
-      (s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec) && (!spec.overlay || priceStudies === null || priceStudies.has(s.id)),
-    );
-    const same = existing[idx];
-    // Created before the previous spec, so its pane sits above it: re-create it to move it below.
-    const ownPane = same !== undefined && !(priceStudies?.has(same.id) ?? false);
-    if (same && ownPane && idx < lastIndex) {
-      try {
-        chart.removeEntity(same.id);
-      } catch {
-        // already gone
-      }
-    } else if (same) {
-      if (ownPane) lastIndex = idx;
-      if (ourStudies.has(key)) ourStudies.set(key, same.id);
+    const ours = ourStudies.get(key);
+    if (ours !== undefined && alive.has(String(ours))) continue;
+    // Reuse a matching study: the user's own, DEX Screener's, or ours saved with the layout.
+    const same = existing.find((s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec));
+    if (same) {
+      ourStudies.delete(key); // not ours to remove later
       continue;
-    }
-    // Ours from an earlier version in the wrong pane (e.g. Volume in its own pane): replace it.
-    const old = ourStudies.get(key);
-    if (old !== undefined) {
-      try {
-        chart.removeEntity(old);
-      } catch {
-        // already gone
-      }
     }
     try {
       const id = await Promise.race([
@@ -270,7 +235,6 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
       ]);
       if (id === null || id === undefined) continue;
       ourStudies.set(key, id);
-      if (!onPricePane(id)) lastIndex = Infinity;
       const study = chart.getStudyById(id);
       const ids = inputIds(study, spec);
       if (ids.size) study.setInputValues([...ids].map(([k, inputId]) => ({ id: inputId, value: spec.inputs![k] })));
