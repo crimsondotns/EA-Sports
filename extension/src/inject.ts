@@ -21,6 +21,10 @@ interface TvChart {
 interface TvPane {
   getHeight(): number;
   setHeight(height: number): void;
+  // Newer library versions can collapse a pane to a thin strip; setHeight doesn't undo that.
+  isCollapsed?(): boolean;
+  restore?(): void;
+  expand?(): void;
   getStudies?(): { id: unknown }[];
 }
 
@@ -276,7 +280,11 @@ function fitPanes(chart: TvChart): void {
   try {
     const panes = chart.getPanes?.();
     if (!panes || panes.length < 2) return;
+    for (const p of panes.slice(1)) {
+      if (p.isCollapsed?.()) (p.restore ?? p.expand)?.call(p);
+    }
     const heights = panes.map((p) => p.getHeight());
+    console.debug("[EA] pane heights", heights.join(" / "));
     const total = heights.reduce((a, b) => a + b, 0);
     const target = Math.max(80, Math.round(total * 0.14));
     let changed = false;
