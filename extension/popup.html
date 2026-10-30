@@ -151,9 +151,10 @@
   .theme svg { width: 14px; height: 14px; }
   /* Language switch: the same segmented pill with TH / EN labels. */
   /* Language: a compact select trigger in the header; the menu opens to the right edge and is wider than the trigger. */
-  .dropdown.lang { flex: none; } .dropdown.lang .dropdown-trigger { width: auto; height: 32px; padding: 0 10px 0 12px; font-weight: 600; }
+  .dropdown.lang { flex: none; } .dropdown.lang .dropdown-trigger { width: auto; height: 28px; padding: 0 8px 0 12px; gap: 4px; border-radius: var(--radius-pill); font-weight: 600; }
   .dropdown.lang .dropdown-menu { left: auto; right: 0; min-width: 160px; }
-  .dropdown.lang li small { margin-left: auto; color: var(--color-text-secondary); }
+  .dropdown.lang li { padding: 0 12px 0 8px; }
+  .dropdown.lang li small { color: var(--color-text-secondary); font-size: 12px; }
 
   /* Switch rows: the whole label is clickable */
   label.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px;
@@ -223,7 +224,7 @@
   .dropdown-menu[hidden] { display: none; }
   /* Focus sits on the list; the active row (plus its ring when using the keyboard) shows where it is. */
   .dropdown-menu:focus { outline: none; }
-  .dropdown-menu:focus-visible li.active { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+  .dropdown-menu:focus-visible li.active { outline: none; box-shadow: inset 0 0 0 2px var(--trg-ring); }
   .dropdown-menu li { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 4px 0 10px;
     border-radius: var(--radius-option); font-size: var(--font-size-control); line-height: 1.4; cursor: pointer;
     transition: background-color var(--transition-fast); }
