@@ -324,13 +324,15 @@ function sizeNewPane(chart: TvChart, id: unknown): void {
     const total = panes.reduce((a, p) => a + (p.getHeight?.() ?? 0), 0);
     const target = Math.max(72, Math.round(total * 0.12));
     console.info("[EA] pane sizing", { panes: panes.length, canList, targets: targets.length, total, target, heights: panes.map((p) => p.getHeight?.()) });
-    for (const pane of targets) {
-      if (!pane.getHeight || !pane.setHeight) {
-        console.info("[EA] pane sizing not supported by this chart (no getHeight / setHeight)");
-        return;
-      }
-      if (Math.abs(pane.getHeight() - target) > 8) pane.setHeight(target);
-    }
+    if (!targets.length || targets.some((p) => !p.getHeight || !p.setHeight)) return;
+    if (targets.every((p) => Math.abs(p.getHeight!() - target) <= 8)) return;
+    // setHeight hands the freed space to a neighbouring pane (shrinking RSI made MACD taller), so
+    // set every pane at once: the targets to `target`, the price pane takes the rest, others keep
+    // theirs; twice, as each call nudges its neighbour.
+    const want = panes.map((p, k) => (targets.includes(p) ? target : k === 0 ? 0 : (p.getHeight?.() ?? 0)));
+    want[0] = Math.max(120, total - want.reduce((a, h) => a + h, 0));
+    for (let round = 0; round < 2; round++) panes.forEach((p, k) => p.setHeight?.(want[k]!));
+    console.info("[EA] pane heights now", panes.map((p) => p.getHeight?.()));
   } catch (e) {
     console.info("[EA] could not size the pane", e);
   }
