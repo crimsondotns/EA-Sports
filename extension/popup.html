@@ -113,7 +113,11 @@
   footer { color: var(--color-text-muted); font-size: var(--font-size-small); padding-top: 8px; }
 
   /* Home (design G): the pair in this tab as a gate of buy checks, then every other open pair. */
-  .top { display: flex; align-items: center; gap: 8px; }
+  /* Home header: sticky like the Settings header; the soft shadow shows only once the page scrolls under it. */
+  .top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 8px; margin: -16px -16px 0; padding: 16px 16px 4px;
+    background: var(--color-bg); transition: box-shadow 160ms ease; }
+  .top.stuck { box-shadow: 0 6px 16px -6px rgb(0 0 0 / 50%); }
+  :root[data-theme="light"] .top.stuck { box-shadow: 0 6px 16px -6px rgb(20 22 26 / 12%); }
   .top h1 { flex: 1; min-width: 0; font-size: 17px; font-weight: 800; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sub { margin: 2px 0 0; color: var(--color-text-muted); font-size: var(--font-size-small); }
   .gate { padding: 14px 0 12px; }

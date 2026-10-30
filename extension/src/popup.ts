@@ -557,8 +557,10 @@ void main();
 // The Settings header casts its shadow only once the page has scrolled under it.
 const settingsHeader = document.querySelector("#settingsPage > header");
 const homeBottom = document.querySelector("#homePage .bottom");
+const homeHeader = document.querySelector("#homePage .top");
 const markStuck = () => {
   settingsHeader?.classList.toggle("stuck", window.scrollY > 0);
+  homeHeader?.classList.toggle("stuck", window.scrollY > 0);
   // The footer's shadow shows while there is more page under it.
   homeBottom?.classList.toggle("stuck", window.scrollY + window.innerHeight < document.documentElement.scrollHeight - 1);
 };
