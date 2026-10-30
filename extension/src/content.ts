@@ -82,12 +82,14 @@ root.innerHTML = `
   :host { all: initial;
     --bg: 0 0 0; --text: #f2f2f2; --text-2: #a3a3a3; --muted: #6b6b6b; --line: #262626; --hover: #202020;
     --go: #4ade80; --stop: #f87171; --near: #fbbf24; --invert: #fff; --on-invert: #000; }
-  :host(.light) { --bg: 245 246 248; --text: #14161a; --text-2: #5a606b; --muted: #9aa0aa; --line: #e3e6eb; --hover: #e9ecf0;
+  :host(.light) { --bg: 245 246 248; --text: #14161a; --text-2: #4a505a; --muted: #6b717c; --line: #e3e6eb; --hover: #e9ecf0;
     --go: #0e9f6e; --stop: #d92d20; --near: #b54708; --invert: #14161a; --on-invert: #fff; }
   #table { display: grid; justify-items: end; gap: 6px; pointer-events: none; color: var(--text);
     font: 600 12.5px/1.4 "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-variant-numeric: tabular-nums; }
   .pill, #body { pointer-events: auto; background: rgb(var(--bg) / var(--table-opacity, .9)); box-shadow: 0 0 0 1px var(--line); }
+  /* A see-through light card over the dark chart turns grey and the dark text drowns in it, so light stays near solid. */
+  :host(.light) .pill, :host(.light) #body { background: rgb(var(--bg) / max(var(--table-opacity, .9), .95)); }
   .pill { display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 4px 6px 4px 4px; }
   #badge { border-radius: 999px; padding: 3px 9px; font-weight: 800; font-size: 12px; background: var(--invert); color: var(--on-invert); }
   #badge.pos { background: var(--go); color: #000; } #badge.neg { background: var(--stop); color: #fff; }
