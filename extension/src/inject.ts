@@ -218,6 +218,17 @@ function timeOffset(anchors: DrawPayload["anchors"], bars: TvBar[]): number | nu
 
 // ---------- strategy indicators ----------
 
+// Study panes already sized this page load (kept on the top window, so a rewrite of the chart
+// iframe doesn't size them again after the user dragged them).
+const sizedOnce: Set<string> = (() => {
+  try {
+    const top = window.top as Window & { __eaSized?: Set<string> };
+    return (top.__eaSized ??= new Set());
+  } catch {
+    return new Set();
+  }
+})();
+
 // Studies this script added, keyed by spec, so a strategy switch removes only ours.
 const ourStudies = new Map<string, unknown>();
 const specKey = (s: StudySpec) => `${s.name}|${JSON.stringify(s.inputs ?? {})}`;
@@ -269,6 +280,12 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
     const same = existing.find((s) => s.name.toLowerCase() === spec.name.toLowerCase() && matches(chart, s.id, spec));
     if (same) {
       ourStudies.delete(key); // not ours to remove later
+      // The user asked for compact RSI / MACD: size its pane once per page (not on every redraw),
+      // so dragging it afterwards sticks.
+      if (!spec.overlay && !sizedOnce.has(String(same.id))) {
+        sizedOnce.add(String(same.id));
+        sizeNewPane(chart, same.id);
+      }
       continue;
     }
     try {
@@ -298,7 +315,10 @@ function sizeNewPane(chart: TvChart, id: unknown): void {
   try {
     const panes = chart.getPanes?.() ?? [];
     const pane = panes.find((p, k) => k > 0 && p.getStudies?.()?.some((s) => String(s.id) === String(id)));
-    if (!pane?.getHeight || !pane.setHeight) return;
+    if (!pane?.getHeight || !pane.setHeight) {
+      console.debug("[EA] pane sizing not supported by this chart");
+      return;
+    }
     const total = panes.reduce((a, p) => a + (p.getHeight?.() ?? 0), 0);
     const target = Math.max(72, Math.round(total * 0.12));
     if (Math.abs(pane.getHeight() - target) > 8) pane.setHeight(target);
