@@ -5,6 +5,7 @@ import type { Bar } from "../../src/dexscreener/bars.ts";
 import { toCandles, type Candle } from "../../src/indicators.ts";
 import { runBacktest, type BacktestResult, type Position } from "../../src/backtest/engine.ts";
 import { setupStrategy, type StrategySetup } from "./strategies.ts";
+import { L, setLang, tr, translatePage } from "./i18n.ts";
 import {
   CONTENT_TAG,
   DEFAULT_SETTINGS,
@@ -166,8 +167,8 @@ function paintCollapsed(): void {
   $("table").classList.toggle("collapsed", collapsed);
   const t = $("toggle");
   t.setAttribute("aria-expanded", String(!collapsed));
-  t.setAttribute("aria-label", collapsed ? "Show details" : "Hide details");
-  t.title = collapsed ? "Show details" : "Hide details";
+  t.setAttribute("aria-label", tr(collapsed ? "Show details" : "Hide details"));
+  t.title = tr(collapsed ? "Show details" : "Hide details");
 }
 // Toggle right away, then save: after the extension is reloaded this old content script can't
 // reach chrome.storage any more (the call throws), and the button used to do nothing then.
@@ -305,13 +306,13 @@ function summarize(): Summary | null {
   };
 }
 
-const row = (k: string, v: string, cls = "", sep = false) => `<div class="r${sep ? " sep" : ""}"><span>${k}</span><span class="${cls}" title="${v}">${v}</span></div>`;
+const row = (k: string, v: string, cls = "", sep = false) => `<div class="r${sep ? " sep" : ""}"><span>${tr(k)}</span><span class="${cls}" title="${v}">${v}</span></div>`;
 
 function renderTable(): void {
   positionTable();
   const sum = summarize();
   if (errorText && !sum) {
-    $("body").innerHTML = `<div class="msg neg">${errorText}</div>`;
+    $("body").innerHTML = `<div class="msg neg">${tr(errorText)}</div>`;
     return;
   }
   if (!sum) return;
@@ -326,7 +327,7 @@ function renderTable(): void {
   $("seg").innerHTML = hold ? "" : sum.conditions.map((c) => `<i class="${c.ok ? "ok" : ""}"></i>`).join("");
   const brief = $("brief");
   brief.className = sum.signal === "buy" ? "pos" : "";
-  brief.textContent = sum.signal === "buy" ? "Buy" : hold ? (sum.costRecovered ? "Free ride" : "Holding") : "Waiting";
+  brief.textContent = tr(sum.signal === "buy" ? "Buy" : hold ? (sum.costRecovered ? "Free ride" : "Holding") : "Waiting");
   $("title").textContent = `${sum.strategy} ${sum.resolution}`;
   // The card: the trade (holding) or the next setup, then the checks, the backtest and notes.
   const rows = [
@@ -337,27 +338,27 @@ function renderTable(): void {
       ? sum.plan.kind === "zone"
         ? [
             row("Next buy zone", `${fmt(sum.plan.low)}–${fmt(sum.plan.high)}`, sum.plan.inZone ? "pos" : ""),
-            row(sum.plan.inZone ? "In zone" : "Distance", sum.plan.inZone ? "wait for MACD turn" : pct(sum.plan.distancePct)),
+            row(sum.plan.inZone ? "In zone" : "Distance", sum.plan.inZone ? tr("wait for MACD turn") : pct(sum.plan.distancePct)),
             row("Stop · Cost back", `${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}`),
           ]
         : sum.plan.kind === "below"
           ? [
               row("Buy below", fmt(sum.plan.high), sum.plan.inZone ? "pos" : ""),
-              row(sum.plan.inZone ? "Below now" : "Distance", sum.plan.inZone ? "wait for MACD turn" : pct(sum.plan.distancePct)),
+              row(sum.plan.inZone ? "Below now" : "Distance", sum.plan.inZone ? tr("wait for MACD turn") : pct(sum.plan.distancePct)),
               row("Stop · Cost back", `${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}`),
             ]
           : [row("Buy above", `${fmt(sum.plan.high)} (${pct(sum.plan.distancePct)})`), row("Stop", fmt(sum.plan.stop))]
       : []),
-    `<div class="lbl">Buy checks · ${ok} of ${sum.conditions.length}</div>`,
+    `<div class="lbl">${L(`Buy checks · ${ok} of ${sum.conditions.length}`, `เงื่อนไขซื้อ · ผ่าน ${ok} จาก ${sum.conditions.length}`)}</div>`,
     ...sum.conditions.map(
       (c, k) =>
-        `<div class="c"><i class="${c.ok ? "ok" : ""}" aria-label="${c.ok ? "passed" : "not yet"}">${c.ok ? "✓" : ""}</i>` +
-        `<span>${shortLabels[k] ?? c.label}</span><span class="${c.ok ? "ok" : "no"}" title="${c.detail}">${c.detail.split(" vs ")[0]!}</span></div>`,
+        `<div class="c"><i class="${c.ok ? "ok" : ""}" aria-label="${c.ok ? L("passed", "ผ่าน") : L("not yet", "ยังไม่ผ่าน")}">${c.ok ? "✓" : ""}</i>` +
+        `<span>${tr(shortLabels[k] ?? c.label)}</span><span class="${c.ok ? "ok" : "no"}" title="${c.detail}">${tr(c.detail.split(" vs ")[0]!)}</span></div>`,
     ),
-    `<div class="lbl">Backtest</div>`,
-    row(`${sum.stats.trades} trades`, pct(sum.stats.returnPct), sum.stats.returnPct >= 0 ? "pos" : "neg"),
-    ...(errorText ? [`<div class="msg neg sep">${errorText}</div>`] : []),
-    ...(historyNote ? [`<div class="msg sep">${historyNote}</div>`] : []),
+    `<div class="lbl">${tr("Backtest")}</div>`,
+    row(L(`${sum.stats.trades} trades`, `${sum.stats.trades} ไม้`), pct(sum.stats.returnPct), sum.stats.returnPct >= 0 ? "pos" : "neg"),
+    ...(errorText ? [`<div class="msg neg sep">${tr(errorText)}</div>`] : []),
+    ...(historyNote ? [`<div class="msg sep">${tr(historyNote)}</div>`] : []),
   ];
   $("body").innerHTML = rows.join("");
 }
@@ -690,6 +691,8 @@ window.addEventListener("message", (e: MessageEvent<FromMain>) => {
 
 void chrome.storage.local.get(DEFAULT_SETTINGS).then((s) => {
   settings = s as Settings;
+  setLang(settings.lang);
+  translatePage(root);
   positionTable();
   paintCollapsed();
 });
@@ -698,6 +701,12 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const prev = settings;
   settings = { ...settings, ...Object.fromEntries(Object.entries(changes).map(([k, v]) => [k, v.newValue])) } as Settings;
   positionTable();
+  if (prev.lang !== settings.lang) {
+    setLang(settings.lang);
+    translatePage(root);
+    paintCollapsed();
+    renderTable();
+  }
   if (prev.tableCollapsed !== settings.tableCollapsed) {
     paintCollapsed();
     renderTable();

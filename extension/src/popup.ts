@@ -1,4 +1,5 @@
 // Popup: shows the summary the active tab's content script published, plus settings.
+import { L, setLang, tr, translatePage } from "./i18n.ts";
 import { DEFAULT_SETTINGS, summaryKey, type CalcFrom, type FromPopup, type LoadResult, type Settings, type Summary } from "./messages.ts";
 
 const $ = (id: string) => document.getElementById(id)!;
@@ -13,10 +14,10 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&
 
 function renderEmpty(onDexScreener: boolean): void {
   $("title").textContent = "EA Signals";
-  $("subtitle").textContent = "DEX Screener signals";
+  $("subtitle").textContent = tr("DEX Screener signals");
   $("main").innerHTML = `<section class="empty">
-    <p>${onDexScreener ? "Waiting for chart data. Reload the page if nothing shows up." : "Open a pair on DEX Screener to see signals."}</p>
-    ${onDexScreener ? "" : `<a class="button-primary" href="https://dexscreener.com" target="_blank" rel="noopener">Open DEX Screener</a>`}
+    <p>${onDexScreener ? L("Waiting for chart data. Reload the page if nothing shows up.", "รอข้อมูลกราฟ ถ้าไม่ขึ้นให้รีโหลดหน้า") : L("Open a pair on DEX Screener to see signals.", "เปิดเหรียญบน DEX Screener เพื่อดูสัญญาณ")}</p>
+    ${onDexScreener ? "" : `<a class="button-primary" href="https://dexscreener.com" target="_blank" rel="noopener">${L("Open DEX Screener", "เปิด DEX Screener")}</a>`}
   </section>`;
 }
 
@@ -24,16 +25,16 @@ function renderEmpty(onDexScreener: boolean): void {
 function missing(c: Summary["conditions"][number]): string {
   const need = /^Fell ≥(\d+(?:\.\d+)?)%/.exec(c.label);
   const now = parseFloat(c.detail);
-  if (need && Number.isFinite(now)) return `<b>${(Number(need[1]) - now).toFixed(1)}% more fall</b>`;
-  return `<b>${esc(c.label.toLowerCase())}</b>`;
+  if (need && Number.isFinite(now)) return `<b>${L(`${(Number(need[1]) - now).toFixed(1)}% more fall`, `ร่วงอีก ${(Number(need[1]) - now).toFixed(1)}%`)}</b>`;
+  return `<b>${esc(tr(c.label).toLowerCase())}</b>`;
 }
 
 /** The pair in this tab (design G): a gate of buy checks while waiting, the trade plan while holding. */
 function render(s: Summary): void {
   $("title").textContent = s.pair;
-  $("subtitle").textContent = `${s.strategy} · ${s.resolution} · last bar closed ${time(s.lastClosed)}`;
+  $("subtitle").textContent = `${s.strategy} · ${s.resolution} · ${L("last bar closed", "แท่งล่าสุดปิด")} ${time(s.lastClosed)}`;
   const st = s.stats;
-  const backtest = `<p class="backtest num">Backtest ${st.bars.toLocaleString()} bars: <span class="${st.returnPct >= 0 ? "pos" : "neg"}">${pct(st.returnPct)}</span>, ${st.trades} trades, ${st.winRate.toFixed(0)}% won, max drawdown ${st.maxDdPct.toFixed(1)}%</p>`;
+  const backtest = `<p class="backtest num">${L(`Backtest ${st.bars.toLocaleString()} bars:`, `Backtest ${st.bars.toLocaleString()} แท่ง:`)} <span class="${st.returnPct >= 0 ? "pos" : "neg"}">${pct(st.returnPct)}</span>, ${L(`${st.trades} trades, ${st.winRate.toFixed(0)}% won, max drawdown ${st.maxDdPct.toFixed(1)}%`, `${st.trades} ไม้ ชนะ ${st.winRate.toFixed(0)}% drawdown สูงสุด ${st.maxDdPct.toFixed(1)}%`)}</p>`;
   const error = s.error ? `<p class="note neg">${esc(s.error)}</p>` : "";
   if (s.signal === "hold") {
     const pnl = s.openPnlPct ?? 0;
@@ -43,11 +44,11 @@ function render(s: Summary): void {
     const held = heldMin === null ? "–"
       : `${heldMin < 60 ? `${heldMin}m` : heldMin < 1440 ? `${Math.floor(heldMin / 60)}h ${heldMin % 60}m` : `${Math.floor(heldMin / 1440)}d ${Math.floor((heldMin % 1440) / 60)}h`}<small>${new Date(s.entryTime!).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })}</small>`;
     $("main").innerHTML = `<div class="gate num">
-      <p class="score"><b class="${pnl >= 0 ? "pos" : "neg"}">${pct(pnl, 1)}</b><span>${s.costRecovered ? "free ride" : "open"}</span></p>
+      <p class="score"><b class="${pnl >= 0 ? "pos" : "neg"}">${pct(pnl, 1)}</b><span>${s.costRecovered ? L("free ride", "ฟรีไรด์") : L("open", "เปิดอยู่")}</span></p>
       <dl class="plan">
-        <div><dt>Bought</dt><dd>${s.entryPrice === null ? "–" : fmt(s.entryPrice)}</dd></div>
-        <div><dt>Stop</dt><dd><span class="neg">${s.stop === null ? "–" : fmt(s.stop)}</span>${stopGap}</dd></div>
-        <div><dt>Held</dt><dd>${held}</dd></div>
+        <div><dt>${tr("Bought")}</dt><dd>${s.entryPrice === null ? "–" : fmt(s.entryPrice)}</dd></div>
+        <div><dt>${tr("Stop")}</dt><dd><span class="neg">${s.stop === null ? "–" : fmt(s.stop)}</span>${stopGap}</dd></div>
+        <div><dt>${tr("Held")}</dt><dd>${held}</dd></div>
       </dl>
       <p class="note">${esc(s.strategyNote)}</p>${error}${backtest}</div>`;
     return;
@@ -56,17 +57,17 @@ function render(s: Summary): void {
   const ok = s.conditions.filter((c) => c.ok).length;
   const buy = s.signal === "buy";
   const cells = s.conditions
-    .map((c) => `<div class="${c.ok ? "ok" : "need"}" title="${esc(c.label)}"><small>${esc(c.label)}</small><b>${esc(c.detail.split(" vs ")[0]!)}</b></div>`)
+    .map((c) => `<div class="${c.ok ? "ok" : "need"}" title="${esc(c.label)}"><small>${esc(tr(c.label))}</small><b>${esc(c.detail.split(" vs ")[0]!)}</b></div>`)
     .join("");
   const failing = s.conditions.filter((c) => !c.ok);
   const pl = s.plan;
   const note = buy
-    ? `<p class="note"><span class="pos">All checks passed.</span> Buy at the open of the next bar.</p>`
+    ? `<p class="note"><span class="pos">${L("All checks passed.", "ผ่านทุกเงื่อนไข")}</span> ${L("Buy at the open of the next bar.", "ซื้อที่ราคาเปิดของแท่งถัดไป")}</p>`
     : failing.length
-      ? `<p class="note">Still needs ${failing.map(missing).join(", ")}${pl && !pl.inZone ? `. Next setup ${pct(pl.distancePct)} away.` : "."}</p>`
-      : `<p class="note">No setup yet for this strategy.</p>`;
+      ? `<p class="note">${L("Still needs", "ยังขาด")} ${failing.map(missing).join(", ")}${pl && !pl.inZone ? L(`. Next setup ${pct(pl.distancePct)} away.`, ` · setup ถัดไปห่าง ${pct(pl.distancePct)}`) : L(".", "")}</p>`
+      : `<p class="note">${L("No setup yet for this strategy.", "กลยุทธ์นี้ยังไม่มี setup")}</p>`;
   $("main").innerHTML = `<div class="gate num">
-    <p class="score"><b class="${buy ? "pos" : ""}">${ok}/${n}</b><span>${buy ? "buy at the next open" : "buy checks passed"}</span></p>
+    <p class="score"><b class="${buy ? "pos" : ""}">${ok}/${n}</b><span>${buy ? L("buy at the next open", "ซื้อที่ราคาเปิดแท่งถัดไป") : L("buy checks passed", "เงื่อนไขซื้อที่ผ่าน")}</span></p>
     <div class="meter" style="--n:${Math.min(Math.max(n, 1), 3)}">${cells}</div>
     ${note}${error}${backtest}</div>`;
 }
@@ -323,26 +324,26 @@ async function renderWatchlist(currentTab?: number): Promise<void> {
     .sort((a, b) => a.rank - b.rank || (b.s.openPnlPct ?? 0) - (a.s.openPnlPct ?? 0));
   $("watchCount").textContent = rows.length ? String(rows.length) : "";
   if (!rows.length) {
-    $("watchlist").innerHTML = `<li><p class="watch-empty">Open more pairs on DEX Screener in other tabs to watch them here.</p></li>`;
+    $("watchlist").innerHTML = `<li><p class="watch-empty">${L("Open more pairs on DEX Screener in other tabs to watch them here.", "เปิดเหรียญอื่นบน DEX Screener ในแท็บอื่น เพื่อดูที่นี่")}</p></li>`;
     return;
   }
   const ago = (t: number) => {
     const m = Math.round((Date.now() - t) / 60_000);
-    return m < 1 ? "now" : m < 60 ? `${m}m ago` : `${Math.round(m / 60)}h ago`;
+    return m < 1 ? L("now", "เมื่อกี้") : m < 60 ? L(`${m}m ago`, `${m} นาทีก่อน`) : L(`${Math.round(m / 60)}h ago`, `${Math.round(m / 60)} ชม. ก่อน`);
   };
   $("watchlist").innerHTML = rows
     .map(({ tab, s, rank }) => {
       const state =
         rank === 0
-          ? `<strong class="pos">▲ BUY</strong><small>next bar open</small>`
+          ? `<strong class="pos">▲ ${L("BUY", "ซื้อ")}</strong><small>${L("next bar open", "เปิดแท่งถัดไป")}</small>`
           : rank === 1
-            ? `<strong class="pos">In zone</strong><small>waiting for the trigger</small>`
+            ? `<strong class="pos">${tr("In zone")}</strong><small>${L("waiting for the trigger", "รอสัญญาณ")}</small>`
             : rank === 2
-              ? `<strong class="${(s.openPnlPct ?? 0) >= 0 ? "pos" : "neg"}">${pct(s.openPnlPct ?? 0, 2)}</strong><small>${s.costRecovered ? "Free ride" : "Holding"}</small>`
-              : `<strong class="muted">Waiting</strong><small>${s.plan ? `${pct(s.plan.distancePct)} to zone` : "no setup"}</small>`;
+              ? `<strong class="${(s.openPnlPct ?? 0) >= 0 ? "pos" : "neg"}">${pct(s.openPnlPct ?? 0, 2)}</strong><small>${tr(s.costRecovered ? "Free ride" : "Holding")}</small>`
+              : `<strong class="muted">${tr("Waiting")}</strong><small>${s.plan ? L(`${pct(s.plan.distancePct)} to zone`, `ห่างโซน ${pct(s.plan.distancePct)}`) : L("no setup", "ไม่มี setup")}</small>`;
       const gate = s.signal === "hold" ? "" : `<span class="seg3" aria-hidden="true">${s.conditions.map((c) => `<i class="${c.ok ? "ok" : ""}"></i>`).join("")}</span>`;
       return `<li><button type="button" data-tab="${tab.id}" data-window="${tab.windowId}">
-        <span class="name"><strong>${esc(s.pair)}</strong><small>${esc(s.resolution)} · ${esc(s.strategy)} · ${ago(s.updatedAt)}${s.error ? " · error" : ""}</small></span>
+        <span class="name"><strong>${esc(s.pair)}</strong><small>${esc(s.resolution)} · ${esc(s.strategy)} · ${ago(s.updatedAt)}${s.error ? L(" · error", " · ผิดพลาด") : ""}</small></span>
         ${gate}<span class="state">${state}</span></button></li>`;
     })
     .join("");
@@ -353,13 +354,16 @@ async function main(): Promise<void> {
   const onDexScreener = !!tab?.url?.startsWith("https://dexscreener.com/");
   const key = tab?.id === undefined ? null : summaryKey(tab.id);
 
-  const show = (s: Summary | undefined) => (s && onDexScreener ? render(s) : renderEmpty(onDexScreener));
+  const settings = (await chrome.storage.local.get(DEFAULT_SETTINGS)) as Settings;
+  setLang(settings.lang);
+  translatePage(document.body);
+  let current: Summary | undefined;
+  const show = (s: Summary | undefined) => ((current = s), s && onDexScreener ? render(s) : renderEmpty(onDexScreener));
   show(key ? ((await chrome.storage.session.get(key))[key] as Summary | undefined) : undefined);
   chrome.storage.session.onChanged.addListener((changes) => {
     if (key && changes[key]) show(changes[key].newValue as Summary | undefined);
   });
 
-  const settings = (await chrome.storage.local.get(DEFAULT_SETTINGS)) as Settings;
   for (const name of ["showTable", "drawMarkers", "showStop", "showIndicators", "notify"] as const) {
     const input = $(name) as HTMLInputElement;
     input.checked = settings[name];
@@ -390,7 +394,7 @@ async function main(): Promise<void> {
   // Background blur: 0–32 px in 2 px steps, greyed out with the opacity slider.
   const blur = $("tableBlur") as HTMLInputElement;
   const paintBlur = () => {
-    $("tableBlurValue").textContent = Number(blur.value) ? `${blur.value}px` : "Off";
+    $("tableBlurValue").textContent = Number(blur.value) ? `${blur.value}px` : tr("Off");
     blur.style.setProperty("--fill", `${(Number(blur.value) / 32) * 100}%`);
     blur.disabled = !showTable.checked;
     $("blurRow").classList.toggle("disabled", blur.disabled);
@@ -410,7 +414,7 @@ async function main(): Promise<void> {
     start: "Signals from the pair's first bar. Loads the whole history once, up to 60 pages.",
   } as const;
   let calcFrom = settings.calcFrom;
-  const paintCalc = (v: CalcFrom) => ($("calcHint").textContent = hints[v]);
+  const paintCalc = (v: CalcFrom) => ($("calcHint").textContent = tr(hints[v]));
   dropdown("calc", calcFrom, (value) => {
     calcFrom = value as CalcFrom;
     paintCalc(calcFrom);
@@ -419,17 +423,17 @@ async function main(): Promise<void> {
   paintCalc(calcFrom);
   const recalc = $("recalc") as HTMLButtonElement;
   recalc.disabled = !onDexScreener || tab?.id === undefined;
-  if (recalc.disabled) $("recalcStatus").textContent = "Open a pair's chart first.";
+  if (recalc.disabled) $("recalcStatus").textContent = tr("Open a pair's chart first.");
   recalc.addEventListener("click", () => {
     const from = calcFrom;
     recalc.disabled = true;
-    recalc.textContent = "Loading…";
+    recalc.textContent = tr("Loading…");
     $("recalcStatus").textContent = "";
     void chrome.runtime.sendMessage({ type: "load", tabId: tab!.id!, from } satisfies FromPopup).then((r: LoadResult) => {
       const since = r.firstTime === null ? "" : ` from ${new Date(r.firstTime).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`;
       $("recalcStatus").textContent = r.error ?? `${r.bars.toLocaleString()} bars${since}${from === "start" && !r.complete ? " (not the pair's start: page limit)" : ""}`;
       recalc.disabled = false;
-      recalc.textContent = "Recalculate";
+      recalc.textContent = tr("Recalculate");
     });
   });
 
@@ -442,7 +446,7 @@ async function main(): Promise<void> {
         { type: "basic", iconUrl: "icon128.png", title: "EA BUY · test", message: "Test alert from EA Signals. Real alerts look like this." },
         () => {
           $("testNotifyStatus").textContent =
-            level === "granted" ? "" : "Notifications are blocked for this extension.";
+            level === "granted" ? "" : tr("Notifications are blocked for this extension.");
           button.disabled = false;
         },
       );
@@ -463,8 +467,28 @@ async function main(): Promise<void> {
   paintTheme(settings.theme);
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-theme-set]")) b.addEventListener("click", () => setTheme(b.dataset.themeSet as Settings["theme"]));
 
+  // Language: the TH / EN switch in the header; the popup re-renders and the chart panel follows the setting.
+  const paintLang = (l: Settings["lang"]) => {
+    setLang(l);
+    document.documentElement.lang = l;
+    for (const b of document.querySelectorAll<HTMLButtonElement>("[data-lang-set]")) b.setAttribute("aria-pressed", String(b.dataset.langSet === l));
+  };
+  paintLang(settings.lang);
+  for (const b of document.querySelectorAll<HTMLButtonElement>("[data-lang-set]"))
+    b.addEventListener("click", () => {
+      paintLang(b.dataset.langSet as Settings["lang"]);
+      translatePage(document.body);
+      show(current);
+      void renderWatchlist(tab?.id);
+      paintCalc(calcFrom);
+      paintBlur();
+      paintAlerts();
+      if (recalc.disabled) $("recalcStatus").textContent = tr("Open a pair's chart first.");
+      void chrome.storage.local.set({ lang: b.dataset.langSet });
+    });
+
   const notifyInput = $("notify") as HTMLInputElement;
-  const paintAlerts = () => ($("alertState").textContent = notifyInput.checked ? "Alerts on" : "Alerts off");
+  const paintAlerts = () => ($("alertState").textContent = tr(notifyInput.checked ? "Alerts on" : "Alerts off"));
   paintAlerts();
   notifyInput.addEventListener("change", paintAlerts);
 

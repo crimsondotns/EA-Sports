@@ -51,6 +51,8 @@ export interface Summary {
 export interface Settings {
   /** Popup and on-chart panel colours. */
   theme: "dark" | "light";
+  /** Popup and chart panel language. */
+  lang: "en" | "th";
   strategy: "breakout" | "dip" | "launch" | "dropvol" | "sharp" | "stretch" | "flush" | "score";
   showTable: boolean;
   drawMarkers: boolean;
@@ -71,7 +73,7 @@ export interface Settings {
   tableOffsetY: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: "dark", strategy: "dip", showTable: true, drawMarkers: true, calcFrom: "31d", showStop: true, notify: true, showIndicators: true, tableOpacity: 0.78, tableBlur: 24, tableCollapsed: false, tableOffsetY: 0 };
+export const DEFAULT_SETTINGS: Settings = { theme: "dark", lang: "en", strategy: "dip", showTable: true, drawMarkers: true, calcFrom: "31d", showStop: true, notify: true, showIndicators: true, tableOpacity: 0.78, tableBlur: 24, tableCollapsed: false, tableOffsetY: 0 };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 export type CalcFrom = "31d" | "start";
