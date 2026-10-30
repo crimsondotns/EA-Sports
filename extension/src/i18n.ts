@@ -90,8 +90,8 @@ const TH: Record<string, string> = {
   "Show details": "แสดงรายละเอียด",
   "Move up or down": "เลื่อนขึ้นลง",
   "Drag to move · double-click to reset": "ลากเพื่อย้าย · ดับเบิลคลิกเพื่อรีเซ็ต",
-  "Not from the pair's start yet: press Recalculate in the extension popup.": "ยังไม่ได้นับจากเริ่มต้นเหรียญ กด คำนวณใหม่ ใน popup ของ extension",
-  "Less than 31 days loaded: press Recalculate in the extension popup.": "โหลดไม่ถึง 31 วัน กด คำนวณใหม่ ใน popup ของ extension",
+  "History doesn't reach the pair's start yet. Scroll the chart back, or press Recalculate in the popup.": "ประวัติยังไม่ถึงจุดเริ่มของเหรียญ เลื่อนกราฟย้อนหลังไปอีก หรือกด คำนวณใหม่ ใน popup",
+  "Under 31 days of history. Scroll the chart back to load more, or press Recalculate in the popup.": "ประวัติยังไม่ถึง 31 วัน เลื่อนกราฟย้อนหลังไปอีกเพื่อโหลดเพิ่ม หรือกด คำนวณใหม่ ใน popup",
   "The extension was reloaded — refresh this page.": "extension ถูกโหลดใหม่ รีเฟรชหน้านี้",
   // Condition short labels
   "Under EMAs": "ใต้ EMA",

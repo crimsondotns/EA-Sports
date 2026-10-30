@@ -572,9 +572,9 @@ function analyze(source: BarsSource, all: Candle[]): void {
   const feed = fetched?.source.resolution === source.resolution ? fetched : null;
   historyNote =
     settings.calcFrom === "start" && !feed?.complete
-      ? "Not from the pair's start yet: press Recalculate in the extension popup."
+      ? "History doesn't reach the pair's start yet. Scroll the chart back, or press Recalculate in the popup."
       : settings.calcFrom === "31d" && candles.length && candles[0]!.time > start + 250 * barMs
-        ? "Less than 31 days loaded: press Recalculate in the extension popup."
+        ? "Under 31 days of history. Scroll the chart back to load more, or press Recalculate in the popup."
         : null;
   const sameChart =
     last &&
