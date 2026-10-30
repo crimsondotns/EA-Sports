@@ -8,7 +8,7 @@ interface TvChart {
   createShape(point: { time: number; price?: number }, opts: object): Promise<unknown> | unknown;
   createMultipointShape(points: { time: number; price: number }[], opts: object): Promise<unknown> | unknown;
   removeEntity(id: unknown): void;
-  getShapeById?(id: unknown): { getPoints?(): { time: number; price: number }[] };
+  getShapeById?(id: unknown): { getPoints?(): { time: number; price: number }[]; isSavingEnabled?(): boolean };
   createStudy?(name: string, forceOverlay: boolean, lock?: boolean): Promise<unknown> | unknown;
   getAllStudies?(): { id: unknown; name: string }[];
   getStudyById?(id: unknown): TvStudy;
@@ -80,12 +80,27 @@ function currentChart(): TvChart | null {
   return findChart()?.chart ?? found?.chart ?? null;
 }
 
+/** Ours = drawn with `disableSave` (the user's drawings are saved with the chart). Without that
+ *  method, fall back to "still at the points we drew it at" (the time of a horizontal line can
+ *  change, so only prices are compared). */
+function ours(chart: TvChart | null, id: unknown, points: string): boolean {
+  try {
+    const shape = chart?.getShapeById?.(id);
+    if (!shape) return false;
+    const saving = shape.isSavingEnabled?.();
+    if (saving !== undefined) return !saving;
+  } catch {
+    return false;
+  }
+  const prices = (s: string) => (JSON.parse(s || "[]") as number[][]).map((p) => p[1]).join();
+  const now = pointsOf(chart, id);
+  return now !== null && points !== "" && prices(now) === prices(points);
+}
+
 function clear(): void {
   const chart = currentChart();
   for (const { id, points } of drawn.splice(0)) {
-    // Unknown points (old library without getShapeById): don't risk deleting a user's drawing.
-    const now = pointsOf(chart, id);
-    if (now === null || now !== points) continue;
+    if (!ours(chart, id, points)) continue;
     try {
       chart?.removeEntity(id);
     } catch {
