@@ -209,7 +209,7 @@ function positionTable(): void {
   host.style.setProperty("--table-blur", `${Math.min(32, Math.max(0, settings.tableBlur))}px`);
   host.classList.toggle("light", settings.theme === "light");
   if (!chartReady) return;
-  const PRICE_SCALE = 72; // width of the chart's right price axis
+  const PRICE_SCALE = priceScaleWidth(frame!, r);
   const TOOLBAR = 44; // chart top toolbar
   const INSET = 16; // keep clear of the chart's edges and its legend buttons
   // The user's drag offset, kept inside the chart.
@@ -221,6 +221,26 @@ function positionTable(): void {
   host.style.right = `${Math.max(0, window.innerWidth - r.right + PRICE_SCALE + (settings.tableCollapsed ? 0 : INSET))}px`;
 }
 setInterval(positionTable, 500);
+
+/**
+ * Width of the chart's right price scale. It grows with the labels (800.050K is wider than 1.00M),
+ * so it is measured in the chart iframe (same origin) instead of assumed; 72px if it can't be read.
+ */
+function priceScaleWidth(frame: HTMLIFrameElement, r: DOMRect): number {
+  try {
+    const doc = frame.contentDocument;
+    let left = Infinity;
+    for (const el of doc?.querySelectorAll<HTMLElement>('[class*="price-axis"]') ?? []) {
+      const b = el.getBoundingClientRect();
+      // The right-hand scale ends at the iframe's right edge; skip a left-hand one.
+      if (b.width > 0 && b.right >= r.width - 2 && b.left > r.width / 2) left = Math.min(left, b.left);
+    }
+    if (Number.isFinite(left)) return Math.round(r.width - left);
+  } catch {
+    // Cross-origin or not ready: fall back.
+  }
+  return 72;
+}
 
 // Drag the grip (or use the arrow keys on it) to move the table up and down; double-click resets.
 {
