@@ -13,6 +13,8 @@ interface TvChart {
   getAllStudies?(): { id: unknown; name: string }[];
   getStudyById?(id: unknown): TvStudy;
   getPanes?(): TvPane[];
+  getAllPanesHeight?(): number[];
+  setAllPanesHeight?(heights: readonly number[]): void;
   exportData?(opts: object): Promise<{ schema: ExportField[]; data: ArrayLike<number>[] }>;
   resolution?(): string;
   onIntervalChanged?(): { subscribe(ctx: null, cb: () => void): void };
@@ -331,7 +333,10 @@ function sizeNewPane(chart: TvChart, id: unknown): void {
     // theirs; twice, as each call nudges its neighbour.
     const want = panes.map((p, k) => (targets.includes(p) ? target : k === 0 ? 0 : (p.getHeight?.() ?? 0)));
     want[0] = Math.max(120, total - want.reduce((a, h) => a + h, 0));
-    for (let round = 0; round < 2; round++) panes.forEach((p, k) => p.setHeight?.(want[k]!));
+    // The chart API sets all panes in one call; one setHeight at a time only reached the bottom pane.
+    if (chart.setAllPanesHeight) chart.setAllPanesHeight(want);
+    else for (let round = 0; round < 2; round++) panes.forEach((p, k) => p.setHeight?.(want[k]!));
+    console.info("[EA] setAllPanesHeight", typeof chart.setAllPanesHeight === "function", want);
     console.info("[EA] pane heights now", panes.map((p) => p.getHeight?.()));
   } catch (e) {
     console.info("[EA] could not size the pane", e);
