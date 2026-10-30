@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chart panel options</title>
+<style>
+  @font-face { font-family: "Manrope"; src: url("../../extension/fonts/manrope.ttf") format("truetype"); font-weight: 200 800; }
+  :root { font-family: "Manrope", system-ui, sans-serif; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0a0a0a; color: #f2f2f2; padding: 32px 24px 64px; }
+  h1 { font-size: 22px; font-weight: 700; max-width: 1500px; margin: 0 auto 6px; }
+  .lead { color: #a3a3a3; font-size: 14px; max-width: 1500px; margin: 0 auto 28px; line-height: 1.5; }
+  .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 28px; max-width: 1500px; margin: 0 auto; }
+  figure { display: grid; gap: 10px; }
+  figcaption b { font-size: 15px; } figcaption p { color: #a3a3a3; font-size: 13px; line-height: 1.5; margin-top: 2px; }
+  .stage { position: relative; height: 380px; border-radius: 12px; overflow: hidden; background: #131722; }
+  .stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage .p { position: absolute; top: 14px; right: 14px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* theme tokens shared by every option */
+  .dark  { --bg: 0 0 0; --text: #f2f2f2; --text-2: #a3a3a3; --muted: #6b6b6b; --line: #262626; --go: #4ade80; --stop: #f87171; --near: #fbbf24; --inv: #fff; --on-inv: #000; }
+  .light { --bg: 245 246 248; --text: #14161a; --text-2: #4a505a; --muted: #6b717c; --line: #e3e6eb; --go: #0e9f6e; --stop: #d92d20; --near: #b54708; --inv: #14161a; --on-inv: #fff; }
+  .p { color: var(--text); font-size: 12.5px; line-height: 1.4; font-weight: 500; }
+  .r { display: flex; justify-content: space-between; gap: 12px; white-space: nowrap; }
+  .r > span:first-child { color: var(--text-2); }
+  .go { color: var(--go); } .st { color: var(--stop); } .nr { color: var(--near); } .mu { color: var(--muted); }
+  .badge { border-radius: 999px; padding: 3px 9px; font-weight: 800; font-size: 12px; background: var(--go); color: #000; }
+  .light .badge { color: #fff; }
+  .chev { flex: none; width: 12px; height: 12px; color: var(--text-2); }
+  .msg { white-space: normal; }
+
+  /* A · One panel (what is on the branch now) */
+  .a { width: 260px; border-radius: 14px; background: rgb(var(--bg) / .92); overflow: hidden; }
+  .a .head { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; }
+  .a .head b { font-weight: 800; } .a .head .t { flex: 1; color: var(--text-2); font-size: 12px; }
+  .a .body { border-top: 1px solid var(--line); padding: 8px 12px 10px; display: grid; gap: 4px; }
+  .a .sep { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; }
+
+  /* B · Headline: big P/L up top, plan as a 3-column strip, checks as chips */
+  .b { width: 270px; border-radius: 16px; background: rgb(var(--bg) / .92); padding: 12px 14px 12px; display: grid; gap: 10px; }
+  .b .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .b .top small { color: var(--text-2); font-size: 12px; }
+  .b .big { font-size: 26px; font-weight: 800; line-height: 1; letter-spacing: -.01em; }
+  .b .state { font-size: 12px; font-weight: 700; color: var(--text-2); }
+  .b .plan { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .b .plan small { display: block; color: var(--muted); font-size: 11px; } .b .plan b { font-weight: 700; font-size: 12.5px; }
+  .b .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .b .chips span { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); color: var(--text-2); }
+  .b .chips span.ok { color: var(--go); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--go) 40%, transparent); }
+  .b .foot { color: var(--text-2); font-size: 12px; display: flex; justify-content: space-between; }
+
+  /* C · Checklist: check marks in a column, grouped by spacing (no lines) */
+  .c { width: 260px; border-radius: 14px; background: rgb(var(--bg) / .92); padding: 10px 12px 12px; display: grid; gap: 10px; }
+  .c .head { display: flex; align-items: center; gap: 8px; }
+  .c .head b { font-weight: 800; } .c .head .t { flex: 1; white-space: nowrap; color: var(--text-2); font-size: 12px; text-align: right; }
+  .c .grp { display: grid; gap: 3px; }
+  .c .grp > small { color: var(--muted); font-size: 11px; font-weight: 700; margin-bottom: 1px; }
+  .c .ck { display: grid; grid-template-columns: 16px 1fr auto; gap: 6px; align-items: center; white-space: nowrap; }
+  .c .ck i { width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 9px; font-weight: 800; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--muted); }
+  .c .ck i.ok { box-shadow: none; background: var(--go); color: #000; }
+  .c.light .ck i.ok { color: #fff; }
+
+  /* D · Frosted glass, same blur language as the popup dropdowns */
+  .d { width: 260px; border-radius: 16px; background: rgb(var(--bg) / .55); -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+       box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%), 0 12px 40px rgb(0 0 0 / 45%); overflow: hidden; }
+  .d.light { background: rgb(255 255 255 / 80%); box-shadow: inset 0 0 0 1px rgb(20 22 26 / 8%), 0 12px 40px rgb(0 0 0 / 30%); }
+  .d .head { display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; }
+  .d .head b { font-weight: 800; } .d .head .t { flex: 1; color: var(--text-2); font-size: 12px; }
+  .d .body { padding: 2px 12px 12px; display: grid; gap: 4px; }
+  .d .gap { height: 6px; }
+
+  /* E · Rail: a slim column docked to the price axis, label over value */
+  .e { width: 150px; border-radius: 12px; background: rgb(var(--bg) / .92); padding: 10px 12px; display: grid; gap: 8px; }
+  .e .kv small { display: block; color: var(--muted); font-size: 11px; } .e .kv b { font-weight: 700; }
+  .e .big { font-size: 22px; font-weight: 800; line-height: 1; }
+  .e .dots { display: flex; gap: 3px; } .e .dots i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); } .e .dots i.ok { background: var(--go); }
+</style>
+</head>
+<body>
+<h1>Chart panel options</h1>
+<p class="lead">The same holding trade (Deep Dip #3, 15m, free ride, +649.4%) in each layout, dark on the left chart and light on the right. Every option is one surface, no pill-plus-card split. Pick one (or mix parts).</p>
+<div class="board" id="board"></div>
+
+<template id="A"><div class="p a num">
+  <div class="head"><span class="badge">+649.4%</span><b>Free ride</b><span class="t">Deep Dip #3 15m</span><svg class="chev" viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+  <div class="body">
+    <div class="r"><span>Bought</span><span>0.0003139</span></div>
+    <div class="r"><span>Stop</span><span class="st">0.0003139</span></div>
+    <div class="r"><span>P/L</span><span class="go">+649.38%</span></div>
+    <div class="r sep"><span>○ Under EMAs</span><span class="nr">0.002352</span></div>
+    <div class="r"><span>○ MACD turn</span><span class="nr">hist −0.0000395</span></div>
+    <div class="r"><span>✓ RSI</span><span class="go">55</span></div>
+    <div class="r"><span>○ Support</span><span class="nr">not at support</span></div>
+    <div class="r sep"><span>Backtest</span><span class="go">+45.0% · 8 trades</span></div>
+    <div class="msg st sep">The extension was reloaded: refresh this page.</div>
+  </div></div></template>
+
+<template id="B"><div class="p b num">
+  <div class="top"><span class="state">Free ride</span><small>Deep Dip #3 · 15m</small></div>
+  <div class="big go">+649.4%</div>
+  <div class="plan"><div><small>Bought</small><b>0.0003139</b></div><div><small>Stop</small><b class="st">0.0003139</b></div><div><small>Backtest</small><b class="go">+45%</b></div></div>
+  <div class="chips"><span>Under EMAs</span><span>MACD turn</span><span class="ok">RSI 55</span><span>Support</span></div>
+  <div class="msg st">The extension was reloaded: refresh this page.</div>
+</div></template>
+
+<template id="C"><div class="p c num">
+  <div class="head"><span class="badge">+649.4%</span><b>Free ride</b><span class="t">Deep Dip #3 15m</span></div>
+  <div class="grp"><small>Trade</small>
+    <div class="r"><span>Bought</span><span>0.0003139</span></div>
+    <div class="r"><span>Stop</span><span class="st">0.0003139</span></div></div>
+  <div class="grp"><small>Buy checks 1/4</small>
+    <div class="ck"><i></i><span>Under EMAs</span><span class="nr">0.002352</span></div>
+    <div class="ck"><i></i><span>MACD turn</span><span class="nr">−0.0000395</span></div>
+    <div class="ck"><i class="ok">✓</i><span>RSI</span><span class="go">55</span></div>
+    <div class="ck"><i></i><span>Support</span><span class="nr">not at support</span></div></div>
+  <div class="r"><span>Backtest</span><span class="go">+45.0% · 8 trades</span></div>
+  <div class="msg st">The extension was reloaded: refresh this page.</div>
+</div></template>
+
+<template id="D"><div class="p d num">
+  <div class="head"><span class="badge">+649.4%</span><b>Free ride</b><span class="t">Deep Dip #3 15m</span><svg class="chev" viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+  <div class="body">
+    <div class="r"><span>Bought</span><span>0.0003139</span></div>
+    <div class="r"><span>Stop</span><span class="st">0.0003139</span></div>
+    <div class="gap"></div>
+    <div class="r"><span>○ Under EMAs</span><span class="nr">0.002352</span></div>
+    <div class="r"><span>○ MACD turn</span><span class="nr">hist −0.0000395</span></div>
+    <div class="r"><span>✓ RSI</span><span class="go">55</span></div>
+    <div class="r"><span>○ Support</span><span class="nr">not at support</span></div>
+    <div class="gap"></div>
+    <div class="r"><span>Backtest</span><span class="go">+45.0% · 8 trades</span></div>
+    <div class="msg st">The extension was reloaded: refresh this page.</div>
+  </div></div></template>
+
+<template id="E"><div class="p e num">
+  <div><small class="mu">Free ride · 15m</small><div class="big go">+649%</div></div>
+  <div class="dots"><i></i><i></i><i class="ok"></i><i></i></div>
+  <div class="kv"><small>Bought</small><b>0.0003139</b></div>
+  <div class="kv"><small>Stop</small><b class="st">0.0003139</b></div>
+  <div class="kv"><small>Backtest</small><b class="go">+45% · 8</b></div>
+  <div class="msg st" style="font-size:11.5px">Extension reloaded: refresh.</div>
+</div></template>
+
+<script>
+const opts = [
+  ["A", "A · One panel", "What is on the branch now: the pill row is the panel's header and the details open under a hairline in the same surface."],
+  ["B", "B · Headline", "P/L as the headline, the plan in three columns, buy checks as chips. Shortest panel; check values move to hover."],
+  ["C", "C · Checklist", "Groups by spacing and small headings instead of lines; buy checks get round marks with a count (1/4)."],
+  ["D", "D · Frosted glass", "Same rows as A, on the blurred glass of the popup dropdowns. Candles show through softly."],
+  ["E", "E · Rail", "A narrow column beside the price axis: label above value, so it covers less of the chart."],
+];
+const chart = () => {
+  let y = 200, d = "";
+  for (let i = 0; i < 70; i++) { y += Math.sin(i / 4) * 6 + (Math.random() - .5) * 14; const x = i * 9 + 4, o = y, c = y + (Math.random() - .5) * 16;
+    d += `<line x1="${x+2}" x2="${x+2}" y1="${Math.min(o,c)-6}" y2="${Math.max(o,c)+6}" stroke="${c<o?'#26a69a':'#ef5350'}"/><rect x="${x}" width="5" y="${Math.min(o,c)}" height="${Math.abs(c-o)+1}" fill="${c<o?'#26a69a':'#ef5350'}"/>`; }
+  return `<svg viewBox="0 0 640 380" preserveAspectRatio="none">${d}</svg>`;
+};
+const board = document.getElementById("board");
+for (const [id, name, text] of opts) for (const theme of ["dark", "light"]) {
+  const f = document.createElement("figure");
+  f.innerHTML = `<div class="stage">${chart()}</div><figcaption><b>${name} · ${theme}</b>${theme === "dark" ? `<p>${text}</p>` : ""}</figcaption>`;
+  const node = document.getElementById(id).content.firstElementChild.cloneNode(true);
+  node.classList.add(theme);
+  f.querySelector(".stage").append(node);
+  board.append(f);
+}
+</script>
+</body>
+</html>
