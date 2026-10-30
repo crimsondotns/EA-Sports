@@ -312,6 +312,11 @@ function drawer(initial: string, onChange: (value: string) => void): void {
 // ---------- watchlist: every open DEX Screener tab's latest summary ----------
 
 const RANK = { buy: 0, zone: 1, hold: 2, flat: 3 } as const;
+// Filter chips and search for the list; they show from this many pairs up.
+const FILTER_FROM = 5;
+const FILTERS = { all: [0, 1, 2, 3], signals: [0, 1], holding: [2], waiting: [3] } as const;
+let watchFilter: keyof typeof FILTERS = "all";
+let watchQuery = "";
 
 async function renderWatchlist(currentTab?: number): Promise<void> {
   const tabs = (await chrome.tabs.query({ url: "https://dexscreener.com/*" })).filter((t) => t.id !== currentTab);
@@ -323,6 +328,10 @@ async function renderWatchlist(currentTab?: number): Promise<void> {
     // BUY first, then price in the buy zone, then open trades by P/L, then waiting.
     .sort((a, b) => a.rank - b.rank || (b.s.openPnlPct ?? 0) - (a.s.openPnlPct ?? 0));
   $("watchCount").textContent = rows.length ? String(rows.length) : "";
+  $("watchFilters").hidden = rows.length < FILTER_FROM;
+  for (const [k, ranks] of Object.entries(FILTERS)) {
+    $(`count${k[0]!.toUpperCase()}${k.slice(1)}`).textContent = String(rows.filter((r) => (ranks as readonly number[]).includes(r.rank)).length);
+  }
   if (!rows.length) {
     $("watchlist").innerHTML = `<li><p class="watch-empty">${L("Open more pairs on DEX Screener in other tabs to watch them here.", "เปิดเหรียญอื่นบน DEX Screener ในแท็บอื่น เพื่อดูที่นี่")}</p></li>`;
     return;
@@ -331,7 +340,14 @@ async function renderWatchlist(currentTab?: number): Promise<void> {
     const m = Math.round((Date.now() - t) / 60_000);
     return m < 1 ? L("now", "เมื่อกี้") : m < 60 ? L(`${m}m ago`, `${m} นาทีก่อน`) : L(`${Math.round(m / 60)}h ago`, `${Math.round(m / 60)} ชม. ก่อน`);
   };
-  $("watchlist").innerHTML = rows
+  const q = watchQuery.trim().toLowerCase();
+  const shown = rows.length < FILTER_FROM ? rows
+    : rows.filter((r) => (FILTERS[watchFilter] as readonly number[]).includes(r.rank) && (!q || r.s.pair.toLowerCase().includes(q)));
+  if (!shown.length) {
+    $("watchlist").innerHTML = `<li><p class="watch-empty">${q ? L("No pairs match your search.", "ไม่มีเหรียญที่ตรงกับคำค้น") : L("No pairs in this group.", "ไม่มีเหรียญในกลุ่มนี้")}</p></li>`;
+    return;
+  }
+  $("watchlist").innerHTML = shown
     .map(({ tab, s, rank }) => {
       const state =
         rank === 0
@@ -505,6 +521,17 @@ async function main(): Promise<void> {
   $("openSettings").addEventListener("click", () => showPage("settings"));
   $("closeSettings").addEventListener("click", () => showPage("home"));
   void renderWatchlist(tab?.id);
+  for (const b of document.querySelectorAll<HTMLButtonElement>("[data-filter]")) {
+    b.addEventListener("click", () => {
+      watchFilter = b.dataset.filter as typeof watchFilter;
+      for (const o of document.querySelectorAll<HTMLButtonElement>("[data-filter]")) o.setAttribute("aria-pressed", String(o === b));
+      void renderWatchlist(tab?.id);
+    });
+  }
+  $("watchSearch").addEventListener("input", (e) => {
+    watchQuery = (e.target as HTMLInputElement).value;
+    void renderWatchlist(tab?.id);
+  });
   // A row switches to its tab (and window).
   $("watchlist").addEventListener("click", (e) => {
     const b = (e.target as Element).closest<HTMLButtonElement>("button[data-tab]");
@@ -525,5 +552,12 @@ void main();
 
 // The Settings header casts its shadow only once the page has scrolled under it.
 const settingsHeader = document.querySelector("#settingsPage > header");
-const markStuck = () => settingsHeader?.classList.toggle("stuck", window.scrollY > 0);
+const homeBottom = document.querySelector("#homePage .bottom");
+const markStuck = () => {
+  settingsHeader?.classList.toggle("stuck", window.scrollY > 0);
+  // The footer's shadow shows while there is more page under it.
+  homeBottom?.classList.toggle("stuck", window.scrollY + window.innerHeight < document.documentElement.scrollHeight - 1);
+};
 window.addEventListener("scroll", markStuck, { passive: true });
+// The list grows and shrinks as pairs and filters change.
+new ResizeObserver(markStuck).observe(document.body);

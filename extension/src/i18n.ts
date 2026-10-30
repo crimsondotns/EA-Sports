@@ -15,6 +15,10 @@ const TH: Record<string, string> = {
   "EA Signals": "EA Signals",
   "DEX Screener signals": "สัญญาณบน DEX Screener",
   "Other open pairs": "เหรียญอื่นที่เปิดอยู่",
+  All: "ทั้งหมด",
+  Signals: "สัญญาณ",
+  "Filter pairs": "กรองเหรียญ",
+  "Search pairs": "ค้นหาเหรียญ",
   "Alerts on": "เปิดแจ้งเตือน",
   "Alerts off": "ปิดแจ้งเตือน",
   Settings: "ตั้งค่า",
@@ -122,7 +126,7 @@ const TH: Record<string, string> = {
 };
 
 const original = new WeakMap<Node, string>();
-const ATTRS = ["aria-label", "title"] as const;
+const ATTRS = ["aria-label", "title", "placeholder"] as const;
 /** Translates the fixed text of a page (text nodes and aria-label / title), remembering the English. */
 export function translatePage(root: ParentNode): void {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -136,7 +140,7 @@ export function translatePage(root: ParentNode): void {
   }
   for (const el of root.querySelectorAll<HTMLElement>(ATTRS.map((a) => `[${a}]`).join(","))) {
     for (const a of ATTRS) {
-      const key = a === "title" ? "i18nTitle" : "i18nAria";
+      const key = a === "title" ? "i18nTitle" : a === "placeholder" ? "i18nPlaceholder" : "i18nAria";
       const en = el.dataset[key] ?? el.getAttribute(a);
       if (!en || !(en in TH)) continue;
       el.dataset[key] = en;
