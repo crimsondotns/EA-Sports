@@ -342,9 +342,26 @@ function sizeNewPane(chart: TvChart, id: unknown, specs: StudySpec[]): void {
     const want = panes.map((p, k) => (targets.includes(p) ? target : k === 0 ? 0 : heights[k]!));
     want[0] = total - want.reduce((a, h) => a + h, 0);
     if (want[0] < 120) return; // chart too short: leave it alone
-    if (chart.setAllPanesHeight) chart.setAllPanesHeight(want);
-    else for (let round = 0; round < 2; round++) panes.forEach((p, k) => p.setHeight?.(want[k]!));
-    console.debug("[EA] pane heights now", chart.getAllPanesHeight?.() ?? panes.map((p) => p.getHeight?.()));
+    const apply = () => {
+      if (chart.setAllPanesHeight) chart.setAllPanesHeight(want);
+      else for (let round = 0; round < 2; round++) panes.forEach((p, k) => p.setHeight?.(want[k]!));
+    };
+    const now = () => chart.getAllPanesHeight?.() ?? panes.map((p) => p.getHeight?.() ?? 0);
+    apply();
+    // The chart can lay its panes out again right after (the saved layout finishing loading), which
+    // put them back to [345, 173, 172]. Check a few times in the first seconds and apply again if
+    // they moved; after that a drag by the user is left alone.
+    let tries = 0;
+    const check = () => {
+      const h = now();
+      const off = targets.some((p) => Math.abs((h[panes.indexOf(p)] ?? 0) - target) > 8);
+      console.debug("[EA] pane heights now", h, off ? "→ again" : "ok");
+      if (off && tries++ < 4) {
+        apply();
+        setTimeout(check, 600);
+      }
+    };
+    setTimeout(check, 300);
   } catch (e) {
     console.debug("[EA] could not size the pane", e);
   }
