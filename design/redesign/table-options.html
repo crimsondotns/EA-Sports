@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chart table options</title>
+<style>
+  @font-face { font-family: "Manrope"; src: url("../../extension/fonts/manrope.ttf") format("truetype"); font-weight: 200 800; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0a0a0a; color: #f2f2f2; font-family: "Manrope", system-ui, sans-serif; padding: 0 24px 64px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* page chrome */
+  .bar { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; padding: 14px 0; margin-bottom: 20px;
+         background: rgb(10 10 10 / 85%); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); max-width: 1500px; margin-inline: auto; }
+  .bar h1 { font-size: 18px; font-weight: 700; margin-right: auto; }
+  .bar label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #a3a3a3; }
+  .bar output { min-width: 40px; color: #f2f2f2; font-variant-numeric: tabular-nums; }
+  .bar .seg { display: inline-flex; padding: 3px; border-radius: 999px; box-shadow: inset 0 0 0 1px #2f3336; }
+  .bar .seg button { all: unset; cursor: pointer; padding: 4px 12px; border-radius: 999px; font-size: 13px; color: #a3a3a3; }
+  .bar .seg button[aria-pressed="true"] { background: #fff; color: #000; font-weight: 600; }
+  .lead { max-width: 1500px; margin: 0 auto 24px; color: #a3a3a3; font-size: 14px; line-height: 1.55; }
+  .opt { max-width: 1500px; margin: 0 auto 40px; }
+  .opt h2 { font-size: 16px; font-weight: 700; }
+  .opt > p { color: #a3a3a3; font-size: 13px; line-height: 1.55; margin: 4px 0 12px; max-width: 90ch; }
+  .opt .spec { color: #6b6b6b; font-size: 12px; margin: -6px 0 12px; }
+  .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 20px; }
+  .stage { position: relative; height: 360px; border-radius: 12px; overflow: hidden; background: #131722; }
+  .stage > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage > .t { position: absolute; top: 14px; right: 14px; }
+
+  /* shared panel surface: theme + opacity + blur come from the controls */
+  .t { --bg: 0 0 0; --text: #f2f2f2; --text-2: #a3a3a3; --muted: #6b6b6b; --line: rgb(255 255 255 / 9%); --go: #4ade80; --stop: #f87171; --near: #fbbf24;
+       color: var(--text); background: rgb(var(--bg) / var(--op)); -webkit-backdrop-filter: blur(var(--blur)) saturate(140%); backdrop-filter: blur(var(--blur)) saturate(140%);
+       box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%), 0 12px 40px rgb(0 0 0 / 45%); font-variant-numeric: tabular-nums; }
+  body.light .t { --bg: 255 255 255; --text: #14161a; --text-2: #4a505a; --muted: #6b717c; --line: rgb(20 22 26 / 9%); --go: #0e9f6e; --stop: #d92d20; --near: #b54708;
+       background: rgb(var(--bg) / max(var(--op), .8)); box-shadow: inset 0 0 0 1px rgb(20 22 26 / 8%), 0 12px 40px rgb(0 0 0 / 30%); }
+  .go { color: var(--go); } .st { color: var(--stop); } .nr { color: var(--near); } .mu { color: var(--muted); } .t2 { color: var(--text-2); }
+  .chev { flex: none; width: 12px; height: 12px; color: var(--muted); }
+
+  /* 1 · Ledger: calm rows, label 12/500 secondary, value 13/600, 8px rhythm, groups by 12px space */
+  .ledger { width: 264px; border-radius: 16px; padding: 12px 14px 14px; font-size: 13px; line-height: 20px; }
+  .ledger .h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .ledger .h b { font-size: 15px; font-weight: 800; letter-spacing: -.01em; }
+  .ledger .h span { flex: 1; font-size: 12px; font-weight: 500; color: var(--text-2); }
+  .ledger .r { display: flex; justify-content: space-between; gap: 12px; }
+  .ledger .r > :first-child { font-size: 12px; font-weight: 500; color: var(--text-2); }
+  .ledger .r > :last-child { font-weight: 600; }
+  .ledger .g + .g { margin-top: 12px; }
+  .ledger .note { margin-top: 12px; font-size: 12px; line-height: 17px; }
+
+  /* 2 · Display: one headline figure (28/800, -2% tracking), everything else small and quiet */
+  .display { width: 256px; border-radius: 18px; padding: 14px 16px 16px; font-size: 12px; line-height: 18px; }
+  .display .k { display: flex; justify-content: space-between; font-weight: 600; color: var(--text-2); }
+  .display .big { font-size: 30px; line-height: 34px; font-weight: 800; letter-spacing: -.02em; margin: 2px 0 12px; }
+  .display .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .display .grid small { display: block; font-size: 11px; line-height: 14px; font-weight: 600; color: var(--muted); }
+  .display .grid b { font-size: 13px; font-weight: 700; }
+  .display .checks { display: flex; gap: 4px; margin-top: 12px; }
+  .display .checks i { flex: 1; height: 4px; border-radius: 2px; background: var(--line); } .display .checks i.ok { background: var(--go); }
+  .display .note { margin-top: 10px; }
+
+  /* 3 · Compact: 12px everywhere, 18px rows, 4px gaps, covers the least chart */
+  .compact { width: 220px; border-radius: 12px; padding: 8px 10px; font-size: 12px; line-height: 18px; }
+  .compact .h { display: flex; gap: 6px; align-items: center; font-weight: 700; padding-bottom: 4px; }
+  .compact .h span { flex: 1; color: var(--muted); font-weight: 500; text-align: right; }
+  .compact .r { display: flex; justify-content: space-between; gap: 8px; }
+  .compact .r > :first-child { color: var(--text-2); }
+  .compact .g + .g { margin-top: 6px; }
+
+  /* 4 · Airy: 14px body, 1.6 leading, 16px padding, label 13/500; easiest on the eyes for long looks */
+  .airy { width: 288px; border-radius: 20px; padding: 16px 18px 18px; font-size: 14px; line-height: 22px; }
+  .airy .h { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .airy .h b { font-size: 16px; font-weight: 800; }
+  .airy .h span { flex: 1; font-size: 13px; color: var(--text-2); }
+  .airy .r { display: flex; justify-content: space-between; gap: 16px; padding: 2px 0; }
+  .airy .r > :first-child { font-size: 13px; font-weight: 500; color: var(--text-2); }
+  .airy .r > :last-child { font-weight: 600; }
+  .airy .g + .g { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .airy .note { margin-top: 14px; font-size: 13px; line-height: 20px; }
+
+  /* 5 · Checklist: round marks, a count per group, values right; the gate is the hero */
+  .check { width: 268px; border-radius: 16px; padding: 12px 14px 14px; font-size: 13px; line-height: 20px; }
+  .check .h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  .check .h b { font-size: 22px; font-weight: 800; letter-spacing: -.02em; } .check .h span { font-size: 12px; color: var(--text-2); }
+  .check .lbl { font-size: 11px; font-weight: 700; color: var(--muted); margin: 10px 0 4px; }
+  .check .c { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; padding: 2px 0; }
+  .check .c i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted); display: grid; place-items: center; font: 800 9px/1 Manrope; font-style: normal; }
+  .check .c i.ok { box-shadow: none; background: var(--go); color: #000; }
+  body.light .check .c i.ok { color: #fff; }
+  .check .r { display: flex; justify-content: space-between; } .check .r > :first-child { color: var(--text-2); }
+
+  /* 6 · Two-column: label above value in a 2 × n grid; scans like a spec sheet */
+  .twocol { width: 252px; border-radius: 16px; padding: 12px 14px 14px; font-size: 12px; line-height: 16px; }
+  .twocol .h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  .twocol .h b { font-size: 15px; font-weight: 800; } .twocol .h span { color: var(--text-2); }
+  .twocol .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+  .twocol small { display: block; font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+  .twocol b { font-size: 14px; font-weight: 700; }
+  .twocol .full { grid-column: span 2; }
+
+  /* 7 · Header strip: the state sits in a tinted header row, body in neutral rows */
+  .strip { width: 264px; border-radius: 16px; overflow: hidden; font-size: 13px; line-height: 20px; }
+  .strip .h { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: color-mix(in srgb, var(--go) 14%, transparent); }
+  .strip.wait .h { background: color-mix(in srgb, var(--text) 6%, transparent); }
+  .strip .h b { font-size: 15px; font-weight: 800; } .strip .h span { flex: 1; font-size: 12px; color: var(--text-2); }
+  .strip .b { padding: 10px 14px 14px; }
+  .strip .r { display: flex; justify-content: space-between; gap: 12px; } .strip .r > :first-child { color: var(--text-2); font-size: 12px; }
+  .strip .g + .g { margin-top: 10px; }
+
+  /* 8 · Aligned figures: values right-aligned on the decimal, labels in small caps-free 11px; reads like a quote board */
+  .board { width: 250px; border-radius: 14px; padding: 12px 14px; font-size: 13px; line-height: 22px; }
+  .board .h { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+  .board .h b { font-size: 14px; font-weight: 800; } .board .h span { font-size: 12px; color: var(--text-2); }
+  .board .r { display: grid; grid-template-columns: 1fr auto; gap: 12px; }
+  .board .r > :first-child { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .board .r > :last-child { font-weight: 600; text-align: right; min-width: 9ch; }
+  .board .g + .g { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Chart table options</h1>
+  <span class="seg" role="group" aria-label="Theme"><button type="button" data-theme="dark" aria-pressed="true">Dark</button><button type="button" data-theme="light" aria-pressed="false">Light</button></span>
+  <label>Opacity <input type="range" id="op" min="20" max="100" step="5" value="60"><output id="opv">60%</output></label>
+  <label>Blur <input type="range" id="bl" min="0" max="32" step="2" value="20"><output id="blv">20px</output></label>
+</div>
+<p class="lead">Eight layouts for the panel on the chart, each shown holding a trade and waiting for an entry. The controls above set the theme, opacity and background blur for all of them, the same settings the extension now has (Settings → Chart → Background blur). The small grey line under each title gives the type and spacing values.</p>
+<div id="opts"></div>
+
+<script>
+const H = { pnl: "+649.4%", state: "Free ride", strat: "Deep Dip · 15m", bought: "0.0003139", stop: "0.0003139", stopGap: "0.0%", held: "5h 12m", bt: "+45.0% · 8 trades" };
+const checks = [["Under EMAs", "0.002352", false], ["MACD turn", "hist −0.0000395", false], ["RSI", "55", true], ["Support", "not at support", false]];
+const chev = `<svg class="chev" viewBox="0 0 12 12"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+const ck = (cls, wrap) => checks.map(([n, v, ok]) => wrap(n, v, ok)).join("");
+
+const opts = [
+  ["ledger", "1 · Ledger", "Quiet rows. Labels are smaller and grey, values a step heavier, so the eye runs down the right edge. Groups are split by space, not lines.",
+   "Title 15/800 · label 12/500 · value 13/600 · line 20px · group gap 12px · padding 12×14 · radius 16",
+   (w) => `<div class="t ledger">
+     <div class="h">${w ? `<b>1/4</b><span>Waiting · ${H.strat}</span>` : `<b class="go">${H.pnl}</b><span>${H.state} · ${H.strat}</span>`}${chev}</div>
+     ${w ? "" : `<div class="g"><div class="r"><span>Bought</span><span>${H.bought}</span></div><div class="r"><span>Stop</span><span class="st">${H.stop}</span></div><div class="r"><span>Held</span><span>${H.held}</span></div></div>`}
+     <div class="g">${ck(0, (n, v, ok) => `<div class="r"><span>${ok ? "✓" : "○"} ${n}</span><span class="${ok ? "go" : "nr"}">${v}</span></div>`)}</div>
+     <div class="g"><div class="r"><span>Backtest</span><span class="go">${H.bt}</span></div></div>
+     ${w ? `<p class="note t2">Needs MACD to turn and price under the EMAs.</p>` : ""}</div>`],
+  ["display", "2 · Display", "One big figure catches the eye first (P/L, or the check count while waiting); the rest sits small in a two-column grid with a check bar.",
+   "Headline 30/800 −2% · meta 12/600 · label 11/600 · value 13/700 · grid gap 10×12 · padding 14×16 · radius 18",
+   (w) => `<div class="t display">
+     <div class="k"><span>${w ? "Waiting" : H.state}</span><span>${H.strat}</span></div>
+     <div class="big ${w ? "" : "go"}">${w ? "1 of 4" : H.pnl}</div>
+     <div class="grid">${w ? `<div><small>RSI</small><b class="go">55</b></div><div><small>Support</small><b class="nr">not yet</b></div><div><small>EMAs</small><b class="nr">above</b></div><div><small>Backtest</small><b class="go">+45%</b></div>`
+       : `<div><small>Bought</small><b>${H.bought}</b></div><div><small>Stop</small><b class="st">${H.stop}</b></div><div><small>Held</small><b>${H.held}</b></div><div><small>Backtest</small><b class="go">+45%</b></div>`}</div>
+     <div class="checks"><i></i><i></i><i class="ok"></i><i></i></div></div>`],
+  ["compact", "3 · Compact", "Everything at 12px with 18px lines and small gaps. Smallest footprint on the chart; best for a small screen or many indicators.",
+   "All 12px · header 700 · label 400 secondary · line 18px · group gap 6px · padding 8×10 · radius 12",
+   (w) => `<div class="t compact">
+     <div class="h">${w ? `<b>1/4 Waiting</b>` : `<b class="go">${H.pnl}</b>`}<span>${H.strat}</span></div>
+     ${w ? "" : `<div class="g"><div class="r"><span>Bought</span><span>${H.bought}</span></div><div class="r"><span>Stop</span><span class="st">${H.stop}</span></div></div>`}
+     <div class="g">${ck(0, (n, v, ok) => `<div class="r"><span>${ok ? "✓" : "○"} ${n}</span><span class="${ok ? "go" : "nr"}">${v}</span></div>`)}</div>
+     <div class="g"><div class="r"><span>Backtest</span><span class="go">${H.bt}</span></div></div></div>`],
+  ["airy", "4 · Airy", "Larger text, looser leading and more padding. Easiest on the eyes when you keep it open; takes more room.",
+   "Title 16/800 · label 13/500 · value 14/600 · line 22px · group gap 14 + hairline · padding 16×18 · radius 20",
+   (w) => `<div class="t airy">
+     <div class="h">${w ? `<b>1/4</b><span>Waiting · ${H.strat}</span>` : `<b class="go">${H.pnl}</b><span>${H.state} · ${H.strat}</span>`}${chev}</div>
+     ${w ? "" : `<div class="g"><div class="r"><span>Bought</span><span>${H.bought}</span></div><div class="r"><span>Stop</span><span class="st">${H.stop}</span></div></div>`}
+     <div class="g">${ck(0, (n, v, ok) => `<div class="r"><span>${ok ? "✓" : "○"} ${n}</span><span class="${ok ? "go" : "nr"}">${v}</span></div>`)}</div>
+     <div class="g"><div class="r"><span>Backtest</span><span class="go">${H.bt}</span></div></div></div>`],
+  ["check", "5 · Checklist", "The buy checks are the hero: round marks, a count, and the value each check needs. Trade details come second.",
+   "Count 22/800 −2% · group label 11/700 · row 13/20 · mark 14px · padding 12×14 · radius 16",
+   (w) => `<div class="t check">
+     <div class="h">${w ? `<b>1/4</b><span>Waiting · ${H.strat}</span>` : `<b class="go">${H.pnl}</b><span>${H.state} · ${H.strat}</span>`}</div>
+     ${w ? "" : `<div class="r"><span>Bought</span><span>${H.bought}</span></div><div class="r"><span>Stop</span><span class="st">${H.stop}</span></div>`}
+     <div class="lbl">Buy checks · 1 of 4</div>
+     ${ck(0, (n, v, ok) => `<div class="c"><i class="${ok ? "ok" : ""}">${ok ? "✓" : ""}</i><span>${n}</span><span class="${ok ? "go" : "nr"}">${v}</span></div>`)}
+     <div class="lbl">Backtest</div><div class="r"><span>8 trades</span><span class="go">+45.0%</span></div></div>`],
+  ["twocol", "6 · Two-column", "Label above value, two per row, like a spec sheet. Short to scan; long values (MACD) wrap to the full width.",
+   "Title 15/800 · label 11/600 muted · value 14/700 · grid gap 12×14 · padding 12×14 · radius 16",
+   (w) => `<div class="t twocol">
+     <div class="h">${w ? `<b>1/4 Waiting</b>` : `<b class="go">${H.pnl}</b>`}<span>${H.strat}</span></div>
+     <div class="grid">${w ? "" : `<div><small>Bought</small><b>${H.bought}</b></div><div><small>Stop</small><b class="st">${H.stop}</b></div>`}
+       <div><small>RSI ✓</small><b class="go">55</b></div><div><small>Support</small><b class="nr">not yet</b></div>
+       <div><small>Under EMAs</small><b class="nr">0.002352</b></div><div><small>Backtest</small><b class="go">+45%</b></div>
+       <div class="full"><small>MACD turn</small><b class="nr">hist −0.0000395</b></div></div></div>`],
+  ["strip", "7 · Header strip", "The state sits in a softly tinted header (green while holding, neutral while waiting), so it reads at a glance; the body stays neutral.",
+   "Header 15/800 on a 14% tint · label 12 · value 13 · line 20 · padding 10×14 · radius 16",
+   (w) => `<div class="t strip ${w ? "wait" : ""}">
+     <div class="h">${w ? `<b>1/4</b><span>Waiting · ${H.strat}</span>` : `<b class="go">${H.pnl}</b><span>${H.state} · ${H.strat}</span>`}${chev}</div>
+     <div class="b">${w ? "" : `<div class="g"><div class="r"><span>Bought</span><span>${H.bought}</span></div><div class="r"><span>Stop</span><span class="st">${H.stop}</span></div></div>`}
+     <div class="g">${ck(0, (n, v, ok) => `<div class="r"><span>${ok ? "✓" : "○"} ${n}</span><span class="${ok ? "go" : "nr"}">${v}</span></div>`)}</div>
+     <div class="g"><div class="r"><span>Backtest</span><span class="go">${H.bt}</span></div></div></div></div>`],
+  ["board", "8 · Quote board", "Figures line up on the right in a fixed column like a price board; labels are small and muted; hairlines between groups.",
+   "Title 14/800 · label 11.5/600 muted · value 13/600 right, min 9ch · line 22px · hairlines · padding 12×14 · radius 14",
+   (w) => `<div class="t board">
+     <div class="h">${w ? `<b>1/4 Waiting</b>` : `<b class="go">${H.pnl}</b>`}<span>${H.strat}</span></div>
+     ${w ? "" : `<div class="g"><div class="r"><span>Bought</span><span>${H.bought}</span></div><div class="r"><span>Stop</span><span class="st">${H.stop}</span></div></div>`}
+     <div class="g">${ck(0, (n, v, ok) => `<div class="r"><span>${ok ? "✓" : "○"} ${n}</span><span class="${ok ? "go" : "nr"}">${v}</span></div>`)}</div>
+     <div class="g"><div class="r"><span>Backtest</span><span class="go">${H.bt}</span></div></div></div>`],
+];
+
+let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+const chart = () => { let y = 190, d = "";
+  for (let i = 0; i < 72; i++) { y += Math.sin(i / 5) * 7 + (rnd() - .5) * 16; const x = i * 9 + 4, o = y, c = y + (rnd() - .5) * 18, up = c < o, col = up ? "#26a69a" : "#ef5350";
+    d += `<line x1="${x + 2.5}" x2="${x + 2.5}" y1="${Math.min(o, c) - 7}" y2="${Math.max(o, c) + 7}" stroke="${col}"/><rect x="${x}" width="5" y="${Math.min(o, c)}" height="${Math.abs(c - o) + 1}" fill="${col}"/>`; }
+  return `<svg viewBox="0 0 640 360" preserveAspectRatio="none">${d}</svg>`; };
+
+const root = document.getElementById("opts");
+for (const [id, name, text, spec, make] of opts) {
+  const s = document.createElement("section"); s.className = "opt";
+  s.innerHTML = `<h2>${name}</h2><p>${text}</p><p class="spec">${spec}</p><div class="row">
+    <div><div class="stage">${chart()}${make(false)}</div></div><div><div class="stage">${chart()}${make(true)}</div></div></div>`;
+  root.append(s);
+}
+const set = () => {
+  const op = document.getElementById("op").value, bl = document.getElementById("bl").value;
+  document.getElementById("opv").textContent = op + "%"; document.getElementById("blv").textContent = +bl ? bl + "px" : "Off";
+  document.body.style.setProperty("--op", op / 100); document.body.style.setProperty("--blur", bl + "px");
+};
+for (const i of ["op", "bl"]) document.getElementById(i).addEventListener("input", set);
+for (const b of document.querySelectorAll("[data-theme]")) b.addEventListener("click", () => {
+  document.body.classList.toggle("light", b.dataset.theme === "light");
+  for (const x of document.querySelectorAll("[data-theme]")) x.setAttribute("aria-pressed", String(x === b));
+});
+set();
+</script>
+</body>
+</html>
