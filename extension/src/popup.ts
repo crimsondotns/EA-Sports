@@ -427,3 +427,8 @@ async function main(): Promise<void> {
 }
 
 void main();
+
+// The Settings header casts its shadow only once the page has scrolled under it.
+const settingsHeader = document.querySelector("#settingsPage > header");
+const markStuck = () => settingsHeader?.classList.toggle("stuck", window.scrollY > 0);
+window.addEventListener("scroll", markStuck, { passive: true });

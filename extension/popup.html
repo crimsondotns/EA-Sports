@@ -78,8 +78,9 @@
   header img { width: 32px; height: 32px; border-radius: 8px; }
   header h1 { font-size: var(--font-size-title); font-weight: 600; margin: 0; line-height: 1.2; }
   header p { margin: 0; color: var(--color-text-muted); font-size: var(--font-size-small); }
-  #settingsPage > header { position: sticky; top: 0; z-index: 10; margin: -16px -16px 4px; padding: 12px 16px; background: var(--color-bg); box-shadow: 0 6px 16px -6px rgb(0 0 0 / 50%); }
-  :root[data-theme="light"] #settingsPage > header { box-shadow: 0 6px 16px -6px rgb(20 22 26 / 12%); }
+  #settingsPage > header { position: sticky; top: 0; z-index: 10; margin: -16px -16px 4px; padding: 12px 16px; background: var(--color-bg); transition: box-shadow 160ms ease; }
+  #settingsPage > header.stuck { box-shadow: 0 6px 16px -6px rgb(0 0 0 / 50%); }
+  :root[data-theme="light"] #settingsPage > header.stuck { box-shadow: 0 6px 16px -6px rgb(20 22 26 / 12%); }
   section { padding: 12px 0; border-top: 1px solid var(--color-border); }
   section[hidden] { display: none; }
   h2 { font-size: var(--font-size-small); font-weight: 600; color: var(--color-text-secondary); margin: 0 0 8px; }
