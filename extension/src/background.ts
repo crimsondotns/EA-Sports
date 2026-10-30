@@ -192,7 +192,10 @@ chrome.runtime.onMessage.addListener((msg: ToBackground | FromPopup, sender, rep
       if (source) void pushBars(tabId, source);
     });
   } else if (msg.type === "notify") {
-    chrome.notifications.create({ type: "basic", iconUrl: "icon128.png", title: msg.title, message: msg.message });
+    // A relative icon path resolves against dist/background.js (no such file there) and Chrome drops the alert.
+    chrome.notifications.create({ type: "basic", iconUrl: chrome.runtime.getURL("icon128.png"), title: msg.title, message: msg.message }, () => {
+      if (chrome.runtime.lastError) console.warn("[EA] notification failed:", chrome.runtime.lastError.message);
+    });
   }
 });
 

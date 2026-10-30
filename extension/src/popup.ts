@@ -443,10 +443,12 @@ async function main(): Promise<void> {
     button.disabled = true;
     chrome.notifications.getPermissionLevel((level) => {
       chrome.notifications.create(
-        { type: "basic", iconUrl: "icon128.png", title: "EA BUY · test", message: "Test alert from EA Signals. Real alerts look like this." },
+        { type: "basic", iconUrl: chrome.runtime.getURL("icon128.png"), title: "EA BUY · test", message: "Test alert from EA Signals. Real alerts look like this." },
         () => {
-          $("testNotifyStatus").textContent =
-            level === "granted" ? "" : tr("Notifications are blocked for this extension.");
+          const err = chrome.runtime.lastError?.message;
+          $("testNotifyStatus").textContent = err
+            ? L(`Could not show the alert: ${err}`, `แสดงการแจ้งเตือนไม่ได้: ${err}`)
+            : level === "granted" ? "" : tr("Notifications are blocked for this extension.");
           button.disabled = false;
         },
       );
