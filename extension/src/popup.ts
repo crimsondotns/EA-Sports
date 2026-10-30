@@ -261,6 +261,53 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
   return { select: (value) => select(value, false) };
 }
 
+/** Strategy drawer: a bottom sheet with every strategy; picking one saves it and closes. Esc, the scrim or ✕ close it. */
+function drawer(initial: string, onChange: (value: string) => void): void {
+  const trigger = $("strategyTrigger") as HTMLButtonElement;
+  const root = $("strategyDrawer");
+  const options = [...root.querySelectorAll<HTMLButtonElement>("[data-value]")];
+  const select = (value: string) => {
+    const chosen = options.find((o) => o.dataset.value === value) ?? options[0]!;
+    for (const o of options) o.setAttribute("aria-pressed", String(o === chosen));
+    $("strategyValue").textContent = chosen.querySelector(".name")!.textContent;
+    return chosen;
+  };
+  const close = () => {
+    root.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    trigger.focus();
+  };
+  trigger.addEventListener("click", () => {
+    root.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    (options.find((o) => o.getAttribute("aria-pressed") === "true") ?? options[0]!).focus();
+  });
+  for (const o of options) o.addEventListener("click", () => {
+    onChange(select(o.dataset.value!).dataset.value!);
+    close();
+  });
+  for (const c of root.querySelectorAll("[data-close]")) c.addEventListener("click", close);
+  root.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      close();
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const i = options.indexOf(document.activeElement as HTMLButtonElement);
+      options[(i + (e.key === "ArrowDown" ? 1 : -1) + options.length) % options.length]!.focus();
+    } else if (e.key === "Tab") {
+      // Keep focus inside the open sheet.
+      const f = [...root.querySelectorAll<HTMLElement>("button")];
+      const at = f.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey ? at <= 0 : at === f.length - 1) {
+        e.preventDefault();
+        f[e.shiftKey ? f.length - 1 : 0]!.focus();
+      }
+    }
+  });
+  select(initial);
+}
+
 // ---------- watchlist: every open DEX Screener tab's latest summary ----------
 
 const RANK = { buy: 0, zone: 1, hold: 2, flat: 3 } as const;
@@ -320,7 +367,7 @@ async function main(): Promise<void> {
   }
   // A removed strategy (Quiet Accumulation, Range Swing) shows as Deep Dip, like the chart runs it.
   const strategy = document.getElementById(`opt-${settings.strategy}`) ? settings.strategy : "dip";
-  dropdown("strategy", strategy, (value) => void chrome.storage.local.set({ strategy: value }));
+  drawer(strategy, (value) => void chrome.storage.local.set({ strategy: value }));
 
   // Table opacity: 20–100% in 5% steps; greyed out while the table is hidden.
   const opacity = $("tableOpacity") as HTMLInputElement;

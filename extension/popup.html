@@ -306,6 +306,32 @@
     .dropdown-menu { animation-name: dropdown-fade; }
     .button-primary:active, .button-secondary:active, .icon-button:active, .theme button:active { transform: none !important; }
   }
+  /* Strategy drawer: a bottom sheet on the frosted glass of the dropdowns; one row per strategy with its short description. */
+  .drawer { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; justify-content: flex-end; }
+  .drawer[hidden] { display: none; }
+  .drawer-scrim { position: absolute; inset: 0; background: rgb(0 0 0 / 35%); animation: drawer-fade 160ms ease-out; }
+  .drawer-panel { position: relative; max-height: 85vh; display: flex; flex-direction: column; padding: 8px 6px 10px;
+    background: var(--dd-bg); border: 1px solid var(--dd-border); border-bottom: 0; border-radius: 16px 16px 0 0; box-shadow: var(--dd-shadow);
+    -webkit-backdrop-filter: blur(24px) saturate(140%); backdrop-filter: blur(24px) saturate(140%); animation: drawer-in 200ms cubic-bezier(.16, 1, .3, 1); }
+  .drawer-panel::before { content: ""; align-self: center; width: 36px; height: 4px; border-radius: 2px; background: var(--color-border-strong); margin-bottom: 6px; }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 0 6px 0 10px; }
+  .drawer-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+  .drawer-note { margin: 0 10px 6px; color: var(--color-text-muted); font-size: var(--font-size-small); }
+  .drawer-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .drawer-list button { display: grid; grid-template-columns: 1fr 16px; column-gap: 8px; align-items: center; width: 100%; min-height: 44px; padding: 7px 10px;
+    border: 0; border-radius: 10px; background: transparent; color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer;
+    transition: background-color var(--transition-fast); }
+  .drawer-list .name { font-size: var(--font-size-control); font-weight: 600; }
+  .drawer-list small { grid-column: 1; color: var(--color-text-secondary); font-size: var(--font-size-small); }
+  .drawer-list .check { grid-column: 2; grid-row: 1 / span 2; width: 16px; height: 16px; visibility: hidden; }
+  .drawer-list button[aria-pressed="true"] .check { visibility: visible; }
+  .drawer-list button:active { background: var(--dd-pressed); }
+  .drawer-list button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: -2px; }
+  @media (hover: hover) and (pointer: fine) { .drawer-list button:hover { background: var(--dd-hover); } }
+  @keyframes drawer-in { from { transform: translateY(100%); } }
+  @keyframes drawer-fade { from { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .drawer-panel { animation-name: drawer-fade; } }
+  @media (prefers-reduced-transparency: reduce) { .drawer-panel { background: var(--dd-solid); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 </style>
 </head>
 <body>
@@ -353,63 +379,27 @@
     </section>
   <section>
     <h2 id="strategyLabel">Strategy</h2>
-    <div class="dropdown">
-      <button type="button" class="dropdown-trigger" id="strategyTrigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="strategyMenu"
-        aria-labelledby="strategyLabel strategyValue">
-        <span id="strategyValue">Deep Dip</span>
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-      <ul class="dropdown-menu" id="strategyMenu" role="listbox" aria-labelledby="strategyLabel" tabindex="-1" hidden>
-        <li role="option" id="opt-breakout" data-value="breakout" aria-selected="false" aria-describedby="tip-breakout">
-          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="name">Volume Breakout</span>
-          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
-        </li>
-        <li role="option" id="opt-dip" data-value="dip" aria-selected="false" aria-describedby="tip-dip">
-          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="name">Deep Dip</span>
-          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
-        </li>
-        <li role="option" id="opt-dropvol" data-value="dropvol" aria-selected="false" aria-describedby="tip-dropvol">
-          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="name">Drop + Volume</span>
-          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
-        </li>
-        <li role="option" id="opt-sharp" data-value="sharp" aria-selected="false" aria-describedby="tip-sharp">
-          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="name">Sharp Low</span>
-          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
-        </li>
-        <li role="option" id="opt-stretch" data-value="stretch" aria-selected="false" aria-describedby="tip-stretch">
-          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="name">Stretched Low</span>
-          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
-        </li>
-        <li role="option" id="opt-flush" data-value="flush" aria-selected="false" aria-describedby="tip-flush">
-          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="name">Flush Low</span>
-          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
-        </li>
-        <li role="option" id="opt-score" data-value="score" aria-selected="false" aria-describedby="tip-score">
-          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="name">Low Score</span>
-          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
-        </li>
-        <li role="option" id="opt-launch" data-value="launch" aria-selected="false" aria-describedby="tip-launch">
-          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="name">New Launch</span>
-          <span class="info" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>
-        </li>
-      </ul>
-      <div class="descriptions">
-        <span id="tip-breakout">Buys breakouts above the 20-bar high</span>
-        <span id="tip-dip">Buys under the EMAs as MACD turns</span>
-        <span id="tip-dropvol">Buys a 1% drop on a volume peak</span>
-        <span id="tip-sharp">Buys a 10% fall that closes high</span>
-        <span id="tip-stretch">Sharp Low, stretched under EMA 50</span>
-        <span id="tip-flush">Buys a 15% flush with RSI 7 under 25</span>
-        <span id="tip-score">Model score for swing lows, 15m</span>
-        <span id="tip-launch">Deep Dip at 5% size for new pairs</span>
+    <button type="button" class="dropdown-trigger" id="strategyTrigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="strategyDrawer"
+      aria-labelledby="strategyLabel strategyValue">
+      <span id="strategyValue">Deep Dip</span>
+      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="drawer" id="strategyDrawer" hidden>
+      <div class="drawer-scrim" data-close></div>
+      <div class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="strategyDrawerTitle">
+        <div class="drawer-head"><h3 id="strategyDrawerTitle">Strategy</h3>
+          <button type="button" class="icon-button" data-close aria-label="Close"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+        <p class="drawer-note">One strategy runs on every pair.</p>
+        <ul class="drawer-list">
+          <li><button type="button" id="opt-breakout" data-value="breakout" aria-pressed="false"><span class="name">Volume Breakout</span><small>Buys breakouts above the 20-bar high</small><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></li>
+          <li><button type="button" id="opt-dip" data-value="dip" aria-pressed="false"><span class="name">Deep Dip</span><small>Buys under the EMAs as MACD turns</small><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></li>
+          <li><button type="button" id="opt-dropvol" data-value="dropvol" aria-pressed="false"><span class="name">Drop + Volume</span><small>Buys a 1% drop on a volume peak</small><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></li>
+          <li><button type="button" id="opt-sharp" data-value="sharp" aria-pressed="false"><span class="name">Sharp Low</span><small>Buys a 10% fall that closes high</small><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></li>
+          <li><button type="button" id="opt-stretch" data-value="stretch" aria-pressed="false"><span class="name">Stretched Low</span><small>Sharp Low, stretched under EMA 50</small><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></li>
+          <li><button type="button" id="opt-flush" data-value="flush" aria-pressed="false"><span class="name">Flush Low</span><small>Buys a 15% flush with RSI 7 under 25</small><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></li>
+          <li><button type="button" id="opt-score" data-value="score" aria-pressed="false"><span class="name">Low Score</span><small>Model score for swing lows, 15m</small><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></li>
+          <li><button type="button" id="opt-launch" data-value="launch" aria-pressed="false"><span class="name">New Launch</span><small>Deep Dip at 5% size for new pairs</small><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></li>
+        </ul>
       </div>
     </div>
   </section>
