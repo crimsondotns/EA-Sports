@@ -84,13 +84,17 @@ root.innerHTML = `
     --go: #4ade80; --stop: #f87171; --near: #fbbf24; --invert: #fff; --on-invert: #000; }
   :host(.light) { --bg: 245 246 248; --text: #14161a; --text-2: #4a505a; --muted: #6b717c; --line: #e3e6eb; --hover: #e9ecf0;
     --go: #0e9f6e; --stop: #d92d20; --near: #b54708; --invert: #14161a; --on-invert: #fff; }
-  #table { display: grid; justify-items: end; gap: 6px; pointer-events: none; color: var(--text);
+  /* One panel: the pill row is its header and the details open inside it, under a hairline. */
+  #table { display: grid; pointer-events: auto; color: var(--text); width: max-content; min-width: 240px; max-width: 280px;
+    border-radius: 14px; background: rgb(var(--bg) / var(--table-opacity, .9)); overflow: hidden;
     font: 600 12.5px/1.4 "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-variant-numeric: tabular-nums; }
-  .pill, #body { pointer-events: auto; background: rgb(var(--bg) / var(--table-opacity, .9));}
+
   /* A see-through light card over the dark chart turns grey and the dark text drowns in it, so light stays near solid. */
-  :host(.light) .pill, :host(.light) #body { background: rgb(var(--bg) / max(var(--table-opacity, .9), .95)); }
-  .pill { display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 4px 6px 4px 4px; }
+  :host(.light) #table { background: rgb(var(--bg) / max(var(--table-opacity, .9), .95)); }
+  #table.collapsed { min-width: 0; border-radius: 999px; }
+  .pill { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 4px; }
+  #title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   #badge { border-radius: 999px; padding: 3px 9px; font-weight: 800; font-size: 12px; background: var(--invert); color: var(--on-invert); }
   #badge.pos { background: var(--go); color: #000; } #badge.neg { background: var(--stop); color: #fff; }
   #seg { display: flex; gap: 2px; } #seg i { width: 10px; height: 6px; border-radius: 3px; background: var(--line); } #seg i.ok { background: var(--go); }
@@ -107,7 +111,7 @@ root.innerHTML = `
   #toggle:active { background: var(--hover); }
   :host(.dragging) #grip { cursor: grabbing; color: var(--text); }
   @media (hover: hover) and (pointer: fine) { #toggle:hover, #grip:hover { background: var(--hover); color: var(--text); } }
-  #body { min-width: 210px; max-width: 260px; border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; font-weight: 500; }
+  #body { border-top: 1px solid var(--line); padding: 8px 12px 10px; display: grid; gap: 4px; font-weight: 500; }
   #table.collapsed #body { display: none; }
   .r { display: flex; justify-content: space-between; gap: 12px; white-space: nowrap; }
   .r > span:first-child { color: var(--text-2); }
