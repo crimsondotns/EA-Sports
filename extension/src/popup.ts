@@ -37,13 +37,18 @@ function render(s: Summary): void {
   const error = s.error ? `<p class="note neg">${esc(s.error)}</p>` : "";
   if (s.signal === "hold") {
     const pnl = s.openPnlPct ?? 0;
+    // Stop as its distance from the entry, and the entry time as how long the trade has been held.
+    const stopGap = s.stop !== null && s.entryPrice ? `<small>${pct((s.stop / s.entryPrice - 1) * 100, 1)}</small>` : "";
+    const heldMin = s.entryTime ? Math.max(0, Math.round((Date.now() - s.entryTime) / 60000)) : null;
+    const held = heldMin === null ? "–"
+      : `${heldMin < 60 ? `${heldMin}m` : heldMin < 1440 ? `${Math.floor(heldMin / 60)}h ${heldMin % 60}m` : `${Math.floor(heldMin / 1440)}d ${Math.floor((heldMin % 1440) / 60)}h`}<small>${new Date(s.entryTime!).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })}</small>`;
     $("main").innerHTML = `<div class="gate num">
       <p class="score"><b class="${pnl >= 0 ? "pos" : "neg"}">${pct(pnl, 1)}</b><span>${s.costRecovered ? "free ride" : "open"}</span></p>
-      <div class="plan">
-        <div><small>Bought</small><b>${s.entryPrice === null ? "–" : fmt(s.entryPrice)}</b></div>
-        <div><small>Stop</small><b class="neg">${s.stop === null ? "–" : fmt(s.stop)}</b></div>
-        <div><small>Since</small><b>${s.entryTime ? new Date(s.entryTime).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }) : "–"}</b></div>
-      </div>
+      <dl class="plan">
+        <div><dt>Bought</dt><dd>${s.entryPrice === null ? "–" : fmt(s.entryPrice)}</dd></div>
+        <div><dt>Stop</dt><dd><span class="neg">${s.stop === null ? "–" : fmt(s.stop)}</span>${stopGap}</dd></div>
+        <div><dt>Held</dt><dd>${held}</dd></div>
+      </dl>
       <p class="note">${esc(s.strategyNote)}</p>${error}${backtest}</div>`;
     return;
   }
