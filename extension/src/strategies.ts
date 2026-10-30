@@ -142,7 +142,7 @@ function baseSetup(id: StrategyId, resolutionMinutes: number, variant: number): 
       : `sell 10% ${hourly ? "on each new highest close" : "at each swing higher high"}${v === 4 ? " · stop to entry after the first sell" : ""}`;
     return {
       id,
-      name: v === 1 || launch ? STRATEGY_NAMES[id] : `${STRATEGY_NAMES[id]} #${v}`,
+      name: STRATEGY_NAMES[id],
       strategy: deepDip({
         srLookback: perDay * 30,
         maxHoldBars: perDay * 30,
