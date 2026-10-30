@@ -100,7 +100,8 @@ root.innerHTML = `
   .pill { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 6px; }
   #title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   #badge { border-radius: 999px; padding: 3px 9px; font-weight: 800; font-size: 12px; background: var(--invert); color: var(--on-invert); }
-  #badge.pos { background: var(--go); color: #000; } #badge.neg { background: var(--stop); color: #fff; }
+  /* P/L shows as coloured text, no fill. */
+  #badge.pos, #badge.neg { background: none; padding: 3px 4px; } #badge.pos { color: var(--go); } #badge.neg { color: var(--stop); }
   #seg { display: flex; gap: 2px; } #seg i { width: 10px; height: 6px; border-radius: 3px; background: var(--line); } #seg i.ok { background: var(--go); }
   #brief { font-weight: 800; }
   #title { color: var(--text-2); font-weight: 500; font-size: 12px; white-space: nowrap; }
