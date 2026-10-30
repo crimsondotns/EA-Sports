@@ -23,6 +23,7 @@ interface TvPane {
   getHeight?(): number;
   setHeight?(height: number): void;
   getStudies?(): { id: unknown }[];
+  hasMainSeries?(): boolean;
 }
 
 interface TvStudy {
@@ -314,16 +315,24 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
 function sizeNewPane(chart: TvChart, id: unknown): void {
   try {
     const panes = chart.getPanes?.() ?? [];
-    const pane = panes.find((p, k) => k > 0 && p.getStudies?.()?.some((s) => String(s.id) === String(id)));
-    if (!pane?.getHeight || !pane.setHeight) {
-      console.debug("[EA] pane sizing not supported by this chart");
-      return;
-    }
+    // Find the study's pane; if this chart's pane API can't list studies, size every indicator pane
+    // (all panes but the price pane: the strategy's RSI / MACD).
+    const canList = panes.some((p) => typeof p.getStudies === "function");
+    const targets = canList
+      ? panes.filter((p, k) => k > 0 && p.getStudies!()?.some((s) => String(s.id) === String(id)))
+      : panes.filter((p, k) => k > 0 && !p.hasMainSeries?.());
     const total = panes.reduce((a, p) => a + (p.getHeight?.() ?? 0), 0);
     const target = Math.max(72, Math.round(total * 0.12));
-    if (Math.abs(pane.getHeight() - target) > 8) pane.setHeight(target);
+    console.info("[EA] pane sizing", { panes: panes.length, canList, targets: targets.length, total, target, heights: panes.map((p) => p.getHeight?.()) });
+    for (const pane of targets) {
+      if (!pane.getHeight || !pane.setHeight) {
+        console.info("[EA] pane sizing not supported by this chart (no getHeight / setHeight)");
+        return;
+      }
+      if (Math.abs(pane.getHeight() - target) > 8) pane.setHeight(target);
+    }
   } catch (e) {
-    console.debug("[EA] could not size the new pane", e);
+    console.info("[EA] could not size the pane", e);
   }
 }
 
