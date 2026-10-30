@@ -434,13 +434,13 @@
     <label class="switch"><span>Signal pill on chart<small>Buy checks in the chart's top-right corner; click it for details</small></span><input type="checkbox" id="showTable"></label>
       <div class="slider" id="opacityRow">
         <div class="slider-label"><label for="tableOpacity">Pill opacity</label><output id="tableOpacityValue" for="tableOpacity">62%</output></div>
-        <input type="range" id="tableOpacity" min="20" max="100" step="5" aria-describedby="tableOpacityHint">
-        <small id="tableOpacityHint">Background of the pill on the chart (light stays at least 80% to keep text readable)</small>
+        <input type="range" id="tableOpacity" min="72" max="88" step="2" aria-describedby="tableOpacityHint">
+        <small id="tableOpacityHint">Glass tint behind the panel, 72–88% so text stays readable</small>
       </div>
       <div class="slider" id="blurRow">
-        <div class="slider-label"><label for="tableBlur">Background blur</label><output id="tableBlurValue" for="tableBlur">20px</output></div>
+        <div class="slider-label"><label for="tableBlur">Background blur</label><output id="tableBlurValue" for="tableBlur">24px</output></div>
         <input type="range" id="tableBlur" min="0" max="32" step="2" aria-describedby="tableBlurHint">
-        <small id="tableBlurHint">How much the candles behind the panel blur (0 = none)</small>
+        <small id="tableBlurHint">How much the candles behind blur, up to 32px (Off = solid panel)</small>
       </div>
     <label class="switch"><span>Buy / sell markers<small>Draw backtest entries and exits on the chart</small></span><input type="checkbox" id="drawMarkers"></label>
     <label class="switch"><span>STOP line<small>Show the open trade's stop on the chart</small></span><input type="checkbox" id="showStop"></label>

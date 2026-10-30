@@ -19,6 +19,11 @@
   .bar .seg { display: inline-flex; padding: 3px; border-radius: 999px; box-shadow: inset 0 0 0 1px #2f3336; }
   .bar .seg button { all: unset; cursor: pointer; padding: 4px 12px; border-radius: 999px; font-size: 13px; color: #a3a3a3; }
   .bar .seg button[aria-pressed="true"] { background: #fff; color: #000; font-weight: 600; }
+  /* Sliders as in the popup: white fill on a grey track, white thumb (no browser blue). */
+  .bar input[type="range"] { appearance: none; width: 140px; height: 20px; background: transparent; cursor: pointer; }
+  .bar input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(to right, #fff var(--fill), #2f3336 var(--fill)); }
+  .bar input[type="range"]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #fff; }
+  .bar input[type="range"]:focus-visible { outline: none; } .bar input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid #fff; outline-offset: 3px; }
   .lead { max-width: 1500px; margin: 0 auto 24px; color: #a3a3a3; font-size: 14px; line-height: 1.55; }
   .opt { max-width: 1500px; margin: 0 auto 40px; }
   .opt h2 { font-size: 16px; font-weight: 700; }
@@ -122,10 +127,10 @@
 <div class="bar">
   <h1>Chart table options</h1>
   <span class="seg" role="group" aria-label="Theme"><button type="button" data-theme="dark" aria-pressed="true">Dark</button><button type="button" data-theme="light" aria-pressed="false">Light</button></span>
-  <label>Opacity <input type="range" id="op" min="20" max="100" step="5" value="60"><output id="opv">60%</output></label>
-  <label>Blur <input type="range" id="bl" min="0" max="32" step="2" value="20"><output id="blv">20px</output></label>
+  <label>Opacity <input type="range" id="op" min="72" max="88" step="2" value="78"><output id="opv">78%</output></label>
+  <label>Blur <input type="range" id="bl" min="0" max="32" step="2" value="24"><output id="blv">24px</output></label>
 </div>
-<p class="lead">Eight layouts for the panel on the chart, each shown holding a trade and waiting for an entry. The controls above set the theme, opacity and background blur for all of them, the same settings the extension now has (Settings → Chart → Background blur). The small grey line under each title gives the type and spacing values.</p>
+<p class="lead">Eight layouts for the panel on the chart, each shown holding a trade and waiting for an entry. The controls above set the theme, opacity and background blur for all of them, the same settings the extension has (Settings → Chart). Following the glass rule, the tint stays 72–88% and blur at most 32px; Off gives a solid panel. The small grey line under each title gives the type and spacing values.</p>
 <div id="opts"></div>
 
 <script>
@@ -213,6 +218,7 @@ for (const [id, name, text, spec, make] of opts) {
 const set = () => {
   const op = document.getElementById("op").value, bl = document.getElementById("bl").value;
   document.getElementById("opv").textContent = op + "%"; document.getElementById("blv").textContent = +bl ? bl + "px" : "Off";
+  document.getElementById("op").style.setProperty("--fill", (op - 72) / 16 * 100 + "%"); document.getElementById("bl").style.setProperty("--fill", bl / 32 * 100 + "%");
   document.body.style.setProperty("--op", op / 100); document.body.style.setProperty("--blur", bl + "px");
 };
 for (const i of ["op", "bl"]) document.getElementById(i).addEventListener("input", set);

@@ -71,7 +71,7 @@ export interface Settings {
   tableOffsetY: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: "dark", strategy: "dip", showTable: true, drawMarkers: true, calcFrom: "31d", showStop: true, notify: true, showIndicators: true, tableOpacity: 0.6, tableBlur: 20, tableCollapsed: false, tableOffsetY: 0 };
+export const DEFAULT_SETTINGS: Settings = { theme: "dark", strategy: "dip", showTable: true, drawMarkers: true, calcFrom: "31d", showStop: true, notify: true, showIndicators: true, tableOpacity: 0.78, tableBlur: 24, tableCollapsed: false, tableOffsetY: 0 };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 export type CalcFrom = "31d" | "start";

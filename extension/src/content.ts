@@ -86,15 +86,15 @@ root.innerHTML = `
     --go: #0e9f6e; --stop: #d92d20; --near: #b54708; --invert: #14161a; --on-invert: #fff; }
   /* One panel: the pill row is its header and the details open inside it, under a hairline. */
   #table { display: grid; pointer-events: auto; color: var(--text); width: max-content; min-width: 240px; max-width: 280px;
-    border-radius: 16px; background: rgb(var(--bg) / var(--table-opacity, .6)); overflow: hidden;
+    border-radius: 16px; background: rgb(var(--bg) / clamp(.72, var(--table-opacity, .78), .88)); overflow: hidden;
     /* Frosted glass, like the popup dropdowns: blur what is behind, hairline edge, soft deep shadow. */
-    -webkit-backdrop-filter: blur(var(--table-blur, 20px)) saturate(140%); backdrop-filter: blur(var(--table-blur, 20px)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--table-blur, 24px)) saturate(140%); backdrop-filter: blur(var(--table-blur, 24px)) saturate(140%);
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%), 0 12px 40px rgb(0 0 0 / 45%);
     font: 600 12.5px/1.4 "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-variant-numeric: tabular-nums; }
 
   /* A see-through light card over the dark chart turns grey and the dark text drowns in it, so light stays at least 80% (white glass). */
-  :host(.light) #table { background: rgb(255 255 255 / max(var(--table-opacity, .6), .8));
+  :host(.light) #table { background: rgb(255 255 255 / max(var(--table-opacity, .78), .8));
     box-shadow: inset 0 0 0 1px rgb(20 22 26 / 8%), 0 12px 40px rgb(0 0 0 / 30%); }
   #table.collapsed { min-width: 0; border-radius: 999px; }
   .pill { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 6px; }
@@ -179,7 +179,7 @@ function positionTable(): void {
   const chartReady = !!r && r.width >= 300 && r.height >= 200 && mode === "tradingview";
   host.style.display = settings.showTable && chartReady && (last || errorText) ? "" : "none";
   host.style.setProperty("--table-opacity", String(settings.tableOpacity));
-  host.style.setProperty("--table-blur", `${settings.tableBlur}px`);
+  host.style.setProperty("--table-blur", `${Math.min(32, Math.max(0, settings.tableBlur))}px`);
   host.classList.toggle("light", settings.theme === "light");
   if (!chartReady) return;
   const PRICE_SCALE = 72; // width of the chart's right price axis
