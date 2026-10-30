@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Axis dock options</title>
+<style>
+  @font-face { font-family: "Manrope"; src: url("../../extension/fonts/manrope.ttf") format("truetype"); font-weight: 200 800; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0a0a0a; color: #f2f2f2; font-family: "Manrope", system-ui, sans-serif; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 700; max-width: 1400px; margin: 0 auto 6px; }
+  .lead { max-width: 1400px; margin: 0 auto 24px; color: #a3a3a3; font-size: 14px; line-height: 1.55; }
+  .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 24px; max-width: 1400px; margin: 0 auto; }
+  figure { display: grid; gap: 8px; }
+  figcaption b { font-size: 15px; } figcaption p { color: #a3a3a3; font-size: 13px; line-height: 1.5; margin-top: 2px; }
+  figcaption small { color: #6b6b6b; font-size: 12px; }
+
+  /* fake chart: plot + 72px price axis on the right, like DEX Screener */
+  .stage { position: relative; height: 260px; border-radius: 12px; overflow: hidden; background: #131722; font-variant-numeric: tabular-nums; }
+  .stage svg { position: absolute; inset: 0 72px 0 0; width: calc(100% - 72px); height: 100%; }
+  .axis { position: absolute; top: 0; right: 0; bottom: 0; width: 72px; border-left: 1px solid #2a2e39; }
+  .axis i { position: absolute; right: 8px; font: 500 11px/1 Manrope; font-style: normal; color: #8a8f99; }
+  .last { position: absolute; right: 0; width: 72px; height: 20px; display: grid; place-items: center; background: #089981; color: #fff; font: 600 11px/1 Manrope; }
+  .stopl { position: absolute; right: 0; width: 72px; height: 20px; display: grid; place-items: center; background: #f23645; color: #fff; font: 600 11px/1 Manrope; }
+
+  /* shared glass + tokens (dark) */
+  .g { --go: #4ade80; --stop: #f87171; color: #f2f2f2; background: rgb(0 0 0 / 40%);
+       -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
+       box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%), 0 12px 40px rgb(0 0 0 / 45%); font-size: 12px; }
+  .go { color: #4ade80; } .st { color: #f87171; } .mu { color: #a3a3a3; }
+  .chev { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; color: #a3a3a3; }
+  .chev svg { position: static; width: 10px; height: 10px; }
+
+  /* A · Axis tab: the pill's right end sits flush on the axis edge, square on that side */
+  .a { position: absolute; top: 56px; right: 72px; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px 0 12px; border-radius: 999px 0 0 999px; }
+  .a b { font-weight: 800; }
+
+  /* B · Price tag: lives inside the axis column at the last price, like the price label, and points left */
+  .b { position: absolute; right: 0; width: 72px; display: grid; justify-items: center; gap: 2px; padding: 6px 0; border-radius: 8px 0 0 8px; }
+  .b b { font-weight: 800; font-size: 13px; } .b span { font-size: 10px; color: #a3a3a3; }
+  .b::before { content: ""; position: absolute; left: -6px; top: 50%; translate: 0 -50%; border: 6px solid transparent; border-right-color: rgb(0 0 0 / 55%); border-left: 0; }
+
+  /* C · Axis cap: a block across the top of the axis column; opens leftwards into the panel */
+  .c { position: absolute; top: 8px; right: 4px; width: 64px; display: grid; justify-items: center; gap: 2px; padding: 8px 0; border-radius: 12px; }
+  .c b { font-weight: 800; font-size: 14px; } .c span { font-size: 10px; color: #a3a3a3; }
+  .c .seg { display: flex; gap: 3px; margin-top: 2px; } .c .seg i { width: 10px; height: 4px; border-radius: 2px; background: rgb(255 255 255 / 15%); } .c .seg i.ok { background: #4ade80; }
+
+  /* D · Entry line tag: rides on the entry price level, joined to the axis; the dashed line is the entry */
+  .d-line { position: absolute; left: 0; right: 72px; border-top: 1px dashed rgb(74 222 128 / 60%); }
+  .d { position: absolute; right: 72px; display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 8px 0 10px; border-radius: 999px 0 0 999px; translate: 0 -50%; }
+  .d b { font-weight: 800; }
+  .d-ax { position: absolute; right: 0; width: 72px; height: 24px; translate: 0 -50%; display: grid; place-items: center; background: #0e9f6e; color: #fff; font: 600 11px/1 Manrope; }
+</style>
+</head>
+<body>
+<h1>Dock the panel on the price axis</h1>
+<p class="lead">Four ways to attach the collapsed panel to DEX Screener's price scale. Each stage is a fake chart with the 72px axis on the right; the green label is the last price, red is the stop. Every option keeps the frosted glass (40% tint, 24px blur) and opens the same Checklist details when clicked.</p>
+<div class="row">
+  <figure>
+    <div class="stage"><svg viewBox="0 0 400 260" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,180 40,150 80,170 120,120 160,140 200,90 240,110 280,70 320,100 360,80 400,95"/></svg>
+      <div class="axis"><i style="top:30px">64.00M</i><i style="top:90px">60.00M</i><i style="top:150px">56.00M</i><i style="top:210px">52.00M</i></div>
+      <div class="last" style="top:85px">61.69M</div>
+      <div class="a g"><b class="go">+9.1%</b><span>ถืออยู่</span><span class="mu">Deep Dip 15m</span><span class="chev"><svg viewBox="0 0 12 12"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+    </div>
+    <figcaption><b>A · Axis tab</b><p>Today's pill, but its right end is square and flush on the axis edge, so it reads as a tab growing out of the scale. Stays near the top; drag up or down.</p><small>Height 32 · padding 0 8 0 12 · radius 999 left / 0 right · gap 8</small></figcaption>
+  </figure>
+
+  <figure>
+    <div class="stage"><svg viewBox="0 0 400 260" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,180 40,150 80,170 120,120 160,140 200,90 240,110 280,70 320,100 360,80 400,95"/></svg>
+      <div class="axis"><i style="top:30px">64.00M</i><i style="top:90px">60.00M</i><i style="top:150px">56.00M</i><i style="top:210px">52.00M</i></div>
+      <div class="last" style="top:85px">61.69M</div>
+      <div class="b g" style="top:110px"><b class="go">+9.1%</b><span>ถืออยู่</span></div>
+      <div class="stopl" style="top:212px">52.22M</div>
+    </div>
+    <figcaption><b>B · Price tag</b><p>Lives inside the axis column right under the last-price label, the same width as the scale, with a small notch pointing at the chart. Takes no space from the plot. Only P/L and state fit; the strategy shows when opened.</p><small>Width 72 · padding 6 0 · P/L 13/800 · state 10 · radius 8 left</small></figcaption>
+  </figure>
+
+  <figure>
+    <div class="stage"><svg viewBox="0 0 400 260" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,180 40,150 80,170 120,120 160,140 200,90 240,110 280,70 320,100 360,80 400,95"/></svg>
+      <div class="axis"><i style="top:90px">60.00M</i><i style="top:150px">56.00M</i><i style="top:210px">52.00M</i></div>
+      <div class="last" style="top:85px">61.69M</div>
+      <div class="c g"><b class="go">+9.1%</b><span>ถืออยู่</span><span>15m</span></div>
+    </div>
+    <div class="stage"><svg viewBox="0 0 400 260" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,180 40,150 80,170 120,120 160,140 200,90 240,110 280,70 320,100 360,80 400,95"/></svg>
+      <div class="axis"><i style="top:90px">60.00M</i><i style="top:150px">56.00M</i><i style="top:210px">52.00M</i></div>
+      <div class="last" style="top:85px">61.69M</div>
+      <div class="c g"><b>3/4</b><span>รอ</span><span class="seg"><i class="ok"></i><i class="ok"></i><i class="ok"></i><i></i></span></div>
+    </div>
+    <figcaption><b>C · Axis cap</b><p>A small block pinned to the top of the axis column, where the scale is usually empty. Holding: P/L, state, timeframe. Waiting: the check count with a mini gate. Fixed place, nothing to drag.</p><small>Width 64 · padding 8 0 · value 14/800 · labels 10 · radius 12 · inset 4</small></figcaption>
+  </figure>
+
+  <figure>
+    <div class="stage"><svg viewBox="0 0 400 260" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,180 40,150 80,170 120,120 160,140 200,90 240,110 280,70 320,100 360,80 400,95"/></svg>
+      <div class="axis"><i style="top:30px">64.00M</i><i style="top:90px">60.00M</i><i style="top:150px">56.00M</i><i style="top:210px">52.00M</i></div>
+      <div class="last" style="top:85px">61.69M</div>
+      <div class="d-line" style="top:150px"></div>
+      <div class="d g" style="top:150px"><b class="go">+9.1%</b><span>ถืออยู่ · Deep Dip 15m</span></div>
+      <div class="d-ax" style="top:150px">56.55M</div>
+    </div>
+    <figcaption><b>D · Entry line tag</b><p>While holding, the tag rides on the entry price: a dashed line across the chart and the entry price on the axis, like the STOP line. You see where you bought and the P/L in one place. Waiting falls back to A.</p><small>Height 24 · padding 0 8 0 10 · radius 999 left · follows the entry price</small></figcaption>
+  </figure>
+</div>
+</body>
+</html>
