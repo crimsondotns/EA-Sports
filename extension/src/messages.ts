@@ -63,13 +63,15 @@ export interface Settings {
   showIndicators: boolean;
   /** Background opacity of the chart table, 0.2–1. */
   tableOpacity: number;
+  /** Backdrop blur behind the chart panel, px (0 = off). */
+  tableBlur: number;
   /** Chart table folded down to its header. */
   tableCollapsed: boolean;
   /** How far the user dragged the chart table down from its default spot, px. */
   tableOffsetY: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: "dark", strategy: "dip", showTable: true, drawMarkers: true, calcFrom: "31d", showStop: true, notify: true, showIndicators: true, tableOpacity: 0.6, tableCollapsed: false, tableOffsetY: 0 };
+export const DEFAULT_SETTINGS: Settings = { theme: "dark", strategy: "dip", showTable: true, drawMarkers: true, calcFrom: "31d", showStop: true, notify: true, showIndicators: true, tableOpacity: 0.6, tableBlur: 20, tableCollapsed: false, tableOffsetY: 0 };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 export type CalcFrom = "31d" | "start";

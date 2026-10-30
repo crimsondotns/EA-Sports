@@ -386,6 +386,21 @@ async function main(): Promise<void> {
     void chrome.storage.local.set({ tableOpacity: Number(opacity.value) / 100 });
   });
   showTable.addEventListener("change", paintOpacity);
+  // Background blur: 0–32 px in 2 px steps, greyed out with the opacity slider.
+  const blur = $("tableBlur") as HTMLInputElement;
+  const paintBlur = () => {
+    $("tableBlurValue").textContent = Number(blur.value) ? `${blur.value}px` : "Off";
+    blur.style.setProperty("--fill", `${(Number(blur.value) / 32) * 100}%`);
+    blur.disabled = !showTable.checked;
+    $("blurRow").classList.toggle("disabled", blur.disabled);
+  };
+  blur.value = String(settings.tableBlur);
+  paintBlur();
+  blur.addEventListener("input", () => {
+    paintBlur();
+    void chrome.storage.local.set({ tableBlur: Number(blur.value) });
+  });
+  showTable.addEventListener("change", paintBlur);
 
   // Calculate from: the choice applies at once to the chart; Recalculate loads the history it
   // needs (the only requests the extension sends to DEX Screener, one page every 1.5 s).

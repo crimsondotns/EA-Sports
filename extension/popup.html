@@ -437,6 +437,11 @@
         <input type="range" id="tableOpacity" min="20" max="100" step="5" aria-describedby="tableOpacityHint">
         <small id="tableOpacityHint">Background of the pill on the chart (light stays at least 80% to keep text readable)</small>
       </div>
+      <div class="slider" id="blurRow">
+        <div class="slider-label"><label for="tableBlur">Background blur</label><output id="tableBlurValue" for="tableBlur">20px</output></div>
+        <input type="range" id="tableBlur" min="0" max="32" step="2" aria-describedby="tableBlurHint">
+        <small id="tableBlurHint">How much the candles behind the panel blur (0 = none)</small>
+      </div>
     <label class="switch"><span>Buy / sell markers<small>Draw backtest entries and exits on the chart</small></span><input type="checkbox" id="drawMarkers"></label>
     <label class="switch"><span>STOP line<small>Show the open trade's stop on the chart</small></span><input type="checkbox" id="showStop"></label>
     <label class="switch"><span>Strategy indicators<small>Add the EMAs, MACD, RSI or volume the strategy uses</small></span><input type="checkbox" id="showIndicators"></label>
