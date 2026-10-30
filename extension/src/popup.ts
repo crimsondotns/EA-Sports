@@ -318,9 +318,13 @@ const FILTERS = { all: [0, 1, 2, 3], signals: [0, 1], holding: [2], waiting: [3]
 let watchFilter: keyof typeof FILTERS = "all";
 let watchQuery = "";
 
+// Renders are async and run on every keystroke; only the latest one may paint.
+let watchRender = 0;
 async function renderWatchlist(currentTab?: number): Promise<void> {
+  const run = ++watchRender;
   const tabs = (await chrome.tabs.query({ url: "https://dexscreener.com/*" })).filter((t) => t.id !== currentTab);
   const stored = await chrome.storage.session.get(tabs.map((t) => summaryKey(t.id!)));
+  if (run !== watchRender) return;
   const rows = tabs
     .map((t) => ({ tab: t, s: stored[summaryKey(t.id!)] as Summary | undefined }))
     .filter((r): r is { tab: chrome.tabs.Tab; s: Summary } => !!r.s)
@@ -544,7 +548,7 @@ async function main(): Promise<void> {
     if (Object.keys(changes).some((k) => k.startsWith("summary:"))) void renderWatchlist(tab?.id);
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && page !== "home" && $("strategyMenu").hidden) showPage("home");
+    if (e.key === "Escape" && page !== "home" && $("strategyDrawer").hidden) showPage("home");
   });
 }
 

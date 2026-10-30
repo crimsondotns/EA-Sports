@@ -188,6 +188,9 @@ const $ = (id: string) => root.getElementById(id)!;
 // Hovering the minimized tab opens it (setting hoverExpand) without changing the saved state;
 // it stays docked where the tab was, so the pointer doesn't fall off it, and closes on leave.
 let peeking = false;
+// After a click on the chevron, hover stays off until the pointer has left the panel once, or the
+// tab that slides in under the pointer would open again right away.
+let suppressPeek = false;
 {
   const table = $("table");
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -197,12 +200,14 @@ let peeking = false;
     paintCollapsed();
   };
   table.addEventListener("pointerenter", (e) => {
-    if (e.pointerType !== "mouse" || !settings.tableCollapsed || !settings.hoverExpand) return;
+    if (e.pointerType !== "mouse" || suppressPeek || !settings.tableCollapsed || !settings.hoverExpand) return;
     clearTimeout(timer);
     timer = setTimeout(() => set(true), 150);
   });
-  table.addEventListener("pointerleave", () => {
+  table.addEventListener("pointerleave", (e) => {
     clearTimeout(timer);
+    // Leaving for real (not the pointer-events:none of the closing animation) re-enables hover.
+    if (!table.classList.contains("leave") && !table.contains(document.elementFromPoint(e.clientX, e.clientY))) suppressPeek = false;
     timer = setTimeout(() => set(false), 300);
   });
 }
@@ -242,6 +247,7 @@ function paintCollapsed(): void {
 $("toggle").addEventListener("click", () => {
   // While hover-opened, the click pins the panel open.
   peeking = false;
+  suppressPeek = true;
   settings = { ...settings, tableCollapsed: !settings.tableCollapsed };
   paintCollapsed();
   renderTable();
@@ -281,8 +287,11 @@ function positionTable(): void {
   // the panel sits on the very top layer, so it would cover them. Whatever is under the panel's
   // corner, apart from the panel itself, must be the chart iframe.
   const b = host.getBoundingClientRect();
-  const under = document.elementsFromPoint(b.right - 4, b.top + 4).find((el) => el !== host);
-  host.style.visibility = !under || under === frame ? "" : "hidden";
+  // Hide only when the chart iframe is under that point but something else is above it that isn't
+  // one of its own wrappers; a transparent layer the page keeps over the chart shouldn't hide it.
+  const stack = document.elementsFromPoint(b.right - 4, b.top + 4).filter((el) => el !== host);
+  const covered = stack.includes(frame!) && stack[0] !== frame && !stack[0]!.contains(frame!) && getComputedStyle(stack[0]!).pointerEvents !== "none";
+  host.style.visibility = covered ? "hidden" : "";
 }
 setInterval(positionTable, 500);
 
@@ -294,12 +303,15 @@ function priceScaleWidth(frame: HTMLIFrameElement, r: DOMRect): number {
   try {
     const doc = frame.contentDocument;
     let left = Infinity;
+    let found = false;
     for (const el of doc?.querySelectorAll<HTMLElement>('[class*="price-axis"]') ?? []) {
       const b = el.getBoundingClientRect();
+      found = true;
       // The right-hand scale ends at the iframe's right edge; skip a left-hand one.
       if (b.width > 0 && b.right >= r.width - 2 && b.left > r.width / 2) left = Math.min(left, b.left);
     }
     if (Number.isFinite(left)) return Math.round(r.width - left);
+    if (found) return 0; // the scale is there but hidden (zero width)
   } catch {
     // Cross-origin or not ready: fall back.
   }
@@ -453,7 +465,7 @@ function renderTable(): void {
         `<span>${tr(shortLabels[k] ?? c.label)}</span><span class="${c.ok ? "ok" : "no"}" title="${c.detail}">${tr(c.detail.split(" vs ")[0]!)}</span></div>`,
     ),
     `<div class="lbl">${tr("Backtest")}</div>`,
-    row(L(`${sum.stats.trades} trades`, `${sum.stats.trades} ไม้`), pct(sum.stats.returnPct), sum.stats.returnPct >= 0 ? "pos" : "neg"),
+    row(L(`${sum.stats.trades} ${sum.stats.trades === 1 ? "trade" : "trades"}`, `${sum.stats.trades} ไม้`), pct(sum.stats.returnPct), sum.stats.returnPct >= 0 ? "pos" : "neg"),
     ...(errorText ? [`<div class="msg neg sep">${tr(errorText)}</div>`] : []),
     ...(historyNote ? [`<div class="msg sep">${tr(historyNote)}</div>`] : []),
   ];

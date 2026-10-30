@@ -63,9 +63,9 @@ export interface Settings {
   notify: boolean;
   /** Add the active strategy's indicators to the chart. */
   showIndicators: boolean;
-  /** Background opacity of the chart table, 0.2–1. */
   /** Hovering the minimized panel opens it until the pointer leaves. */
   hoverExpand: boolean;
+  /** Glass tint of the chart panel, 0.2–0.88. */
   tableOpacity: number;
   /** Backdrop blur behind the chart panel, px (0 = off). */
   tableBlur: number;

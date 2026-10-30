@@ -113,6 +113,8 @@ function ours(chart: TvChart | null, id: unknown, points: string): boolean {
 
 function clear(): void {
   const chart = currentChart();
+  // Without a chart nothing can be removed: keep the list for a copy that has one.
+  if (!chart) return;
   for (const { id, points } of drawn.splice(0)) {
     if (!ours(chart, id, points)) continue;
     try {
@@ -287,7 +289,7 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
       // so dragging it afterwards sticks.
       if (!spec.overlay && !sizedOnce.has(String(same.id))) {
         sizedOnce.add(String(same.id));
-        sizeNewPane(chart, same.id);
+        sizeNewPane(chart, same.id, specs);
       }
       continue;
     }
@@ -302,7 +304,10 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
       const ids = inputIds(study, spec);
       if (ids.size) study.setInputValues([...ids].map(([k, inputId]) => ({ id: inputId, value: spec.inputs![k] })));
       if (spec.color) study.applyOverrides?.({ "Plot.color": spec.color, "plot.color": spec.color });
-      if (!spec.overlay) setTimeout(() => sizeNewPane(chart, id), 500);
+      if (!spec.overlay) {
+        sizedOnce.add(String(id));
+        setTimeout(() => sizeNewPane(chart, id, specs), 500);
+      }
     } catch (e) {
       console.warn("[EA] could not add study", spec.name, e);
     }
@@ -314,32 +319,34 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
  * chart (at least 72px), so RSI / MACD stay compact instead of the library's default share (about
  * a quarter each). Panes that already exist, or that the user sized later, are never touched.
  */
-function sizeNewPane(chart: TvChart, id: unknown): void {
+function sizeNewPane(chart: TvChart, id: unknown, specs: StudySpec[]): void {
   try {
     const panes = chart.getPanes?.() ?? [];
-    // Find the study's pane; if this chart's pane API can't list studies, size every indicator pane
-    // (all panes but the price pane: the strategy's RSI / MACD).
     const canList = panes.some((p) => typeof p.getStudies === "function");
+    // Find the study's pane. If this chart's pane API can't list studies, size the indicator panes
+    // only when their number matches the strategy's own pane studies (RSI, MACD), so a pane the
+    // user added (Stoch, a second RSI…) is never touched.
+    const indicator = panes.filter((p, k) => k > 0 && !p.hasMainSeries?.());
+    const ownPanes = specs.filter((s) => !s.overlay).length;
     const targets = canList
       ? panes.filter((p, k) => k > 0 && p.getStudies!()?.some((s) => String(s.id) === String(id)))
-      : panes.filter((p, k) => k > 0 && !p.hasMainSeries?.());
-    const total = panes.reduce((a, p) => a + (p.getHeight?.() ?? 0), 0);
+      : indicator.length === ownPanes ? indicator : [];
+    const heights = chart.getAllPanesHeight?.() ?? panes.map((p) => p.getHeight?.() ?? 0);
+    const total = heights.reduce((a, h) => a + h, 0);
     const target = Math.max(72, Math.round(total * 0.12));
-    console.info("[EA] pane sizing", { panes: panes.length, canList, targets: targets.length, total, target, heights: panes.map((p) => p.getHeight?.()) });
-    if (!targets.length || targets.some((p) => !p.getHeight || !p.setHeight)) return;
+    console.debug("[EA] pane sizing", { panes: panes.length, canList, targets: targets.length, total, target, heights });
+    if (!targets.length || heights.length !== panes.length || targets.some((p) => !p.getHeight || !p.setHeight)) return;
     if (targets.every((p) => Math.abs(p.getHeight!() - target) <= 8)) return;
     // setHeight hands the freed space to a neighbouring pane (shrinking RSI made MACD taller), so
-    // set every pane at once: the targets to `target`, the price pane takes the rest, others keep
-    // theirs; twice, as each call nudges its neighbour.
-    const want = panes.map((p, k) => (targets.includes(p) ? target : k === 0 ? 0 : (p.getHeight?.() ?? 0)));
-    want[0] = Math.max(120, total - want.reduce((a, h) => a + h, 0));
-    // The chart API sets all panes in one call; one setHeight at a time only reached the bottom pane.
+    // set every pane at once: targets to `target`, the price pane takes the rest, others keep theirs.
+    const want = panes.map((p, k) => (targets.includes(p) ? target : k === 0 ? 0 : heights[k]!));
+    want[0] = total - want.reduce((a, h) => a + h, 0);
+    if (want[0] < 120) return; // chart too short: leave it alone
     if (chart.setAllPanesHeight) chart.setAllPanesHeight(want);
     else for (let round = 0; round < 2; round++) panes.forEach((p, k) => p.setHeight?.(want[k]!));
-    console.info("[EA] setAllPanesHeight", typeof chart.setAllPanesHeight === "function", want);
-    console.info("[EA] pane heights now", panes.map((p) => p.getHeight?.()));
+    console.debug("[EA] pane heights now", chart.getAllPanesHeight?.() ?? panes.map((p) => p.getHeight?.()));
   } catch (e) {
-    console.info("[EA] could not size the pane", e);
+    console.debug("[EA] could not size the pane", e);
   }
 }
 
@@ -423,7 +430,8 @@ async function draw(p: DrawPayload): Promise<void> {
       ),
     );
   }
-  if (p.plan) {
+  // A plan that ends before the chart's first bar can't be drawn there.
+  if (p.plan && !offChart(p.plan.to)) {
     const pl = p.plan;
     if (pl.kind === "zone") {
       await add("rectangle", () =>
@@ -523,13 +531,22 @@ async function draw(p: DrawPayload): Promise<void> {
   postDrawResult(ok, errors.length, errors, skipped ? `${note} · ${skipped} markers before the chart's first bar` : note);
 }
 
-// Serialize draws: a new payload waits for the previous drawing pass to finish.
-let queue = Promise.resolve();
+// Serialize draws: a new payload waits for the previous drawing pass to finish. The queue lives on
+// the top window with the shape list, so copies of this script (page, chart iframe, re-runs after
+// TradingView rewrites it) take turns instead of clearing each other's shapes mid-draw.
+const shared: { queue: Promise<unknown> } = (() => {
+  try {
+    const top = window.top as Window & { __eaQueue?: { queue: Promise<unknown> } };
+    return (top.__eaQueue ??= { queue: Promise.resolve() });
+  } catch {
+    return { queue: Promise.resolve() };
+  }
+})();
 function onMessage(e: MessageEvent<FromContent>): void {
   if (e.data?.source !== CONTENT_TAG) return;
   const msg = e.data;
   console.debug("[EA] inject got", msg.type, "in", window === window.top ? "top" : location.href, "chart found:", !!found);
-  queue = queue
+  shared.queue = shared.queue
     .then(() => (msg.type === "draw" ? draw(msg.payload) : msg.type === "studies" ? applyStudies(msg.studies) : clear()))
     .catch(() => {});
 }
