@@ -50,10 +50,49 @@
   .d { position: absolute; right: 72px; display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 8px 0 10px; border-radius: 999px 0 0 999px; translate: 0 -50%; }
   .d b { font-weight: 800; }
   .d-ax { position: absolute; right: 0; width: 72px; height: 24px; translate: 0 -50%; display: grid; place-items: center; background: #0e9f6e; color: #fff; font: 600 11px/1 Manrope; }
+
+  /* A, short: only what fits in ~100px; the strategy and state move into the opened panel */
+  .s { position: absolute; right: 72px; display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 4px 0 12px; border-radius: 999px 0 0 999px; }
+  .s b { font-weight: 800; font-size: 13px; }
+  .s small { font-size: 11px; color: #a3a3a3; }
+  .s .dot { width: 6px; height: 6px; border-radius: 50%; background: #4ade80; margin-right: 2px; }
+  .s .seg { display: flex; gap: 2px; margin: 0 2px; } .s .seg i { width: 8px; height: 4px; border-radius: 2px; background: rgb(255 255 255 / 15%); } .s .seg i.ok { background: #4ade80; }
 </style>
 </head>
 <body>
-<h1>Dock the panel on the price axis</h1>
+<h1>A · Axis tab, short versions</h1>
+<p class="lead">The tab from A cut down to fit beside the scale. Each shows holding (top) and waiting (bottom). Strategy name and state words move into the opened panel.</p>
+<div class="row">
+  <figure><div class="stage" style="height:150px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,120 60,90 120,105 180,60 240,80 300,40 360,60 400,50"/></svg>
+      <div class="axis"><i style="top:20px">64.00M</i><i style="top:70px">60.00M</i><i style="top:120px">56.00M</i></div>
+      <div class="last" style="top:48px">61.69M</div><div class="s g" style="top:12px"><b class="go">+9.1%</b><span class="chev"><svg viewBox="0 0 12 12"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div></div><div class="stage" style="height:150px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,120 60,90 120,105 180,60 240,80 300,40 360,60 400,50"/></svg>
+      <div class="axis"><i style="top:20px">64.00M</i><i style="top:70px">60.00M</i><i style="top:120px">56.00M</i></div>
+      <div class="last" style="top:48px">61.69M</div><div class="s g" style="top:12px"><b>3/4</b><span class="chev"><svg viewBox="0 0 12 12"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div></div>
+    <figcaption><b>A1 · P/L only</b><p>The shortest: just the P/L (or the check count while waiting) and the chevron. About 76px.</p><small>Height 28 · padding 0 4 0 12 · gap 4 · value 13/800 · square on the axis side · top: holding, bottom: waiting</small></figcaption>
+  </figure>
+  <figure><div class="stage" style="height:150px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,120 60,90 120,105 180,60 240,80 300,40 360,60 400,50"/></svg>
+      <div class="axis"><i style="top:20px">64.00M</i><i style="top:70px">60.00M</i><i style="top:120px">56.00M</i></div>
+      <div class="last" style="top:48px">61.69M</div><div class="s g" style="top:12px"><span class="dot"></span><b class="go">+9.1%</b><span class="chev"><svg viewBox="0 0 12 12"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div></div><div class="stage" style="height:150px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,120 60,90 120,105 180,60 240,80 300,40 360,60 400,50"/></svg>
+      <div class="axis"><i style="top:20px">64.00M</i><i style="top:70px">60.00M</i><i style="top:120px">56.00M</i></div>
+      <div class="last" style="top:48px">61.69M</div><div class="s g" style="top:12px"><span class="dot" style="background:#6b6b6b"></span><b>3/4</b><span class="chev"><svg viewBox="0 0 12 12"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div></div>
+    <figcaption><b>A2 · P/L + dot</b><p>A coloured dot gives the state (green holding, white free ride, grey waiting) without words. About 88px.</p><small>Height 28 · padding 0 4 0 12 · gap 4 · value 13/800 · square on the axis side · top: holding, bottom: waiting</small></figcaption>
+  </figure>
+  <figure><div class="stage" style="height:150px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,120 60,90 120,105 180,60 240,80 300,40 360,60 400,50"/></svg>
+      <div class="axis"><i style="top:20px">64.00M</i><i style="top:70px">60.00M</i><i style="top:120px">56.00M</i></div>
+      <div class="last" style="top:48px">61.69M</div><div class="s g" style="top:12px"><b class="go">+9.1%</b><small>15m</small><span class="chev"><svg viewBox="0 0 12 12"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div></div><div class="stage" style="height:150px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,120 60,90 120,105 180,60 240,80 300,40 360,60 400,50"/></svg>
+      <div class="axis"><i style="top:20px">64.00M</i><i style="top:70px">60.00M</i><i style="top:120px">56.00M</i></div>
+      <div class="last" style="top:48px">61.69M</div><div class="s g" style="top:12px"><b>3/4</b><small>15m</small><span class="chev"><svg viewBox="0 0 12 12"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div></div>
+    <figcaption><b>A3 · P/L + timeframe</b><p>Keeps the timeframe, so with several charts open you know which one. About 104px.</p><small>Height 28 · padding 0 4 0 12 · gap 4 · value 13/800 · square on the axis side · top: holding, bottom: waiting</small></figcaption>
+  </figure>
+  <figure><div class="stage" style="height:150px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,120 60,90 120,105 180,60 240,80 300,40 360,60 400,50"/></svg>
+      <div class="axis"><i style="top:20px">64.00M</i><i style="top:70px">60.00M</i><i style="top:120px">56.00M</i></div>
+      <div class="last" style="top:48px">61.69M</div><div class="s g" style="top:12px"><b class="go">+9.1%</b><span class="chev"><svg viewBox="0 0 12 12"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div></div><div class="stage" style="height:150px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,120 60,90 120,105 180,60 240,80 300,40 360,60 400,50"/></svg>
+      <div class="axis"><i style="top:20px">64.00M</i><i style="top:70px">60.00M</i><i style="top:120px">56.00M</i></div>
+      <div class="last" style="top:48px">61.69M</div><div class="s g" style="top:12px"><b>3/4</b><span class="seg"><i class="ok"></i><i class="ok"></i><i class="ok"></i><i></i></span><span class="chev"><svg viewBox="0 0 12 12"><path d="M7.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div></div>
+    <figcaption><b>A4 · P/L + mini gate</b><p>While waiting, the count sits beside the four-segment gate, as in the popup. Holding is the same as A1. About 104px.</p><small>Height 28 · padding 0 4 0 12 · gap 4 · value 13/800 · square on the axis side · top: holding, bottom: waiting</small></figcaption>
+  </figure>
+</div>
+<h1 style="margin-top:40px">Dock the panel on the price axis</h1>
 <p class="lead">Four ways to attach the collapsed panel to DEX Screener's price scale. Each stage is a fake chart with the 72px axis on the right; the green label is the last price, red is the stop. Every option keeps the frosted glass (40% tint, 24px blur) and opens the same Checklist details when clicked.</p>
 <div class="row">
   <figure>
