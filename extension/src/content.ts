@@ -243,6 +243,12 @@ function positionTable(): void {
   host.style.top = `${Math.max(0, base + offset)}px`;
   // Collapsed, the tab sits flush on the price scale; opened, the panel keeps clear of it.
   host.style.right = `${Math.max(0, window.innerWidth - r.right + PRICE_SCALE + (settings.tableCollapsed ? 0 : INSET))}px`;
+  // Step aside when the page puts something over the chart (DEX Screener's search, menus, dialogs):
+  // the panel sits on the very top layer, so it would cover them. Whatever is under the panel's
+  // corner, apart from the panel itself, must be the chart iframe.
+  const b = host.getBoundingClientRect();
+  const under = document.elementsFromPoint(b.right - 4, b.top + 4).find((el) => el !== host);
+  host.style.visibility = !under || under === frame ? "" : "hidden";
 }
 setInterval(positionTable, 500);
 
