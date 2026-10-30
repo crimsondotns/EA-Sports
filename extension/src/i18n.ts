@@ -34,7 +34,7 @@ const TH: Record<string, string> = {
   "Signal pill on chart": "แผงสัญญาณบนกราฟ",
   "Buy checks in the chart's top-right corner; click it for details": "เงื่อนไขซื้อที่มุมขวาบนของกราฟ กดเพื่อดูรายละเอียด",
   "Pill opacity": "ความทึบของแผง",
-  "Glass tint behind the panel, 72–88% so text stays readable": "ความทึบของกระจก 72–88% เพื่อให้อ่านออก",
+  "Glass tint behind the panel, 20–88%; lower shows more blur": "ความทึบของกระจก 20–88% ยิ่งต่ำยิ่งเห็นเบลอ",
   "Background blur": "ความเบลอพื้นหลัง",
   "How much the candles behind blur, up to 32px (Off = solid panel)": "เบลอแท่งเทียนด้านหลังได้ถึง 32px (ปิด = แผงทึบ)",
   Off: "ปิด",

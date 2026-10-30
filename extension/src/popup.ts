@@ -379,12 +379,12 @@ async function main(): Promise<void> {
   const paintOpacity = () => {
     const pct = Number(opacity.value);
     $("tableOpacityValue").textContent = `${pct}%`;
-    opacity.style.setProperty("--fill", `${((pct - 72) / 16) * 100}%`);
+    opacity.style.setProperty("--fill", `${((pct - 20) / 68) * 100}%`);
     opacity.disabled = !showTable.checked;
     $("opacityRow").classList.toggle("disabled", opacity.disabled);
   };
-  // Glass rule: the tint stays 72–88% (older saved values are clamped into it).
-  opacity.value = String(Math.min(88, Math.max(72, Math.round(settings.tableOpacity * 100))));
+  // The chart panel is the exception to the 72–88% glass rule: 20–88%, so the blur shows (as in Keepit).
+  opacity.value = String(Math.min(88, Math.max(20, Math.round(settings.tableOpacity * 100))));
   paintOpacity();
   opacity.addEventListener("input", () => {
     paintOpacity();
