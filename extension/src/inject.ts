@@ -290,9 +290,9 @@ async function applyStudies(specs: StudySpec[]): Promise<void> {
 }
 
 /**
- * Once, right after the extension creates a study in a new pane: if the library gave that pane
- * only a sliver, make it ~14% of the chart (at least 80px). Panes that already exist, or that the
- * user sized later, are never touched.
+ * Once, right after the extension creates a study in a new pane: size that pane to ~12% of the
+ * chart (at least 72px), so RSI / MACD stay compact instead of the library's default share (about
+ * a quarter each). Panes that already exist, or that the user sized later, are never touched.
  */
 function sizeNewPane(chart: TvChart, id: unknown): void {
   try {
@@ -300,8 +300,8 @@ function sizeNewPane(chart: TvChart, id: unknown): void {
     const pane = panes.find((p, k) => k > 0 && p.getStudies?.()?.some((s) => String(s.id) === String(id)));
     if (!pane?.getHeight || !pane.setHeight) return;
     const total = panes.reduce((a, p) => a + (p.getHeight?.() ?? 0), 0);
-    const target = Math.max(80, Math.round(total * 0.14));
-    if (pane.getHeight() < target * 0.6) pane.setHeight(target);
+    const target = Math.max(72, Math.round(total * 0.12));
+    if (Math.abs(pane.getHeight() - target) > 8) pane.setHeight(target);
   } catch (e) {
     console.debug("[EA] could not size the new pane", e);
   }
