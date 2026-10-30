@@ -90,43 +90,44 @@ root.innerHTML = `
     /* Frosted glass, like the popup dropdowns: blur what is behind, hairline edge, soft deep shadow. */
     -webkit-backdrop-filter: blur(var(--table-blur, 24px)) saturate(140%); backdrop-filter: blur(var(--table-blur, 24px)) saturate(140%);
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%), 0 12px 40px rgb(0 0 0 / 45%);
-    font: 600 12.5px/1.4 "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font: 600 12px/16px "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-variant-numeric: tabular-nums; }
 
   /* A see-through light card over the dark chart turns grey and the dark text drowns in it, so light stays at least 80% (white glass). */
   :host(.light) #table { background: rgb(255 255 255 / max(var(--table-opacity, .78), .8));
     box-shadow: inset 0 0 0 1px rgb(20 22 26 / 8%), 0 12px 40px rgb(0 0 0 / 30%); }
   #table.collapsed { min-width: 0; border-radius: 999px; }
-  .pill { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 6px; }
+  .pill { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; }
+  #table:not(.collapsed) .pill { padding-left: 16px; }
   #title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  #badge { border-radius: 999px; padding: 3px 9px; font-weight: 800; font-size: 12px; background: var(--invert); color: var(--on-invert); }
+  #badge { border-radius: 999px; padding: 4px 8px; font-weight: 800; font-size: 12px; background: var(--invert); color: var(--on-invert); }
   /* P/L shows as coloured text, no fill. */
-  #badge.pos, #badge.neg { background: none; padding: 3px 4px; } #badge.pos { color: var(--go); } #badge.neg { color: var(--stop); }
-  #seg { display: flex; gap: 2px; } #seg i { width: 10px; height: 6px; border-radius: 3px; background: var(--line); } #seg i.ok { background: var(--go); }
+  #badge.pos, #badge.neg { background: none; padding: 4px; } #badge.pos { color: var(--go); } #badge.neg { color: var(--stop); }
+  #seg { display: flex; gap: 2px; } #seg i { width: 12px; height: 4px; border-radius: 2px; background: var(--line); } #seg i.ok { background: var(--go); }
   #brief { font-weight: 800; }
   #title { color: var(--text-2); font-weight: 500; font-size: 12px; white-space: nowrap; }
   #toggle, #grip { all: unset; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
     color: var(--text-2); cursor: pointer; transition: background-color 140ms ease-out, color 140ms ease-out; }
-  #toggle { width: 22px; height: 22px; }
+  #toggle { width: 24px; height: 24px; }
   #toggle svg { width: 12px; height: 12px; transition: transform 140ms ease-out; }
   #toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
-  #grip { width: 14px; height: 22px; color: var(--muted); cursor: grab; touch-action: none; }
+  #grip { width: 16px; height: 24px; color: var(--muted); cursor: grab; touch-action: none; }
   #grip svg { width: 8px; height: 12px; }
   #toggle:focus-visible, #grip:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
   #toggle:active { background: var(--hover); }
   :host(.dragging) #grip { cursor: grabbing; color: var(--text); }
   @media (hover: hover) and (pointer: fine) { #toggle:hover, #grip:hover { background: var(--hover); color: var(--text); } }
-  #body { padding: 2px 14px 14px; display: grid; gap: 2px; font-weight: 500; font-size: 13px; line-height: 20px; }
+  #body { padding: 4px 16px 16px; display: grid; gap: 4px; font-weight: 500; font-size: 13px; line-height: 20px; }
   #table.collapsed #body { display: none; }
   .r { display: flex; justify-content: space-between; gap: 12px; white-space: nowrap; }
   .r > span:first-child { color: var(--text-2); }
-  .sep { margin-top: 6px; }
+  .sep { margin-top: 8px; }
   /* Checklist (table option 5): opened, the count is the headline and the buy checks read as a list of round marks. */
   #table:not(.collapsed) { width: 268px; }
-  #table:not(.collapsed) #badge { background: none; padding: 0 4px; font-size: 22px; line-height: 28px; letter-spacing: -.02em; }
+  #table:not(.collapsed) #badge { background: none; padding: 0; font-size: 22px; line-height: 28px; letter-spacing: -.02em; }
   #table:not(.collapsed) #badge:not(.pos):not(.neg) { color: var(--text); }
   #table:not(.collapsed) #seg { display: none; }
-  .lbl { font-size: 11px; font-weight: 700; color: var(--muted); margin: 8px 0 2px; }
+  .lbl { font-size: 11px; font-weight: 700; color: var(--muted); margin: 12px 0 4px; }
   .c { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; white-space: nowrap; }
   .c i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted); display: grid; place-items: center;
     font: 800 9px/1 "Manrope", ui-sans-serif, system-ui, sans-serif; font-style: normal; }
@@ -139,10 +140,10 @@ root.innerHTML = `
   @media (prefers-reduced-motion: reduce) { #toggle, #toggle svg, #grip { transition: none; } }
 </style>
 <div id="table" role="group" aria-label="EA signals">
-  <div class="pill"><button type="button" id="grip" aria-label="Move up or down" title="Drag to move · double-click to reset">
+  <div class="pill"><span id="badge">EA</span><span id="seg" aria-hidden="true"></span><span id="brief">Loading</span><span id="title"></span>
+  <button type="button" id="grip" aria-label="Move up or down" title="Drag to move · double-click to reset">
     <svg viewBox="0 0 8 12" aria-hidden="true"><g fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="6" cy="2" r="1"/><circle cx="2" cy="6" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="2" cy="10" r="1"/><circle cx="6" cy="10" r="1"/></g></svg>
-  </button><span id="badge">EA</span><span id="seg" aria-hidden="true"></span><span id="brief">Loading</span><span id="title"></span>
-  <button type="button" id="toggle" aria-expanded="true" aria-controls="body" aria-label="Hide details" title="Hide details">
+  </button><button type="button" id="toggle" aria-expanded="true" aria-controls="body" aria-label="Hide details" title="Hide details">
     <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button></div>
   <div id="body"><div class="r muted">Waiting for chart data…</div></div>
