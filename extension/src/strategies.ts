@@ -24,7 +24,8 @@ export interface StrategySetup {
   studies: StudySpec[];
 }
 
-const emaStudy = (length: number, color: string): StudySpec => ({ name: "Moving Average Exponential", inputs: { length }, color });
+// EMAs sit on the price pane: overlay, so they never count as an indicator pane (pane sizing matches those).
+const emaStudy = (length: number, color: string): StudySpec => ({ name: "Moving Average Exponential", inputs: { length }, color, overlay: true });
 
 export const STRATEGY_NAMES: Record<StrategyId, string> = {
   breakout: "Volume Breakout",
