@@ -8,6 +8,7 @@ interface TvChart {
   createShape(point: { time: number; price?: number }, opts: object): Promise<unknown> | unknown;
   createMultipointShape(points: { time: number; price: number }[], opts: object): Promise<unknown> | unknown;
   removeEntity(id: unknown): void;
+  getShapeById?(id: unknown): { getPoints?(): { time: number; price: number }[] };
   createStudy?(name: string, forceOverlay: boolean, lock?: boolean): Promise<unknown> | unknown;
   getAllStudies?(): { id: unknown; name: string }[];
   getStudyById?(id: unknown): TvStudy;
@@ -56,7 +57,18 @@ function findChart(): { chart: TvChart; via: string } | null {
 }
 
 let found: { chart: TvChart; via: string } | null = null;
-const drawn: unknown[] = [];
+/** Our shapes, with the points they were drawn at. Ids are only unique per chart: after a symbol /
+ *  timeframe change or a chart reload an old id can belong to one of the user's drawings, so a
+ *  shape is removed only if it still sits exactly where we drew it. */
+const drawn: { id: unknown; points: string }[] = [];
+const pointsOf = (chart: TvChart | null, id: unknown): string | null => {
+  try {
+    const pts = chart?.getShapeById?.(id)?.getPoints?.();
+    return pts ? JSON.stringify(pts.map((p) => [p.time, p.price])) : null;
+  } catch {
+    return null;
+  }
+};
 
 function postStatus(ready: boolean, detail: string): void {
   const msg: FromMain = { source: MAIN_TAG, type: "status", ready, detail };
@@ -70,7 +82,10 @@ function currentChart(): TvChart | null {
 
 function clear(): void {
   const chart = currentChart();
-  for (const id of drawn.splice(0)) {
+  for (const { id, points } of drawn.splice(0)) {
+    // Unknown points (old library without getShapeById): don't risk deleting a user's drawing.
+    const now = pointsOf(chart, id);
+    if (now === null || now !== points) continue;
     try {
       chart?.removeEntity(id);
     } catch {
@@ -284,7 +299,7 @@ async function draw(p: DrawPayload): Promise<void> {
         new Promise((_, reject) => setTimeout(() => reject(new Error("timed out")), SHAPE_TIMEOUT_MS)),
       ]);
       if (id === null || id === undefined) throw new Error("returned no id");
-      drawn.push(id);
+      drawn.push({ id, points: pointsOf(chart, id) ?? "" });
       ok++;
     } catch (e) {
       errors.push(`${what}: ${(e as Error)?.message ?? e}`);
