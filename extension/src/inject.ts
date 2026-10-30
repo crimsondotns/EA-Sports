@@ -375,6 +375,13 @@ async function draw(p: DrawPayload): Promise<void> {
   // Buy arrows always under the candles, sell arrows always over them: the arrow's tip goes
   // below the lowest low (above the highest high) of the bar and its 2 neighbours each side, plus
   // a gap of the typical bar range there, so a small bar next to big ones isn't covered either.
+  // Older history (from Recalculate) reaches back past the bars the chart has loaded; the chart
+  // returns no id for a shape placed before its first bar. Skip markers there (they're off screen
+  // anyway) and start lines at the first loaded bar.
+  const first = bars?.[0]?.time;
+  const offChart = (t: number) => first !== undefined && t + (offset ?? 0) < first;
+  const clampT = (t: number) => (offChart(t) ? first! - (offset ?? 0) : t);
+  let skipped = 0;
   const place = (a: DrawPayload["arrows"][number]) => {
     const k = offset === null ? undefined : indexAt.get(a.time + offset);
     if (k === undefined || !bars) return { time: a.time, price: a.price };
@@ -389,11 +396,19 @@ async function draw(p: DrawPayload): Promise<void> {
   console.debug("[EA] chart bars", bars?.length, "offset", offset);
 
   for (const l of p.labels) {
+    if (offChart(l.time)) {
+      skipped++;
+      continue;
+    }
     await add("label", () =>
       chart.createShape(place({ ...l, side: "sell" }), { ...opts, shape: "text", text: l.text, overrides: { color: l.color, fontsize: 10 } }),
     );
   }
   for (const a of p.arrows) {
+    if (offChart(a.time)) {
+      skipped++;
+      continue;
+    }
     await add(a.side === "buy" ? "arrow_up" : "arrow_down", () =>
       chart.createShape(
         place(a),
@@ -407,7 +422,7 @@ async function draw(p: DrawPayload): Promise<void> {
       await add("rectangle", () =>
         chart.createMultipointShape(
           [
-            { time: pl.from, price: pl.high },
+            { time: clampT(pl.from), price: pl.high },
             { time: pl.to, price: pl.low },
           ],
           {
@@ -422,7 +437,7 @@ async function draw(p: DrawPayload): Promise<void> {
       await add("trigger", () =>
         chart.createMultipointShape(
           [
-            { time: pl.from, price: pl.high },
+            { time: clampT(pl.from), price: pl.high },
             { time: pl.to, price: pl.high },
           ],
           {
@@ -438,7 +453,7 @@ async function draw(p: DrawPayload): Promise<void> {
     const line = (price: number, text: string, color: string, style = 2) =>
       add(text, () =>
         chart.createShape(
-          { time: pl.from, price },
+          { time: clampT(pl.from), price },
           {
             ...opts,
             shape: "horizontal_ray",
@@ -459,7 +474,7 @@ async function draw(p: DrawPayload): Promise<void> {
     const color = l.kind === "support" ? "#4ade80" : "#f87171";
     await add("horizontal_ray", () =>
       chart.createShape(
-        { time: l.time, price: l.price },
+        { time: clampT(l.time), price: l.price },
         {
           ...opts,
           shape: "horizontal_ray",
@@ -470,7 +485,7 @@ async function draw(p: DrawPayload): Promise<void> {
     );
   }
   if (p.stop !== null) {
-    const last = p.arrows.at(-1)?.time ?? Math.floor(Date.now() / 1000);
+    const last = clampT(p.arrows.at(-1)?.time ?? Math.floor(Date.now() / 1000));
     await add("horizontal_line", () =>
       chart.createShape(
         { time: last, price: p.stop! },
@@ -498,7 +513,7 @@ async function draw(p: DrawPayload): Promise<void> {
     );
   }
   if (errors.length) console.warn("[EA] drawing errors", errors);
-  postDrawResult(ok, errors.length, errors, note);
+  postDrawResult(ok, errors.length, errors, skipped ? `${note} · ${skipped} markers before the chart's first bar` : note);
 }
 
 // Serialize draws: a new payload waits for the previous drawing pass to finish.
