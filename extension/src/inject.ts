@@ -59,8 +59,19 @@ function findChart(): { chart: TvChart; via: string } | null {
 let found: { chart: TvChart; via: string } | null = null;
 /** Our shapes, with the points they were drawn at. Ids are only unique per chart: after a symbol /
  *  timeframe change or a chart reload an old id can belong to one of the user's drawings, so a
- *  shape is removed only if it still sits exactly where we drew it. */
-const drawn: { id: unknown; points: string }[] = [];
+ *  shape is removed only if it still sits exactly where we drew it.
+ *  The list lives on the top window, shared by every copy of this script: one runs in the page and
+ *  one in the chart iframe (re-run each time TradingView rewrites it), and a copy that drew shapes
+ *  and later lost the chart never cleared them, so an old STOP line stayed next to the new one. */
+type Drawn = { id: unknown; points: string }[];
+const drawn: Drawn = (() => {
+  try {
+    const top = window.top as Window & { __eaDrawn?: Drawn };
+    return (top.__eaDrawn ??= []);
+  } catch {
+    return [];
+  }
+})();
 const pointsOf = (chart: TvChart | null, id: unknown): string | null => {
   try {
     const pts = chart?.getShapeById?.(id)?.getPoints?.();
