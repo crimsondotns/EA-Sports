@@ -195,16 +195,19 @@
      because a native <select> menu is drawn by the OS and can't follow the spec. popup.ts
      places the menu below the trigger, or above it when there is more room there. */
   .dropdown { position: relative; }
-  .dropdown-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 40px;
-    padding: 0 12px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface);
-    color: var(--color-text-primary); font-family: inherit; font-size: var(--font-size-control); font-weight: 400; line-height: 1.4;
-    text-align: left; cursor: pointer; transition: background-color var(--transition-fast), border-color var(--transition-fast); }
+  /* Select trigger (Grok-style settings select): light, transparent, hairline edge; fills softly on hover and while open. */
+  :root { --trg-border: rgb(255 255 255 / 10%); --trg-hover: rgb(255 255 255 / 6%); --trg-open: rgb(255 255 255 / 8%); --trg-ring: rgb(255 255 255 / 12%); --trg-icon: #71767b; }
+  :root[data-theme="light"] { --trg-border: rgb(20 22 26 / 12%); --trg-hover: rgb(20 22 26 / 4%); --trg-open: rgb(20 22 26 / 6%); --trg-ring: rgb(20 22 26 / 14%); --trg-icon: #6b717c; }
+  .dropdown-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 36px;
+    padding: 0 12px; border: 1px solid var(--trg-border); border-radius: 12px; background: transparent;
+    color: var(--color-text-primary); font-family: inherit; font-size: var(--font-size-control); font-weight: 500; line-height: 1.4;
+    text-align: left; cursor: pointer; transition: background-color 150ms ease-out, box-shadow 150ms ease-out; }
   .dropdown-trigger > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dropdown-trigger:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
-  .dropdown-trigger:active:not(:disabled) { background: var(--color-surface-pressed); }
-  .dropdown-trigger:disabled { color: var(--color-text-disabled); cursor: not-allowed; }
-  .dropdown-trigger:disabled svg { color: var(--color-text-disabled); }
-  .dropdown-trigger svg { flex: none; width: 16px; height: 16px; color: var(--color-text-secondary); transition: transform var(--transition-fast); }
+  .dropdown-trigger:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--trg-ring); }
+  .dropdown-trigger[aria-expanded="true"] { background: var(--trg-open); }
+  .dropdown-trigger:active:not(:disabled) { background: var(--trg-open); }
+  .dropdown-trigger:disabled { opacity: .5; cursor: not-allowed; }
+  .dropdown-trigger svg { flex: none; width: 14px; height: 14px; color: var(--trg-icon); transition: transform 200ms ease-out; }
   .dropdown-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
   .dropdown-menu { position: absolute; z-index: 10; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 4px;
     max-height: min(320px, 60vh); overflow-y: auto; overscroll-behavior: contain; list-style: none; background: var(--color-surface-elevated);
@@ -291,7 +294,7 @@
     .icon-button:hover { background: var(--color-surface-hover); }
     .watch button:hover { background: var(--color-surface-hover); }
     .theme button[aria-pressed="false"]:hover { background: var(--color-surface-hover); color: var(--color-text-primary); }
-    .dropdown-trigger:hover:not(:disabled) { background: var(--color-trigger-hover-bg); border-color: var(--color-border-strong); }
+    .dropdown-trigger:hover:not(:disabled):not([aria-expanded="true"]) { background: var(--trg-hover); }
     .dropdown-menu li .info:hover { color: var(--color-text-primary); }
   }
 
