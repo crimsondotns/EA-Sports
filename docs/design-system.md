@@ -7,6 +7,7 @@
 - **Light theme:** besides the dark default, the extension has a light theme the user can switch to. It keeps every token role below and swaps the values: background `#F5F6F8`, surfaces `#FFFFFF`, borders `#E3E6EB`, primary text `#14161A`, secondary `#5A606B`, primary button `#14161A` with white text, success `#0E9F6E`, danger `#D92D20`, warning `#B54708`.
 - **Typeface:** Manrope (bundled variable font) replaces the system stack as the first choice; the system stack stays as the fallback.
 - **Buttons (Grok-style):** every text button is a full pill. Primary: white / black text (light theme: ink / white), pressed `#D7DBDC`, disabled `#272A2E` with `#71767B` text. Secondary: transparent with a `1px #2F3336` hairline, hover `#16181C`, pressed `#272A2E`. Press gives a short `scale(.96)` (110ms), removed under reduced motion.
+- **Dropdown panels (Grok frosted glass):** replaces the solid `#171717` panel below. Tint `rgb(22 24 28 / 78%)` (light: white 78%), `blur(24px) saturate(140%)`, `1px` hairline `rgb(255 255 255 / 10%)`, radius 16px, padding 6px, shadow `0 12px 40px rgb(0 0 0 / 45%)`. Rows 40px, radius 10px: hover white 7%, pressed 10%, selected 12% plus the check. Opens with a 160ms scale(.96)→1 ease-out (fade only under reduced motion); solid `#1E2126` under reduced transparency.
 - **Layout:** design G (`design/redesign/g-gate-themes.html`) is the reference for the popup and the on-chart pill.
 
 ## 1. Design Principles
