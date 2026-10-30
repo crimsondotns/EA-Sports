@@ -85,7 +85,7 @@ root.innerHTML = `
   :host(.light) { --bg: 245 246 248; --text: #14161a; --text-2: #4a505a; --muted: #6b717c; --line: #e3e6eb; --hover: #e9ecf0;
     --go: #0e9f6e; --stop: #d92d20; --near: #b54708; --invert: #14161a; --on-invert: #fff; }
   /* One panel: the pill row is its header and the details open inside it, under a hairline. */
-  #table { display: grid; pointer-events: auto; color: var(--text); width: max-content; min-width: 240px; max-width: 280px;
+  #table { display: grid; pointer-events: auto; color: var(--text); width: max-content;
     border-radius: 16px; background: rgb(var(--bg) / clamp(.72, var(--table-opacity, .78), .88)); overflow: hidden;
     /* Frosted glass, like the popup dropdowns: blur what is behind, hairline edge, soft deep shadow. */
     -webkit-backdrop-filter: blur(var(--table-blur, 24px)) saturate(140%); backdrop-filter: blur(var(--table-blur, 24px)) saturate(140%);
@@ -116,11 +116,22 @@ root.innerHTML = `
   #toggle:active { background: var(--hover); }
   :host(.dragging) #grip { cursor: grabbing; color: var(--text); }
   @media (hover: hover) and (pointer: fine) { #toggle:hover, #grip:hover { background: var(--hover); color: var(--text); } }
-  #body { padding: 2px 12px 12px; display: grid; gap: 4px; font-weight: 500; }
+  #body { padding: 2px 14px 14px; display: grid; gap: 2px; font-weight: 500; font-size: 13px; line-height: 20px; }
   #table.collapsed #body { display: none; }
   .r { display: flex; justify-content: space-between; gap: 12px; white-space: nowrap; }
   .r > span:first-child { color: var(--text-2); }
   .sep { margin-top: 6px; }
+  /* Checklist (table option 5): opened, the count is the headline and the buy checks read as a list of round marks. */
+  #table:not(.collapsed) { width: 268px; }
+  #table:not(.collapsed) #badge { background: none; padding: 0 4px; font-size: 22px; line-height: 28px; letter-spacing: -.02em; }
+  #table:not(.collapsed) #badge:not(.pos):not(.neg) { color: var(--text); }
+  #table:not(.collapsed) #seg { display: none; }
+  .lbl { font-size: 11px; font-weight: 700; color: var(--muted); margin: 8px 0 2px; }
+  .c { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; white-space: nowrap; }
+  .c i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted); display: grid; place-items: center;
+    font: 800 9px/1 "Manrope", ui-sans-serif, system-ui, sans-serif; font-style: normal; }
+  .c i.ok { box-shadow: none; background: var(--go); color: var(--on-invert); }
+  .c > span:nth-child(2) { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
   .muted { color: var(--muted); } .sub { color: var(--text-2); }
   .ok, .pos { color: var(--go); } .no { color: var(--near); } .neg { color: var(--stop); }
   .msg { white-space: normal; color: var(--text-2); }
@@ -333,10 +344,14 @@ function renderTable(): void {
             ]
           : [row("Buy above", `${fmt(sum.plan.high)} (${pct(sum.plan.distancePct)})`), row("Stop", fmt(sum.plan.stop))]
       : []),
-    ...sum.conditions.map((c, k) =>
-      row(`${c.ok ? "✓" : "○"} ${shortLabels[k] ?? c.label}`, c.detail.split(" vs ")[0]!, c.ok ? "ok" : "no", k === 0 && (hold || !!sum.plan)),
+    `<div class="lbl">Buy checks · ${ok} of ${sum.conditions.length}</div>`,
+    ...sum.conditions.map(
+      (c, k) =>
+        `<div class="c"><i class="${c.ok ? "ok" : ""}" aria-label="${c.ok ? "passed" : "not yet"}">${c.ok ? "✓" : ""}</i>` +
+        `<span>${shortLabels[k] ?? c.label}</span><span class="${c.ok ? "ok" : "no"}">${c.detail.split(" vs ")[0]!}</span></div>`,
     ),
-    row("Backtest", `${pct(sum.stats.returnPct)} · ${sum.stats.trades} trades`, sum.stats.returnPct >= 0 ? "pos" : "neg", true),
+    `<div class="lbl">Backtest</div>`,
+    row(`${sum.stats.trades} trades`, pct(sum.stats.returnPct), sum.stats.returnPct >= 0 ? "pos" : "neg"),
     ...(errorText ? [`<div class="msg neg sep">${errorText}</div>`] : []),
     ...(historyNote ? [`<div class="msg sep">${historyNote}</div>`] : []),
   ];
