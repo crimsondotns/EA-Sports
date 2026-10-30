@@ -20,102 +20,76 @@
   .axis i { position: absolute; right: 8px; font: 500 11px/1 Manrope; font-style: normal; color: #8a8f99; }
 
   /* the panel: one element; .open shows the details. Each option animates the change differently. */
-  .p { position: absolute; top: 20px; right: 72px; color: #f2f2f2; font-size: 13px; line-height: 20px;
-       background: rgb(0 0 0 / 40%); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
-       box-shadow: 0 12px 40px rgb(0 0 0 / 45%); border-radius: 14px 0 0 14px; overflow: hidden; }
-  .tab { display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 8px 0 12px; white-space: nowrap; }
+  /* Two layers stacked at the same corner, each its own glass: the tab, and the panel over it.
+     Opening and closing are CSS transitions on .open, so they run both ways at the same speed curve,
+     reverse smoothly if you move back mid-way, and the glass itself animates (no size jump). */
+  .p { position: absolute; top: 20px; right: 72px; color: #f2f2f2; font-size: 13px; line-height: 20px; }
+  .glass { background: rgb(0 0 0 / 40%); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
+           box-shadow: 0 12px 40px rgb(0 0 0 / 45%); border-radius: 14px 0 0 14px; }
+  .tab { display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 8px 0 12px; white-space: nowrap;
+         transition: opacity 140ms ease-out 60ms; }
   .tab b { font-weight: 800; color: #4ade80; } .tab small { font-size: 11px; color: #a3a3a3; }
-  .det { width: 268px; padding: 0 16px 16px; }
+  .det { position: absolute; top: 0; right: 0; width: 268px; padding: 0 16px 16px; pointer-events: none; opacity: 0; visibility: hidden; }
+  .open .tab { opacity: 0; transition: opacity 100ms ease-in; }
+  .open .det { pointer-events: auto; opacity: 1; visibility: visible; }
+  .det > * { transition: opacity 120ms ease-in; } .open .det > * { transition: opacity 160ms ease-out 60ms; }
   .det .h { display: flex; align-items: baseline; gap: 8px; padding: 4px 0 8px; } .det .h b { font-size: 22px; font-weight: 800; color: #4ade80; } .det .h span { font-size: 12px; color: #a3a3a3; }
   .r { display: flex; justify-content: space-between; } .r > :first-child { color: #a3a3a3; }
   .lbl { font-size: 11px; font-weight: 700; color: #6b6b6b; margin: 12px 0 4px; line-height: 16px; }
   .c { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; }
-  .c i { width: 14px; height: 14px; border-radius: 50%; background: #4ade80; } .c i.no { background: none; box-shadow: inset 0 0 0 1.5px #6b6b6b; }
-  .go { color: #4ade80; } .st { color: #f87171; } .nr { color: #fbbf24; }
+  .c i { width: 14px; height: 14px; border-radius: 50%; background: #4ade80; }
+  .go { color: #4ade80; } .st { color: #f87171; }
+  /* out: ease-in and a bit shorter; in: ease-out. visibility flips only after the fade ends. */
+  .det { transition: opacity 140ms ease-in, transform 160ms cubic-bezier(.7, 0, .84, 0), clip-path 160ms cubic-bezier(.7, 0, .84, 0), visibility 0s 160ms; }
+  .open .det { transition: opacity 160ms ease-out, transform 220ms cubic-bezier(.16, 1, .3, 1), clip-path 220ms cubic-bezier(.16, 1, .3, 1), visibility 0s; }
 
-  /* 1 · Instant: no animation (today) */
-  .t1 .det { display: none; } .t1.open .tab { display: none; } .t1.open .det { display: block; }
-
-  /* 2 · Fade + scale: details fade in growing from the tab's corner (top right), 160ms */
-  .t2 .det { display: none; } .t2.open .tab { display: none; }
-  .t2.open .det { display: block; animation: t2 160ms cubic-bezier(.16, 1, .3, 1); transform-origin: top right; }
-  @keyframes t2 { from { opacity: 0; transform: scale(.94); } }
-
-  /* 3 · Unfold: width then height grow from the tab (grid 0fr → 1fr), content fades in after, 220ms */
-  .t3 { display: grid; grid-template-rows: 28px 0fr; grid-template-columns: 96px; transition: grid-template-rows 220ms cubic-bezier(.16,1,.3,1), grid-template-columns 180ms cubic-bezier(.16,1,.3,1); }
-  .t3 .det { min-height: 0; overflow: hidden; opacity: 0; transition: opacity 120ms; }
-  .t3.open { grid-template-rows: 0px 1fr; grid-template-columns: 268px; } .t3.open .tab { overflow: hidden; opacity: 0; }
-  .t3.open .det { opacity: 1; transition: opacity 160ms 80ms; }
-
-  /* 4 · Slide out of the scale: the panel is revealed right-to-left with a clip, as if pulled out of the axis, 200ms */
-  .t4 .det { display: none; } .t4.open .tab { display: none; }
-  .t4.open .det { display: block; animation: t4 200ms cubic-bezier(.16, 1, .3, 1); }
-  @keyframes t4 { from { clip-path: inset(0 0 calc(100% - 28px) calc(100% - 96px) round 14px 0 0 14px); } to { clip-path: inset(0 0 0 0 round 14px 0 0 14px); } }
-
-  /* 5 · Drop down: details slide down 8px and fade below a header that stays in place, 180ms */
-  .t5 .det { display: none; } .t5.open .tab { display: none; }
-  .t5.open .det { display: block; animation: t5 180ms ease-out; }
-  @keyframes t5 { from { opacity: 0; transform: translateY(-8px); } }
-
-  /* Closing: each option plays its way out (shorter than the way in), then the tab comes back. */
-  .t2.closing .det { animation: t2 120ms ease-in reverse forwards; }
-  .t4.closing .det { animation: t4 160ms cubic-bezier(.7, 0, .84, 0) reverse forwards; }
-  .t5.closing .det { animation: t5 120ms ease-in reverse forwards; }
-  .t3.closing .det { opacity: 0; transition: opacity 100ms; }
-  /* the tab fades back in after the panel has gone */
-  .p:not(.open) .tab { animation: tabin 120ms ease-out; }
-  .t1:not(.open) .tab { animation: none; }
-  @keyframes tabin { from { opacity: 0; } }
+  /* 1 · Instant */
+  .t1 .det, .t1 .tab, .t1 .det > * { transition: none !important; }
+  /* 2 · Fade + scale from the tab's corner */
+  .t2 .det { transform: scale(.94); transform-origin: top right; } .t2.open .det { transform: none; }
+  /* 3 · Unfold: the glass grows out of the tab's box; content fades in once there is room */
+  .t3 .det { opacity: 1; clip-path: inset(0 0 calc(100% - 28px) calc(100% - 96px) round 14px 0 0 14px); }
+  .t3.open .det { clip-path: inset(0 0 0 0 round 14px 0 0 14px); }
+  .t3 .det > * { opacity: 0; } .t3.open .det > * { opacity: 1; transition-delay: 100ms; }
+  /* 4 · Slide out of the scale: moves in from the axis edge while it is revealed from the right */
+  .t4 .det { transform: translateX(16px); clip-path: inset(0 0 0 100% round 14px 0 0 14px); }
+  .t4.open .det { transform: none; clip-path: inset(0 0 0 0 round 14px 0 0 14px); }
+  /* 5 · Drop down */
+  .t5 .det { transform: translateY(-8px); } .t5.open .det { transform: none; }
 
   @media (prefers-reduced-motion: reduce) {
-    .t2.closing .det, .t4.closing .det, .t5.closing .det { animation: fade 100ms reverse forwards; }
-    .t2.open .det, .t4.open .det, .t5.open .det { animation: fade 120ms; } .t3, .t3 .det { transition: none !important; }
-    @keyframes fade { from { opacity: 0; } }
+    .det { transform: none !important; clip-path: none !important; }
+    .t3 .det { opacity: 0; } .t3.open .det { opacity: 1; }
   }
 </style>
 </head>
 <body>
 <h1>Hover open: pick a transition</h1>
-<p class="lead">Hover each minimized tab (it opens after 150ms and closes 300ms after you leave, like the extension). Every option now animates both ways: in on hover, out when you leave, with the exit a little shorter than the entrance; then the tab fades back in. Under reduced motion every option becomes a short fade.</p>
+<p class="lead">Hover each minimized tab (it opens after 150ms and closes 300ms after you leave, like the extension). Tab and panel are two glass layers that cross-fade, and every move is a CSS transition: it plays out the same way it came in (exit ease-in, entrance ease-out), the glass itself animates so nothing jumps, and moving back mid-way reverses from where it is. Under reduced motion every option becomes a short fade.</p>
 <div class="row" id="row"></div>
 <script>
-const det = `<div class="det"><div class="h"><b>+62.6%</b><span>Holding · Deep Dip 15m</span></div>
+const det = `<div class="det glass"><div class="h"><b>+62.6%</b><span>Holding · Deep Dip 15m</span></div>
   <div class="r"><span>Bought</span><span>398.20K</span></div><div class="r"><span>Stop</span><span class="st">332.82K</span></div>
   <div class="lbl">Buy checks · 4 of 4</div>
   <div class="c"><i></i><span>Under EMAs</span><span class="go">561.0K</span></div><div class="c"><i></i><span>MACD turn</span><span class="go">hist +13.8K</span></div>
   <div class="c"><i></i><span>RSI</span><span class="go">48</span></div><div class="c"><i></i><span>Support</span><span class="go">279–332K</span></div>
   <div class="lbl">Backtest</div><div class="r"><span>13 trades</span><span class="go">+5.8%</span></div></div>`;
-const tab = `<div class="tab"><b>+62.6%</b><small>15m</small><small>‹</small></div>`;
+const tab = `<div class="tab glass"><b>+62.6%</b><small>15m</small><small>‹</small></div>`;
 const opts = [
-  ["t1","1 · Instant","Swaps at once, no motion. Fastest, but the jump from a 96px tab to a 268px panel feels abrupt.","0ms in / 0ms out"],
-  ["t2","2 · Fade + scale","Details fade in while growing from the tab's top-right corner, like the popup dropdowns.","160ms · opacity 0→1 · scale .94→1 · origin top right · in 160ms ease-out · out 120ms ease-in (reverse)"],
-  ["t3","3 · Unfold","The tab itself widens, then grows down into the panel; the content fades in once there is room. Reads as one object changing shape.","width 180ms + height 220ms · content fade 160ms after 80ms · out: content fades 100ms, then the panel folds back into the tab"],
-  ["t4","4 · Slide out of the scale","The panel is revealed right-to-left and top-to-bottom from the tab, as if pulled out of the price scale it is docked on.","200ms · clip-path from the tab's box to full · in 200ms ease-out · out 160ms ease-in, pulled back into the scale"],
-  ["t5","5 · Drop down","Details fade and slide down 8px from the top. Quiet and familiar.","180ms · opacity 0→1 · translateY −8→0 · in 180ms ease-out · out 120ms ease-in (slides back up)"],
+  ["t1","1 · Instant","Swaps at once, no motion. Fastest, but the jump from a 96px tab to a 268px panel feels abrupt.","0ms both ways"],
+  ["t2","2 · Fade + scale","Details fade in while growing from the tab's top-right corner, like the popup dropdowns.","in: fade 160ms + scale .94→1 220ms ease-out · out: 140ms / 160ms ease-in, back into the corner"],
+  ["t3","3 · Unfold","The tab itself widens, then grows down into the panel; the content fades in once there is room. Reads as one object changing shape.","in: glass grows from the tab's box 220ms, content fades in after 100ms · out: content fades 120ms, glass folds back 160ms"],
+  ["t4","4 · Slide out of the scale","The panel is revealed right-to-left and top-to-bottom from the tab, as if pulled out of the price scale it is docked on.","in: slides 16px out of the scale + reveal from the right 220ms ease-out · out: 160ms ease-in, back into the scale"],
+  ["t5","5 · Drop down","Details fade and slide down 8px from the top. Quiet and familiar.","in: fade 160ms + slide down 8px 220ms ease-out · out: 140ms ease-in, slides back up"],
 ];
 const svg = `<svg viewBox="0 0 400 340" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,260 50,220 100,240 150,170 200,200 250,120 300,150 350,90 400,110"/></svg>`;
 document.getElementById("row").innerHTML = opts.map(([c,t,d,s]) => `<figure><div class="stage">${svg}
   <div class="axis"><i style="top:30px">1.20M</i><i style="top:110px">800.0K</i><i style="top:190px">400.0K</i><i style="top:270px">0.00</i></div>
   <div class="p ${c}">${tab}${det}</div></div><figcaption><b>${t}</b><p>${d}</p><small>${s}</small></figcaption></figure>`).join("");
-// Close = play the exit (class .closing) and only then drop .open; re-entering mid-exit cancels it.
-const OUT = { t1: 0, t2: 120, t3: 220, t4: 160, t5: 120 };
 for (const p of document.querySelectorAll(".p")) {
-  let timer, done;
-  const out = OUT[[...p.classList].find((c) => c in OUT)];
-  p.addEventListener("pointerenter", () => {
-    clearTimeout(timer); clearTimeout(done);
-    if (p.classList.contains("closing")) { p.classList.remove("closing"); return; }
-    timer = setTimeout(() => p.classList.add("open"), 150);
-  });
-  p.addEventListener("pointerleave", () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      if (!p.classList.contains("open")) return;
-      if (p.classList.contains("t3")) { p.classList.add("closing"); done = setTimeout(() => p.classList.remove("open", "closing"), 100); return; }
-      p.classList.add("closing");
-      done = setTimeout(() => p.classList.remove("open", "closing"), matchMedia("(prefers-reduced-motion: reduce)").matches ? 100 : out);
-    }, 300);
-  });
+  let timer;
+  p.addEventListener("pointerenter", () => { clearTimeout(timer); timer = setTimeout(() => p.classList.add("open"), p.classList.contains("open") ? 0 : 150); });
+  p.addEventListener("pointerleave", () => { clearTimeout(timer); timer = setTimeout(() => p.classList.remove("open"), 300); });
 }
 </script>
 </body>
