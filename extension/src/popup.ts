@@ -364,7 +364,7 @@ async function main(): Promise<void> {
     if (key && changes[key]) show(changes[key].newValue as Summary | undefined);
   });
 
-  for (const name of ["showTable", "drawMarkers", "showStop", "showIndicators", "notify"] as const) {
+  for (const name of ["showTable", "hoverExpand", "drawMarkers", "showStop", "showIndicators", "notify"] as const) {
     const input = $(name) as HTMLInputElement;
     input.checked = settings[name];
     input.addEventListener("change", () => void chrome.storage.local.set({ [name]: input.checked }));

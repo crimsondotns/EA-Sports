@@ -173,8 +173,30 @@ document.documentElement.appendChild(host);
 const $ = (id: string) => root.getElementById(id)!;
 
 // Collapse to the header line (title + signal); remembered in settings.
+// Hovering the minimized tab opens it (setting hoverExpand) without changing the saved state;
+// it stays docked where the tab was, so the pointer doesn't fall off it, and closes on leave.
+let peeking = false;
+{
+  const table = $("table");
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const set = (on: boolean) => {
+    if (peeking === on) return;
+    peeking = on;
+    paintCollapsed();
+  };
+  table.addEventListener("pointerenter", (e) => {
+    if (e.pointerType !== "mouse" || !settings.tableCollapsed || !settings.hoverExpand) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => set(true), 150);
+  });
+  table.addEventListener("pointerleave", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => set(false), 300);
+  });
+}
+
 function paintCollapsed(): void {
-  const collapsed = settings.tableCollapsed;
+  const collapsed = settings.tableCollapsed && !peeking;
   $("table").classList.toggle("collapsed", collapsed);
   const t = $("toggle");
   t.setAttribute("aria-expanded", String(!collapsed));
@@ -184,6 +206,8 @@ function paintCollapsed(): void {
 // Toggle right away, then save: after the extension is reloaded this old content script can't
 // reach chrome.storage any more (the call throws), and the button used to do nothing then.
 $("toggle").addEventListener("click", () => {
+  // While hover-opened, the click pins the panel open.
+  peeking = false;
   settings = { ...settings, tableCollapsed: !settings.tableCollapsed };
   paintCollapsed();
   renderTable();
@@ -726,6 +750,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     renderTable();
   }
   if (prev.tableCollapsed !== settings.tableCollapsed) {
+    peeking = false;
     paintCollapsed();
     renderTable();
   }

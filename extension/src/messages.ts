@@ -64,6 +64,8 @@ export interface Settings {
   /** Add the active strategy's indicators to the chart. */
   showIndicators: boolean;
   /** Background opacity of the chart table, 0.2–1. */
+  /** Hovering the minimized panel opens it until the pointer leaves. */
+  hoverExpand: boolean;
   tableOpacity: number;
   /** Backdrop blur behind the chart panel, px (0 = off). */
   tableBlur: number;
@@ -73,7 +75,7 @@ export interface Settings {
   tableOffsetY: number;
 }
 
-export const DEFAULT_SETTINGS: Settings = { theme: "dark", lang: "en", strategy: "dip", showTable: true, drawMarkers: true, calcFrom: "31d", showStop: true, notify: true, showIndicators: true, tableOpacity: 0.4, tableBlur: 24, tableCollapsed: false, tableOffsetY: 0 };
+export const DEFAULT_SETTINGS: Settings = { theme: "dark", lang: "en", strategy: "dip", showTable: true, drawMarkers: true, calcFrom: "31d", showStop: true, notify: true, showIndicators: true, hoverExpand: true, tableOpacity: 0.4, tableBlur: 24, tableCollapsed: false, tableOffsetY: 0 };
 export const summaryKey = (tabId: number) => `summary:${tabId}`;
 
 export type CalcFrom = "31d" | "start";

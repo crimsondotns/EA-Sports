@@ -38,6 +38,8 @@ const TH: Record<string, string> = {
   "Background blur": "ความเบลอพื้นหลัง",
   "How much the candles behind blur, up to 32px (Off = solid panel)": "เบลอแท่งเทียนด้านหลังได้ถึง 32px (ปิด = แผงทึบ)",
   Off: "ปิด",
+  "Open on hover": "เปิดเมื่อชี้เมาส์",
+  "Hovering the minimized panel shows the details until you move away": "ชี้เมาส์ที่แผงที่ย่ออยู่ เพื่อดูรายละเอียดจนกว่าจะเลื่อนเมาส์ออก",
   "Buy / sell markers": "เครื่องหมายซื้อ / ขาย",
   "Draw backtest entries and exits on the chart": "วาดจุดเข้าและออกจาก backtest บนกราฟ",
   "STOP line": "เส้น STOP",
