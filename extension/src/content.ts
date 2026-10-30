@@ -86,14 +86,18 @@ root.innerHTML = `
     --go: #0e9f6e; --stop: #d92d20; --near: #b54708; --invert: #14161a; --on-invert: #fff; }
   /* One panel: the pill row is its header and the details open inside it, under a hairline. */
   #table { display: grid; pointer-events: auto; color: var(--text); width: max-content; min-width: 240px; max-width: 280px;
-    border-radius: 14px; background: rgb(var(--bg) / var(--table-opacity, .9)); overflow: hidden;
+    border-radius: 16px; background: rgb(var(--bg) / var(--table-opacity, .6)); overflow: hidden;
+    /* Frosted glass, like the popup dropdowns: blur what is behind, hairline edge, soft deep shadow. */
+    -webkit-backdrop-filter: blur(20px) saturate(140%); backdrop-filter: blur(20px) saturate(140%);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%), 0 12px 40px rgb(0 0 0 / 45%);
     font: 600 12.5px/1.4 "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-variant-numeric: tabular-nums; }
 
-  /* A see-through light card over the dark chart turns grey and the dark text drowns in it, so light stays near solid. */
-  :host(.light) #table { background: rgb(var(--bg) / max(var(--table-opacity, .9), .95)); }
+  /* A see-through light card over the dark chart turns grey and the dark text drowns in it, so light stays at least 80% (white glass). */
+  :host(.light) #table { background: rgb(255 255 255 / max(var(--table-opacity, .6), .8));
+    box-shadow: inset 0 0 0 1px rgb(20 22 26 / 8%), 0 12px 40px rgb(0 0 0 / 30%); }
   #table.collapsed { min-width: 0; border-radius: 999px; }
-  .pill { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 4px; }
+  .pill { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 6px; }
   #title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   #badge { border-radius: 999px; padding: 3px 9px; font-weight: 800; font-size: 12px; background: var(--invert); color: var(--on-invert); }
   #badge.pos { background: var(--go); color: #000; } #badge.neg { background: var(--stop); color: #fff; }
@@ -111,11 +115,11 @@ root.innerHTML = `
   #toggle:active { background: var(--hover); }
   :host(.dragging) #grip { cursor: grabbing; color: var(--text); }
   @media (hover: hover) and (pointer: fine) { #toggle:hover, #grip:hover { background: var(--hover); color: var(--text); } }
-  #body { border-top: 1px solid var(--line); padding: 8px 12px 10px; display: grid; gap: 4px; font-weight: 500; }
+  #body { padding: 2px 12px 12px; display: grid; gap: 4px; font-weight: 500; }
   #table.collapsed #body { display: none; }
   .r { display: flex; justify-content: space-between; gap: 12px; white-space: nowrap; }
   .r > span:first-child { color: var(--text-2); }
-  .sep { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; }
+  .sep { margin-top: 6px; }
   .muted { color: var(--muted); } .sub { color: var(--text-2); }
   .ok, .pos { color: var(--go); } .no { color: var(--near); } .neg { color: var(--stop); }
   .msg { white-space: normal; color: var(--text-2); }
