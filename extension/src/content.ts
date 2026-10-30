@@ -3,7 +3,7 @@
 // and publishes a summary for the popup.
 import type { Bar } from "../../src/dexscreener/bars.ts";
 import { toCandles, type Candle } from "../../src/indicators.ts";
-import { runBacktest, type BacktestResult, type Position } from "../../src/backtest/engine.ts";
+import { runBacktest, type BacktestResult } from "../../src/backtest/engine.ts";
 import { setupStrategy, type StrategySetup } from "./strategies.ts";
 import { L, setLang, tr, translatePage } from "./i18n.ts";
 import {
@@ -465,7 +465,8 @@ function drawOnTradingView(): void {
     rangeLow: last.setup.strategy.prepare(candles).rangeLow?.(candles.length - 1) ?? null,
     sellLabel: last.setup.sellLabel ?? "SELL 10%",
     sellLimit: (() => {
-      const pos = openPosition();
+      // The engine's own position after the last bar, so the alert uses the same stop and highest close as the backtest.
+  const pos = result.openPosition;
       return pos ? (last.setup.strategy.prepare(candles).limitSell?.(candles.length - 1, pos)?.price ?? null) : null;
     })(),
   };
@@ -473,23 +474,6 @@ function drawOnTradingView(): void {
 }
 
 // ---------- notifications ----------
-
-/** The backtest's open position rebuilt as the strategy sees it, or null when flat. */
-function openPosition(): Position | null {
-  if (!last) return null;
-  const { candles, result } = last;
-  const open = result.trades.at(-1);
-  if (open?.reason !== "end") return null;
-  return {
-    entryIndex: candles.findIndex((c) => c.time === open.entryTime),
-    entryPrice: open.entryPrice,
-    stop: result.stops.at(-1) ?? 0,
-    highestClose: open.entryPrice,
-    costRecovered: open.costBackTime !== undefined,
-    partialsSold: open.partials?.length ?? 0,
-    lastSellPrice: open.partials?.at(-1)?.price ?? 0,
-  };
-}
 
 function notifySignals(): void {
   if (!last) return;
@@ -518,7 +502,8 @@ function notifySignals(): void {
     once("zone", `EA · price in buy zone · ${last.setup.name}`, `${label}\n${plan.kind === "below" ? `under ${fmt(plan.high)}` : `${fmt(plan.low)}–${fmt(plan.high)}`} — ${plan.waitFor}`);
   }
   // 10% signal sells keep the position open, so they never show up as an exit.
-  const pos = openPosition();
+  // The engine's own position after the last bar, so the alert uses the same stop and highest close as the backtest.
+  const pos = result.openPosition;
   const sellPct = pos && pos.partialsSold < 9 ? (strat.partialExit?.(candles.length - 1, pos) ?? 0) : 0;
   if (pos && sellPct > 0) {
     once("partial", `EA SELL ${Math.round(sellPct * 100)}% · ${last.setup.name}`, `${label}\nClose ${fmt(lastBar.close)} (${pct((lastBar.close / pos.entryPrice - 1) * 100)}) — sell at next bar open`);

@@ -123,6 +123,8 @@ export interface BacktestResult {
   equity: { time: number; value: number }[];
   /** Stop level active during each bar, null when flat. */
   stops: (number | null)[];
+  /** The position still open after the last bar (stop and highest close already updated for it), or null when flat. */
+  openPosition: Position | null;
   indicators: IndicatorSeries[];
   stats: Stats;
 }
@@ -339,6 +341,9 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
 
     equity.push({ time: bar.time, value: cash + ((pos?.qty ?? 0) + freeQty) * bar.close });
   }
+  const openPosition: Position | null = pos
+    ? { entryIndex: pos.entryIndex, entryPrice: pos.entryPrice, stop: pos.stop, highestClose: pos.highestClose, costRecovered: pos.costRecovered, partialsSold: pos.partialsSold, lastSellPrice: pos.lastSellPrice }
+    : null;
   if (pos) close(candles.length - 1, candles.at(-1)!.close, "end");
   // Free tokens are valued as if sold at the last close, after exit costs.
   const freeValue = freeQty * candles.at(-1)!.close * (1 - cfg.slippage) * (1 - cfg.feeRate);
@@ -349,6 +354,7 @@ export function runBacktest(candles: Candle[], strategy: Strategy, cfg: Backtest
     trades,
     equity,
     stops,
+    openPosition,
     indicators: s.indicators ?? [],
     stats: { ...stats, freeQty, freeValue, realizedCash: cash },
   };
