@@ -118,23 +118,24 @@ root.innerHTML = `
   #toggle:active { background: var(--hover); }
   :host(.dragging) #grip { cursor: grabbing; color: var(--text); }
   @media (hover: hover) and (pointer: fine) { #toggle:hover, #grip:hover { background: var(--hover); color: var(--text); } }
-  #body { padding: 4px 16px 16px; display: grid; gap: 4px; font-weight: 500; font-size: 13px; line-height: 20px; }
+  #body { padding: 4px 16px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; font-weight: 500; font-size: 13px; line-height: 20px; }
   #table.collapsed #body { display: none; }
   .r { display: flex; justify-content: space-between; gap: 12px; white-space: nowrap; }
-  .r > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; } .r > span:last-child { flex: none; }
+  .r > span:first-child { flex: none; } .r > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: right; }
   .r > span:first-child { color: var(--text-2); }
   .sep { margin-top: 8px; }
   /* Checklist (table option 5): opened, the count is the headline and the buy checks read as a list of round marks. */
-  #table:not(.collapsed) { width: 268px; }
+  #table:not(.collapsed) { width: 268px; grid-template-columns: minmax(0, 1fr); }
   #table:not(.collapsed) #badge { background: none; padding: 0; font-size: 22px; line-height: 28px; letter-spacing: -.02em; }
   #table:not(.collapsed) #badge:not(.pos):not(.neg) { color: var(--text); }
   #table:not(.collapsed) #seg { display: none; }
   .lbl { font-size: 11px; font-weight: 700; color: var(--muted); line-height: 16px; margin: 12px 0 4px; }
-  .c { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; white-space: nowrap; }
+  .c { display: grid; grid-template-columns: 16px auto minmax(0, 1fr); gap: 8px; align-items: center; white-space: nowrap; }
   .c i { width: 14px; height: 14px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--muted); display: grid; place-items: center;
     font: 800 9px/1 "Manrope", ui-sans-serif, system-ui, sans-serif; font-style: normal; }
   .c i.ok { box-shadow: none; background: var(--go); color: var(--on-invert); }
-  .c > span:nth-child(2) { color: var(--text-2); overflow: hidden; text-overflow: ellipsis; }
+  .c > span:nth-child(2) { color: var(--text-2); }
+  .c > span:nth-child(3) { min-width: 0; overflow: hidden; text-overflow: ellipsis; text-align: right; }
   .muted { color: var(--muted); } .sub { color: var(--text-2); }
   .ok, .pos { color: var(--go); } .no { color: var(--near); } .neg { color: var(--stop); }
   .msg { white-space: normal; color: var(--text-2); }
@@ -304,7 +305,7 @@ function summarize(): Summary | null {
   };
 }
 
-const row = (k: string, v: string, cls = "", sep = false) => `<div class="r${sep ? " sep" : ""}"><span>${k}</span><span class="${cls}">${v}</span></div>`;
+const row = (k: string, v: string, cls = "", sep = false) => `<div class="r${sep ? " sep" : ""}"><span>${k}</span><span class="${cls}" title="${v}">${v}</span></div>`;
 
 function renderTable(): void {
   positionTable();
@@ -351,7 +352,7 @@ function renderTable(): void {
     ...sum.conditions.map(
       (c, k) =>
         `<div class="c"><i class="${c.ok ? "ok" : ""}" aria-label="${c.ok ? "passed" : "not yet"}">${c.ok ? "✓" : ""}</i>` +
-        `<span>${shortLabels[k] ?? c.label}</span><span class="${c.ok ? "ok" : "no"}">${c.detail.split(" vs ")[0]!}</span></div>`,
+        `<span>${shortLabels[k] ?? c.label}</span><span class="${c.ok ? "ok" : "no"}" title="${c.detail}">${c.detail.split(" vs ")[0]!}</span></div>`,
     ),
     `<div class="lbl">Backtest</div>`,
     row(`${sum.stats.trades} trades`, pct(sum.stats.returnPct), sum.stats.returnPct >= 0 ? "pos" : "neg"),
