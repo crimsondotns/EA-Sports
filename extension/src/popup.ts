@@ -125,13 +125,14 @@ function tooltip() {
 
 /** Listbox dropdown: click or Enter/Space/↓ opens it, ↑↓ move, Enter selects, Esc/Tab/outside click close. */
 /** A listbox picker built from `${id}Trigger`, `${id}Menu` and `${id}Value` in popup.html. */
-function dropdown(id: string, initial: string, onChange: (value: string) => void): void {
+function dropdown(id: string, initial: string, onChange: (value: string) => void): { select: (value: string) => void } {
   const trigger = $(`${id}Trigger`) as HTMLButtonElement;
   const menu = $(`${id}Menu`);
   const options = [...menu.querySelectorAll<HTMLLIElement>('[role="option"]')];
   let active = 0;
   const tip = tooltip();
-  const infoOf = (o: HTMLElement) => o.querySelector<HTMLElement>(".info")!;
+  // Options may carry an info icon whose tooltip describes them (the strategy picker); others have none.
+  const infoOf = (o: HTMLElement) => o.querySelector<HTMLElement>(".info");
   // The option's description (also its aria-describedby), kept outside the listbox.
   const tipText = (o: HTMLElement) => document.getElementById(o.getAttribute("aria-describedby") ?? "")?.textContent ?? "";
 
@@ -160,7 +161,8 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
   /** Keyboard navigation shows the active option's conditions right away. */
   const setActiveByKey = (i: number) => {
     setActive(i);
-    tip.show(infoOf(options[active]!), tipText(options[active]!), 0);
+    const info = infoOf(options[active]!);
+    if (info) tip.show(info, tipText(options[active]!), 0);
   };
   /** Below the trigger by default; above it when there is more room there. Max height fits the space. */
   const place = () => {
@@ -223,6 +225,7 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
   });
   options.forEach((o, k) => {
     const info = infoOf(o);
+    if (info) {
     info.addEventListener("pointerenter", (e) => {
       if (e.pointerType === "mouse") tip.show(info, tipText(o), 500);
     });
@@ -235,6 +238,7 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
       if (tip.isOpenOn(info)) tip.hide(0);
       else tip.show(info, tipText(o), 0);
     });
+    }
     o.addEventListener("mousemove", () => {
       if (enabled(o)) setActive(k);
     });
@@ -246,9 +250,10 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
   });
   // pointerdown covers mouse, pen and touch.
   document.addEventListener("pointerdown", (e) => {
-    if (!menu.hidden && !(e.target as Element).closest(".dropdown")) close(false);
+    if (!menu.hidden && (e.target as Element).closest(".dropdown") !== menu.parentElement) close(false);
   });
   select(initial, false);
+  return { select: (value) => select(value, false) };
 }
 
 // ---------- watchlist: every open DEX Screener tab's latest summary ----------
@@ -336,22 +341,19 @@ async function main(): Promise<void> {
     "31d": "Signals from a fixed point 31 days back. Loads up to 12 pages.",
     start: "Signals from the pair's first bar. Loads the whole history once, up to 60 pages.",
   } as const;
-  const radios = [...document.querySelectorAll<HTMLInputElement>('input[name="calcFrom"]')];
+  let calcFrom = settings.calcFrom;
   const paintCalc = (v: CalcFrom) => ($("calcHint").textContent = hints[v]);
-  for (const radio of radios) {
-    radio.checked = radio.value === settings.calcFrom;
-    radio.addEventListener("change", () => {
-      if (!radio.checked) return;
-      paintCalc(radio.value as CalcFrom);
-      void chrome.storage.local.set({ calcFrom: radio.value });
-    });
-  }
-  paintCalc(settings.calcFrom);
+  dropdown("calc", calcFrom, (value) => {
+    calcFrom = value as CalcFrom;
+    paintCalc(calcFrom);
+    void chrome.storage.local.set({ calcFrom });
+  });
+  paintCalc(calcFrom);
   const recalc = $("recalc") as HTMLButtonElement;
   recalc.disabled = !onDexScreener || tab?.id === undefined;
   if (recalc.disabled) $("recalcStatus").textContent = "Open a pair's chart first.";
   recalc.addEventListener("click", () => {
-    const from = (radios.find((r) => r.checked)?.value ?? "31d") as CalcFrom;
+    const from = calcFrom;
     recalc.disabled = true;
     recalc.textContent = "Loading…";
     $("recalcStatus").textContent = "";
@@ -383,15 +385,15 @@ async function main(): Promise<void> {
   const paintTheme = (t: Settings["theme"]) => {
     document.documentElement.dataset.theme = t;
     for (const b of document.querySelectorAll<HTMLButtonElement>("[data-theme-set]")) b.setAttribute("aria-pressed", String(b.dataset.themeSet === t));
-    for (const r of document.querySelectorAll<HTMLInputElement>('input[name="theme"]')) r.checked = r.value === t;
+    themePicker.select(t);
   };
+  const themePicker = dropdown("theme", settings.theme, (value) => setTheme(value as Settings["theme"]));
   const setTheme = (t: Settings["theme"]) => {
     paintTheme(t);
     void chrome.storage.local.set({ theme: t });
   };
   paintTheme(settings.theme);
   for (const b of document.querySelectorAll<HTMLButtonElement>("[data-theme-set]")) b.addEventListener("click", () => setTheme(b.dataset.themeSet as Settings["theme"]));
-  for (const r of document.querySelectorAll<HTMLInputElement>('input[name="theme"]')) r.addEventListener("change", () => r.checked && setTheme(r.value as Settings["theme"]));
 
   const notifyInput = $("notify") as HTMLInputElement;
   const paintAlerts = () => ($("alertState").textContent = notifyInput.checked ? "Alerts on" : "Alerts off");

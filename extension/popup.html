@@ -163,15 +163,6 @@
   label.switch:has(input:disabled) { cursor: not-allowed; color: var(--color-text-disabled); }
   label.switch input:disabled { cursor: not-allowed; opacity: .45; }
 
-  /* Segmented choice (radio group) */
-  .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; background: var(--color-surface);
-    border: 1px solid var(--color-button-border); border-radius: var(--radius-pill); }
-  .segmented label { position: relative; display: flex; align-items: center; justify-content: center; min-height: 30px;
-    border-radius: var(--radius-pill); color: var(--color-text-secondary); cursor: pointer; transition: background-color var(--transition-fast), color var(--transition-fast); }
-  .segmented input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
-  .segmented label:has(input:checked) { background: var(--color-button-primary-bg); color: var(--color-button-primary-text); font-weight: 600; }
-  .segmented label:not(:has(input:checked)):active { background: var(--color-surface-pressed); }
-  .segmented label:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: -2px; }
   .hint { display: block; color: var(--color-text-muted); font-size: var(--font-size-small); padding-top: 8px; }
 
   /* Buttons */
@@ -280,7 +271,6 @@
     .icon-button:hover { background: var(--color-surface-hover); }
     .watch button:hover { background: var(--color-surface-hover); }
     .theme button[aria-pressed="false"]:hover { background: var(--color-surface-hover); color: var(--color-text-primary); }
-    .segmented label:not(:has(input:checked)):hover { background: var(--color-surface-hover); color: var(--color-text-primary); }
     .dropdown-trigger:hover:not(:disabled) { background: var(--color-trigger-hover-bg); border-color: var(--color-border-strong); }
     .dropdown-menu li .info:hover { color: var(--color-text-primary); }
   }
@@ -317,9 +307,22 @@
     </header>
     <section aria-labelledby="themeLabel">
       <h2 id="themeLabel">Appearance</h2>
-      <div class="segmented" role="radiogroup" aria-labelledby="themeLabel">
-        <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
-        <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+      <div class="dropdown">
+        <button type="button" class="dropdown-trigger" id="themeTrigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="themeMenu"
+          aria-labelledby="themeLabel themeValue">
+          <span id="themeValue">Dark</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <ul class="dropdown-menu" id="themeMenu" role="listbox" aria-labelledby="themeLabel" tabindex="-1" hidden>
+        <li role="option" id="opt-theme-dark" data-value="dark" aria-selected="false">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">Dark</span>
+        </li>
+        <li role="option" id="opt-theme-light" data-value="light" aria-selected="false">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">Light</span>
+        </li>
+        </ul>
       </div>
     </section>
   <section>
@@ -387,9 +390,22 @@
 
     <section aria-labelledby="calcLabel">
       <h2 id="calcLabel">Calculate from</h2>
-      <div class="segmented" role="radiogroup" aria-labelledby="calcLabel">
-        <label><input type="radio" name="calcFrom" value="31d"><span>Last 31 days</span></label>
-        <label><input type="radio" name="calcFrom" value="start"><span>Pair start</span></label>
+      <div class="dropdown">
+        <button type="button" class="dropdown-trigger" id="calcTrigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="calcMenu"
+          aria-labelledby="calcLabel calcValue">
+          <span id="calcValue">Last 31 days</span>
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <ul class="dropdown-menu" id="calcMenu" role="listbox" aria-labelledby="calcLabel" tabindex="-1" hidden>
+        <li role="option" id="opt-calc-31d" data-value="31d" aria-selected="false">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">Last 31 days</span>
+        </li>
+        <li role="option" id="opt-calc-start" data-value="start" aria-selected="false">
+          <svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="name">Pair start</span>
+        </li>
+        </ul>
       </div>
       <small class="hint" id="calcHint"></small>
       <div class="test-row">
