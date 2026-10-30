@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B · Price Ladder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Colours are TradingView's own, so the popup and panel read as part of the chart they sit on. */
+  :root {
+    --chart: #131722; --surface: #1c2030; --raised: #242a3d; --line: #2a2e39;
+    --text: #d1d4dc; --strong: #fff; --muted: #787b86;
+    --up: #26a69a; --down: #ef5350; --zone: #f0b90b;
+    font-family: "Barlow", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0c0e15; color: var(--text); padding: 32px 24px 64px; }
+  .num, .cond { font-family: "Barlow Semi Condensed", "Barlow", sans-serif; font-variant-numeric: tabular-nums; }
+  .page-head { max-width: 1560px; margin: 0 auto 24px; }
+  .page-head h1 { font-size: 22px; font-weight: 600; color: var(--strong); }
+  .page-head p { color: var(--muted); font-size: 14px; margin-top: 6px; max-width: 72ch; line-height: 1.5; }
+  .board { display: flex; flex-wrap: wrap; gap: 32px; max-width: 1560px; margin: 0 auto; align-items: flex-start; }
+  figure { display: grid; gap: 10px; }
+  figcaption { color: var(--muted); font-size: 12px; }
+
+  .popup { width: 360px; background: var(--chart); border-radius: 12px; overflow: hidden; font-size: 14px; box-shadow: 0 0 0 1px var(--line); }
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 0; color: var(--muted); font-size: 13px; }
+  .top b { color: var(--text); font-weight: 600; }
+  .pair { padding: 4px 16px 0; }
+  .pair h2 { font-family: "Barlow Semi Condensed"; font-size: 26px; font-weight: 700; color: var(--strong); letter-spacing: 0.01em; }
+  .pair p { color: var(--muted); font-size: 13px; }
+
+  /* The memorable part: the position drawn as a price ladder, levels spaced by real distance. */
+  .ladder { position: relative; height: 230px; margin: 16px 16px 0; border-left: 2px solid var(--line); }
+  .lvl { position: absolute; left: -2px; right: 0; display: flex; align-items: center; gap: 10px; transform: translateY(-50%); }
+  .lvl::before { content: ""; width: 14px; height: 2px; background: currentColor; }
+  .lvl .k { color: var(--muted); font-size: 13px; width: 64px; }
+  .lvl .v { font-family: "Barlow Semi Condensed"; font-size: 18px; font-weight: 600; color: var(--strong); }
+  .lvl .d { margin-left: auto; font-family: "Barlow Semi Condensed"; font-size: 14px; }
+  .lvl.now { color: var(--up); }
+  .lvl.now .k { color: var(--up); font-weight: 600; }
+  .lvl.now .v { font-size: 30px; color: var(--up); }
+  .lvl.entry { color: var(--text); }
+  .lvl.stop { color: var(--down); }
+  .lvl.stop .v { color: var(--down); }
+  .gain { position: absolute; left: -2px; width: 2px; background: var(--up); }
+  .risk { position: absolute; left: -2px; width: 2px; background: var(--down); opacity: .6; }
+
+  .next { margin: 18px 16px 0; padding: 12px 14px; background: var(--surface); border-radius: 10px; font-size: 13px; line-height: 1.45; }
+  .next b { color: var(--strong); font-weight: 600; }
+  .cond { display: flex; gap: 6px; padding: 14px 16px 16px; flex-wrap: wrap; }
+  .cond span { font-size: 13px; padding: 5px 10px; border-radius: 6px; background: var(--surface); color: var(--muted); }
+  .cond span.ok { color: var(--up); }
+  .foot { display: flex; border-top: 1px solid var(--line); }
+  .foot span { flex: 1; text-align: center; padding: 12px 0; color: var(--muted); font-size: 13px; }
+  .foot span.on { color: var(--strong); box-shadow: inset 0 2px 0 var(--strong); }
+
+  .list { list-style: none; padding: 6px 0; }
+  .list li { display: grid; grid-template-columns: 4px 1fr auto; gap: 0 12px; align-items: center; padding: 10px 16px 10px 0; }
+  .list li i { align-self: stretch; border-radius: 0 3px 3px 0; background: var(--line); }
+  .list li.buy i { background: var(--up); } .list li.hold i { background: var(--up); opacity: .45; } .list li.zone i { background: var(--zone); }
+  .list b { color: var(--strong); font-weight: 600; font-family: "Barlow Semi Condensed"; font-size: 17px; }
+  .list small { display: block; color: var(--muted); font-size: 12px; }
+  .list .r { text-align: right; font-family: "Barlow Semi Condensed"; font-size: 16px; font-weight: 600; }
+  .list .r small { font-family: "Barlow"; font-weight: 400; }
+  .up { color: var(--up); } .dn { color: var(--down); } .zn { color: var(--zone); }
+
+  .set { padding: 4px 16px 16px; }
+  .set h3 { font-size: 13px; font-weight: 500; color: var(--muted); margin: 18px 0 8px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface); border-radius: 8px; padding: 3px; }
+  .seg span { text-align: center; padding: 8px; border-radius: 6px; color: var(--muted); }
+  .seg .on { background: var(--raised); color: var(--strong); }
+  .btn { margin-top: 10px; height: 40px; border-radius: 8px; background: var(--strong); color: #000; font-weight: 600; display: grid; place-items: center; }
+  .toggle { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .sw { width: 32px; height: 18px; border-radius: 999px; background: var(--up); position: relative; }
+  .sw::after { content: ""; position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+  .sw.off { background: var(--raised); } .sw.off::after { left: 2px; right: auto; background: var(--muted); }
+
+  .stage { width: 640px; height: 300px; position: relative; background: var(--chart); border-radius: 12px; overflow: hidden; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .panel { position: absolute; top: 12px; right: 12px; background: rgb(28 32 48 / 92%); border-radius: 8px; padding: 8px 12px; display: grid; grid-template-columns: auto auto; gap: 2px 16px; align-items: baseline; }
+  .panel .big { grid-column: span 2; font-family: "Barlow Semi Condensed"; font-size: 24px; font-weight: 700; color: var(--up); }
+  .panel small { color: var(--muted); font-size: 12px; }
+  .panel span { font-family: "Barlow Semi Condensed"; font-size: 14px; text-align: right; }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>B · Price Ladder</h1>
+  <p>Built from TradingView's own colours so it looks like part of the chart. The popup draws the trade as a price ladder: where price is now, where you bought and where the stop sits, spaced by real distance, so risk and gain read at a glance.</p>
+</header>
+<div class="board">
+  <figure>
+    <div class="popup">
+      <div class="top"><b>Sharp Low</b><span>15m</span></div>
+      <div class="pair"><h2>MOMO / SOL</h2><p>Holding since 21 Oct 08:15</p></div>
+      <div class="ladder">
+        <div class="gain" style="top:12%;height:43%"></div>
+        <div class="risk" style="top:55%;height:35%"></div>
+        <div class="lvl now" style="top:12%"><span class="k">Now</span><span class="v">166.0K</span><span class="d">+123.5%</span></div>
+        <div class="lvl entry" style="top:55%"><span class="k">Bought</span><span class="v">74.30K</span></div>
+        <div class="lvl stop" style="top:90%"><span class="k">Stop</span><span class="v">54.58K</span><span class="d">−26.5%</span></div>
+      </div>
+      <p class="next">Next: <b>sell 10%</b> on the first 15m close with RSI at 80 or higher. RSI is 73 now.</p>
+      <div class="cond"><span class="ok">Fell 12.4%</span><span class="ok">20-bar low</span><span>Close at 38%</span></div>
+      <div class="foot"><span class="on">Signal</span><span>Watchlist</span><span>Settings</span></div>
+    </div>
+    <figcaption>Popup, holding a position</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup">
+      <div class="top"><b>5 pairs open</b><span>sorted by action</span></div>
+      <ul class="list">
+        <li class="buy"><i></i><div><b>ASTEROID / SOL</b><small>15m · fell 14.2% · bar closes in 6 min</small></div><div class="r up">Buy<small>next open</small></div></li>
+        <li class="hold"><i></i><div><b>MOMO / SOL</b><small>15m · stop 54.58K</small></div><div class="r up">+123.5%</div></li>
+        <li class="zone"><i></i><div><b>CASHCAT / ETH</b><small>1h · 2.1% above the zone</small></div><div class="r zn">Near</div></li>
+        <li><i></i><div><b>Ban / SOL</b><small>15m · 1 of 3 checks</small></div><div class="r" style="color:var(--muted)">Wait</div></li>
+        <li><i></i><div><b>PENGU / SOL</b><small>1h · 0 of 3 checks</small></div><div class="r" style="color:var(--muted)">Wait</div></li>
+      </ul>
+      <div class="foot"><span>Signal</span><span class="on">Watchlist</span><span>Settings</span></div>
+    </div>
+    <figcaption>Watchlist</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup">
+      <div class="set">
+        <h3>History to calculate from</h3>
+        <div class="seg"><span class="on">Last 31 days</span><span>Pair start</span></div>
+        <div class="btn">Recalculate</div>
+        <h3>On the chart</h3>
+        <div class="toggle"><span>Signal panel</span><span class="sw"></span></div>
+        <div class="toggle"><span>Buy and sell markers</span><span class="sw"></span></div>
+        <div class="toggle"><span>Stop line</span><span class="sw"></span></div>
+        <div class="toggle"><span>Indicators</span><span class="sw off"></span></div>
+        <h3>Alerts</h3>
+        <div class="toggle"><span>Notify on new signals</span><span class="sw"></span></div>
+      </div>
+      <div class="foot"><span>Signal</span><span>Watchlist</span><span class="on">Settings</span></div>
+    </div>
+    <figcaption>Settings: tabs at the bottom instead of icons</figcaption>
+  </figure>
+
+  <figure>
+    <div class="stage">
+      <svg class="chart"></svg>
+      <div class="panel">
+        <div class="big">+123.5%</div>
+        <small>Bought</small><span>74.30K</span>
+        <small>Stop</small><span class="dn">54.58K</span>
+        <small>Next sell</small><span>RSI 73 / 80</span>
+      </div>
+    </div>
+    <figcaption>On-chart panel: only what matters for the open trade</figcaption>
+  </figure>
+</div>
+<script src="chart.js"></script>
+</body>
+</html>

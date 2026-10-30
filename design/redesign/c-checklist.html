@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C · Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Light: reads as a separate instrument next to the dark chart, and stays legible in daylight. */
+  :root {
+    --paper: #f5f6f8; --card: #fff; --line: #e3e6eb; --ink: #14161a; --ink-2: #5a606b; --faint: #9aa0aa;
+    --go: #0e9f6e; --go-soft: #e3f6ee; --stop: #d92d20; --near: #b54708; --near-soft: #fdf1e3;
+    font-family: "Manrope", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #e9ebef; color: var(--ink); padding: 32px 24px 64px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .page-head { max-width: 1560px; margin: 0 auto 24px; }
+  .page-head h1 { font-size: 22px; font-weight: 700; }
+  .page-head p { color: var(--ink-2); font-size: 14px; margin-top: 6px; max-width: 72ch; line-height: 1.55; }
+  .board { display: flex; flex-wrap: wrap; gap: 32px; max-width: 1560px; margin: 0 auto; align-items: flex-start; }
+  figure { display: grid; gap: 10px; }
+  figcaption { color: var(--ink-2); font-size: 12px; }
+
+  .popup { width: 360px; background: var(--paper); border-radius: 16px; overflow: hidden; font-size: 14px; box-shadow: 0 1px 2px rgb(20 22 26 / 8%), 0 8px 24px rgb(20 22 26 / 8%); }
+  .head { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px 6px; }
+  .head h2 { font-size: 17px; font-weight: 800; }
+  .head p { font-size: 12px; color: var(--ink-2); }
+  .tabs { display: flex; gap: 4px; }
+  .tabs span { padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+  .tabs .on { background: var(--ink); color: #fff; }
+
+  /* The memorable part: a gate that fills as each buy check passes. */
+  .gate { margin: 12px 14px; padding: 18px; background: var(--card); border-radius: 14px; }
+  .gate .score { display: flex; align-items: baseline; gap: 8px; }
+  .gate .score b { font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+  .gate .score span { color: var(--ink-2); font-weight: 600; }
+  .meter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 14px 0 6px; }
+  .meter i { height: 8px; border-radius: 4px; background: var(--line); }
+  .meter i.ok { background: var(--go); }
+  .gate ol { list-style: none; padding: 0; margin-top: 12px; display: grid; gap: 12px; }
+  .gate li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; }
+  .dot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+  .dot.ok { background: var(--go-soft); color: var(--go); }
+  .dot.no { border: 2px solid var(--line); color: var(--faint); }
+  .gate li b { display: block; font-weight: 700; }
+  .gate li small { color: var(--ink-2); font-size: 12.5px; }
+  .gate .need { color: var(--near); font-weight: 600; }
+
+  .info { margin: 0 14px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .info div { background: var(--card); border-radius: 12px; padding: 12px; }
+  .info small { display: block; color: var(--ink-2); font-size: 12px; }
+  .info b { font-size: 17px; font-weight: 700; }
+  .strat { margin: 0 14px 16px; display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); }
+  .strat small { color: var(--ink-2); }
+
+  .list { list-style: none; padding: 6px 14px 14px; display: grid; gap: 8px; }
+  .list li { background: var(--card); border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; }
+  .list b { font-weight: 700; }
+  .list small { color: var(--ink-2); font-size: 12px; grid-column: 1; }
+  .mini { grid-column: 2; grid-row: 1 / span 2; align-self: center; display: flex; gap: 3px; }
+  .mini i { width: 14px; height: 6px; border-radius: 3px; background: var(--line); }
+  .mini i.ok { background: var(--go); }
+  .tag { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; justify-self: start; }
+  .tag.buy { background: var(--go); color: #fff; }
+  .tag.hold { background: var(--go-soft); color: var(--go); }
+  .tag.near { background: var(--near-soft); color: var(--near); }
+
+  .set { padding: 4px 14px 16px; }
+  .group { background: var(--card); border-radius: 12px; padding: 4px 14px; margin-top: 10px; }
+  .group h3 { font-size: 12px; font-weight: 700; color: var(--ink-2); padding: 10px 0 2px; }
+  .line { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+  .group h3 + .line { border-top: 0; }
+  .sw { width: 36px; height: 22px; border-radius: 999px; background: var(--ink); position: relative; }
+  .sw::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+  .sw.off { background: var(--line); } .sw.off::after { left: 3px; right: auto; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 8px 0 4px; }
+  .seg span { text-align: center; padding: 9px; border-radius: 10px; border: 1px solid var(--line); font-weight: 600; color: var(--ink-2); }
+  .seg .on { border-color: var(--ink); color: var(--ink); }
+  .btn { margin: 8px 0 12px; height: 42px; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 700; display: grid; place-items: center; }
+
+  .stage { width: 640px; height: 300px; position: relative; background: #131722; border-radius: 12px; overflow: hidden; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .panel { position: absolute; top: 12px; right: 12px; width: 200px; background: var(--paper); border-radius: 12px; padding: 12px; font-size: 12.5px; }
+  .panel .s { display: flex; justify-content: space-between; align-items: baseline; }
+  .panel .s b { font-size: 22px; font-weight: 800; }
+  .panel .s span { color: var(--ink-2); }
+  .panel ul { list-style: none; padding: 0; margin-top: 8px; display: grid; gap: 4px; }
+  .panel li { display: flex; gap: 6px; }
+  .panel li.no { color: var(--faint); }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>C · Checklist</h1>
+  <p>A light instrument that sits apart from the dark chart. Built around the waiting state, where you spend most of your time: it counts the buy checks that have passed and says exactly what is still missing, so you know how close the next entry is.</p>
+</header>
+<div class="board">
+  <figure>
+    <div class="popup">
+      <div class="head"><div><h2>Ban / SOL</h2><p>Solana, Raydium, 15m</p></div>
+        <div class="tabs"><span class="on">Signal</span><span>List</span><span>⚙</span></div></div>
+      <div class="gate num">
+        <div class="score"><b>2 of 3</b><span>buy checks passed</span></div>
+        <div class="meter"><i class="ok"></i><i class="ok"></i><i></i></div>
+        <ol>
+          <li><span class="dot ok">✓</span><div><b>Lowest low of 20 bars</b><small>50.20M at 10:15</small></div></li>
+          <li><span class="dot ok">✓</span><div><b>Closed in the upper half</b><small>64% of the bar</small></div></li>
+          <li><span class="dot no">3</span><div><b>Fell 10% in 6 bars</b><small>Fell 6.2% so far, <span class="need">needs 3.8% more</span></small></div></li>
+        </ol>
+      </div>
+      <div class="info num">
+        <div><small>Backtest, 31 days</small><b style="color:var(--go)">+7.5%</b></div>
+        <div><small>Trades · win rate</small><b>3 · 67%</b></div>
+      </div>
+      <div class="strat"><div><b>Sharp Low</b><br><small>Buys a 10% fall that closes high</small></div><small>Change</small></div>
+    </div>
+    <figcaption>Popup, waiting for an entry</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup">
+      <div class="head"><div><h2>Watchlist</h2><p>5 open pairs</p></div>
+        <div class="tabs"><span>Signal</span><span class="on">List</span><span>⚙</span></div></div>
+      <ul class="list num">
+        <li><b>ASTEROID / SOL</b><div class="mini"><i class="ok"></i><i class="ok"></i><i class="ok"></i></div><span class="tag buy">Buy at next open</span></li>
+        <li><b>MOMO / SOL</b><div class="mini"><i class="ok"></i><i class="ok"></i><i></i></div><span class="tag hold">Holding +123.5%</span></li>
+        <li><b>CASHCAT / ETH</b><div class="mini"><i class="ok"></i><i class="ok"></i><i></i></div><span class="tag near">2.1% from the zone</span></li>
+        <li><b>Ban / SOL</b><div class="mini"><i class="ok"></i><i class="ok"></i><i></i></div><small>Needs a 3.8% deeper fall</small></li>
+        <li><b>PENGU / SOL</b><div class="mini"><i></i><i></i><i></i></div><small>No checks passed</small></li>
+      </ul>
+    </div>
+    <figcaption>Watchlist: every pair shows its checks as a mini gate</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup">
+      <div class="head"><div><h2>Settings</h2><p>Saved for every pair</p></div>
+        <div class="tabs"><span>Signal</span><span>List</span><span class="on">⚙</span></div></div>
+      <div class="set">
+        <div class="group"><h3>History</h3>
+          <div class="seg"><span class="on">Last 31 days</span><span>Pair start</span></div>
+          <div class="btn">Recalculate</div></div>
+        <div class="group"><h3>On the chart</h3>
+          <div class="line"><span>Signal panel</span><span class="sw"></span></div>
+          <div class="line"><span>Buy and sell markers</span><span class="sw"></span></div>
+          <div class="line"><span>Stop line</span><span class="sw"></span></div>
+          <div class="line"><span>Indicators</span><span class="sw off"></span></div></div>
+        <div class="group"><h3>Alerts</h3>
+          <div class="line"><span>Notify on new signals</span><span class="sw"></span></div></div>
+      </div>
+    </div>
+    <figcaption>Settings in grouped cards</figcaption>
+  </figure>
+
+  <figure>
+    <div class="stage">
+      <svg class="chart"></svg>
+      <div class="panel num">
+        <div class="s"><b>2 of 3</b><span>Sharp Low 15m</span></div>
+        <ul><li>✓ 20-bar low</li><li>✓ Upper-half close</li><li class="no">○ Fell 6.2% of 10%</li></ul>
+      </div>
+    </div>
+    <figcaption>On-chart panel</figcaption>
+  </figure>
+</div>
+<script src="chart.js"></script>
+</body>
+</html>

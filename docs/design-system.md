@@ -2,6 +2,12 @@
 
 > A practical UI design specification for AI coding agents. Use a restrained, minimal interface inspired by ChatGPT's clean conversational experience. This is a custom project specification, not an official OpenAI design-system document.
 
+## 0. Project overrides (EA Signals)
+
+- **Light theme:** besides the dark default, the extension has a light theme the user can switch to. It keeps every token role below and swaps the values: background `#F5F6F8`, surfaces `#FFFFFF`, borders `#E3E6EB`, primary text `#14161A`, secondary `#5A606B`, primary button `#14161A` with white text, success `#0E9F6E`, danger `#D92D20`, warning `#B54708`.
+- **Typeface:** Manrope (bundled variable font) replaces the system stack as the first choice; the system stack stays as the fallback.
+- **Layout:** design G (`design/redesign/g-gate-themes.html`) is the reference for the popup and the on-chart pill.
+
 ## 1. Design Principles
 
 - **Dark by default:** use near-black surfaces as the foundation.

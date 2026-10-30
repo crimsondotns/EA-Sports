@@ -55,7 +55,11 @@ const postToFrames = (msg: FromContent) => {
   walk(window, 0);
 };
 
-const fmt = (v: number) => (v === 0 ? "0" : Math.abs(v) >= 1e5 ? `${(v / 1e6).toFixed(3)}M` : Math.abs(v) >= 1 ? v.toFixed(4) : v.toPrecision(4));
+// Compact like the chart's axis: 54.58K, 50.20M, 1.234B; small prices keep 4 significant digits.
+const fmt = (v: number) => {
+  const a = Math.abs(v);
+  return v === 0 ? "0" : a >= 1e9 ? `${(v / 1e9).toFixed(3)}B` : a >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : a >= 1e3 ? `${(v / 1e3).toFixed(2)}K` : a >= 1 ? v.toFixed(4) : v.toPrecision(4);
+};
 const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${v.toFixed(digits)}%`;
 /** "DELTA $10.29M - Delta / WETH on Robinhood / Uniswap - DEX Screener" -> "DELTA $10.29M - Delta / WETH". */
 const pairName = () =>
@@ -73,53 +77,60 @@ host.style.cssText = "position:fixed;top:16px;right:16px;z-index:2147483647;poin
 const root = host.attachShadow({ mode: "open" });
 root.innerHTML = `
 <style>
-  :host { all: initial; }
-  table {
-    border-collapse: collapse; min-width: 196px; max-width: 260px; pointer-events: auto;
-    background: rgba(0, 0, 0, var(--table-opacity, .6)); color: #fff; border: 1px solid #2a2a2a; border-radius: 0;
-    font: 11px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-variant-numeric: tabular-nums; overflow: hidden;
-  }
-  th, td { padding: 3px 10px; text-align: left; white-space: nowrap; }
-  td:last-child { text-align: right; }
-  thead th { padding-top: 7px; padding-bottom: 6px; font-weight: 600; border-bottom: 1px solid #2a2a2a; }
-  .head { display: flex; align-items: center; gap: 8px; }
-  .head #title { flex: 1; }
-  thead th #title span { color: #777; font-weight: 400; margin-left: 6px; }
-  #brief { font-weight: 600; }
-  #toggle { all: unset; flex: none; width: 20px; height: 20px; margin: -2px -6px -2px 0; display: inline-flex;
-    align-items: center; justify-content: center; border-radius: 6px; color: #b4b4b4; cursor: pointer;
-    transition: background-color 140ms ease-out, color 140ms ease-out; }
+  /* Design G: a pill with the buy-check gate and the state; click it to open the details card.
+     Dark and light follow the theme setting (Settings → Appearance in the popup). */
+  :host { all: initial;
+    --bg: 0 0 0; --text: #f2f2f2; --text-2: #a3a3a3; --muted: #6b6b6b; --line: #262626; --hover: #202020;
+    --go: #4ade80; --stop: #f87171; --near: #fbbf24; --invert: #fff; --on-invert: #000; }
+  :host(.light) { --bg: 245 246 248; --text: #14161a; --text-2: #5a606b; --muted: #9aa0aa; --line: #e3e6eb; --hover: #e9ecf0;
+    --go: #0e9f6e; --stop: #d92d20; --near: #b54708; --invert: #14161a; --on-invert: #fff; }
+  #table { display: grid; justify-items: end; gap: 6px; pointer-events: none; color: var(--text);
+    font: 600 12.5px/1.4 "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-variant-numeric: tabular-nums; }
+  .pill, #body { pointer-events: auto; background: rgb(var(--bg) / var(--table-opacity, .9)); box-shadow: 0 0 0 1px var(--line); }
+  .pill { display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 4px 6px 4px 4px; }
+  #badge { border-radius: 999px; padding: 3px 9px; font-weight: 800; font-size: 12px; background: var(--invert); color: var(--on-invert); }
+  #badge.pos { background: var(--go); color: #000; } #badge.neg { background: var(--stop); color: #fff; }
+  #seg { display: flex; gap: 2px; } #seg i { width: 10px; height: 6px; border-radius: 3px; background: var(--line); } #seg i.ok { background: var(--go); }
+  #brief { font-weight: 800; }
+  #title { color: var(--text-2); font-weight: 500; font-size: 12px; white-space: nowrap; }
+  #toggle, #grip { all: unset; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
+    color: var(--text-2); cursor: pointer; transition: background-color 140ms ease-out, color 140ms ease-out; }
+  #toggle { width: 22px; height: 22px; }
   #toggle svg { width: 12px; height: 12px; transition: transform 140ms ease-out; }
   #toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
-  #toggle:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-  #toggle:active { background: #2a2a2a; }
-  @media (hover: hover) and (pointer: fine) { #toggle:hover { background: #202020; color: #fff; } }
-  #grip { all: unset; flex: none; width: 14px; height: 20px; margin-left: -6px; display: inline-flex; align-items: center;
-    justify-content: center; border-radius: 6px; color: #777; cursor: grab; touch-action: none;
-    transition: background-color 140ms ease-out, color 140ms ease-out; }
+  #grip { width: 14px; height: 22px; color: var(--muted); cursor: grab; touch-action: none; }
   #grip svg { width: 8px; height: 12px; }
-  #grip:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
-  :host(.dragging) #grip { cursor: grabbing; color: #fff; }
-  @media (hover: hover) and (pointer: fine) { #grip:hover { background: #202020; color: #fff; } }
-  table.collapsed tbody { display: none; }
-  table.collapsed thead th { border-bottom: 0; padding-bottom: 7px; }
-  @media (prefers-reduced-motion: reduce) { #toggle, #toggle svg { transition: none; } }
-  tr.sep td { border-top: 1px solid #2a2a2a; padding-top: 5px; }
-  tbody tr:last-child td { padding-bottom: 7px; }
-  .muted { color: #777; } .sub { color: #b4b4b4; }
-  .ok { color: #4ade80; } .no { color: #777; } .neg { color: #f87171; } .pos { color: #4ade80; }
-  .sig { font-weight: 600; }
-  td.msg { white-space: normal; }
+  #toggle:focus-visible, #grip:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
+  #toggle:active { background: var(--hover); }
+  :host(.dragging) #grip { cursor: grabbing; color: var(--text); }
+  @media (hover: hover) and (pointer: fine) { #toggle:hover, #grip:hover { background: var(--hover); color: var(--text); } }
+  #body { min-width: 210px; max-width: 260px; border-radius: 12px; padding: 10px 12px; display: grid; gap: 4px; font-weight: 500; }
+  #table.collapsed #body { display: none; }
+  .r { display: flex; justify-content: space-between; gap: 12px; white-space: nowrap; }
+  .r > span:first-child { color: var(--text-2); }
+  .sep { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; }
+  .muted { color: var(--muted); } .sub { color: var(--text-2); }
+  .ok, .pos { color: var(--go); } .no { color: var(--near); } .neg { color: var(--stop); }
+  .msg { white-space: normal; color: var(--text-2); }
+  .msg.neg { color: var(--stop); }
+  @media (prefers-reduced-motion: reduce) { #toggle, #toggle svg, #grip { transition: none; } }
 </style>
-<table id="table" aria-label="EA signals"><thead><tr><th colspan="2"><div class="head"><button type="button" id="grip" aria-label="Move table up or down" title="Drag to move · double-click to reset">
+<div id="table" role="group" aria-label="EA signals">
+  <div class="pill"><button type="button" id="grip" aria-label="Move up or down" title="Drag to move · double-click to reset">
     <svg viewBox="0 0 8 12" aria-hidden="true"><g fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="6" cy="2" r="1"/><circle cx="2" cy="6" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="2" cy="10" r="1"/><circle cx="6" cy="10" r="1"/></g></svg>
-  </button><span id="title">EA</span><span id="brief"></span>
-  <button type="button" id="toggle" aria-expanded="true" aria-controls="body" aria-label="Collapse table" title="Collapse table">
+  </button><span id="badge">EA</span><span id="seg" aria-hidden="true"></span><span id="brief">Loading</span><span id="title"></span>
+  <button type="button" id="toggle" aria-expanded="true" aria-controls="body" aria-label="Hide details" title="Hide details">
     <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  </button></div></th></tr></thead><tbody id="body">
-  <tr><td colspan="2" class="muted">Waiting for chart data…</td></tr>
-</tbody></table>`;
+  </button></div>
+  <div id="body"><div class="r muted">Waiting for chart data…</div></div>
+</div>`;
+// Manrope ships with the extension; register it for the page so the shadow root can use it.
+try {
+  void new FontFace("Manrope", `url(${chrome.runtime.getURL("fonts/manrope.ttf")})`, { weight: "400 800" }).load().then((f) => document.fonts.add(f)).catch(() => {});
+} catch {
+  // extension context gone: the system font is used
+}
 document.documentElement.appendChild(host);
 const $ = (id: string) => root.getElementById(id)!;
 
@@ -129,8 +140,8 @@ function paintCollapsed(): void {
   $("table").classList.toggle("collapsed", collapsed);
   const t = $("toggle");
   t.setAttribute("aria-expanded", String(!collapsed));
-  t.setAttribute("aria-label", collapsed ? "Expand table" : "Collapse table");
-  t.title = collapsed ? "Expand table" : "Collapse table";
+  t.setAttribute("aria-label", collapsed ? "Show details" : "Hide details");
+  t.title = collapsed ? "Show details" : "Hide details";
 }
 // Toggle right away, then save: after the extension is reloaded this old content script can't
 // reach chrome.storage any more (the call throws), and the button used to do nothing then.
@@ -157,6 +168,7 @@ function positionTable(): void {
   const chartReady = !!r && r.width >= 300 && r.height >= 200 && mode === "tradingview";
   host.style.display = settings.showTable && chartReady && (last || errorText) ? "" : "none";
   host.style.setProperty("--table-opacity", String(settings.tableOpacity));
+  host.classList.toggle("light", settings.theme === "light");
   if (!chartReady) return;
   const PRICE_SCALE = 72; // width of the chart's right price axis
   const TOOLBAR = 44; // chart top toolbar
@@ -266,60 +278,55 @@ function summarize(): Summary | null {
   };
 }
 
+const row = (k: string, v: string, cls = "", sep = false) => `<div class="r${sep ? " sep" : ""}"><span>${k}</span><span class="${cls}">${v}</span></div>`;
+
 function renderTable(): void {
   positionTable();
   const sum = summarize();
   if (errorText && !sum) {
-    $("body").innerHTML = `<tr><td colspan="2" class="neg msg">${errorText}</td></tr>`;
+    $("body").innerHTML = `<div class="msg neg">${errorText}</div>`;
     return;
   }
   if (!sum) return;
-  $("title").innerHTML = `EA · ${sum.resolution}<span>${sum.strategy}</span>`;
-  // Shown in the header only while collapsed, so the signal stays visible.
-  const brief = $("brief");
-  brief.className = sum.signal === "buy" ? "pos" : sum.signal === "hold" && sum.openPnlPct !== null && sum.openPnlPct !== undefined ? (sum.openPnlPct >= 0 ? "pos" : "neg") : "sub";
-  brief.textContent = !settings.tableCollapsed ? "" : sum.signal === "buy" ? "▲ BUY" : sum.signal === "hold" ? pct(sum.openPnlPct ?? 0, 2) : "Waiting";
   const shortLabels = last?.setup.shortLabels ?? [];
-  const signal =
-    sum.signal === "buy"
-      ? `<td class="sig pos">▲ BUY</td>`
-      : sum.signal === "hold"
-        ? `<td class="sig">${sum.costRecovered ? "Free ride" : "Holding"}</td>`
-        : `<td class="sig sub">Waiting</td>`;
+  const ok = sum.conditions.filter((c) => c.ok).length;
+  const hold = sum.signal === "hold";
+  const pnl = sum.openPnlPct ?? 0;
+  // The pill: badge (checks passed, or open P/L), mini gate, state, strategy and timeframe.
+  const badge = $("badge");
+  badge.className = sum.signal === "buy" ? "pos" : hold ? (pnl >= 0 ? "pos" : "neg") : "";
+  badge.textContent = hold ? pct(pnl, 1) : `${ok}/${sum.conditions.length}`;
+  $("seg").innerHTML = hold ? "" : sum.conditions.map((c) => `<i class="${c.ok ? "ok" : ""}"></i>`).join("");
+  const brief = $("brief");
+  brief.className = sum.signal === "buy" ? "pos" : "";
+  brief.textContent = sum.signal === "buy" ? "Buy" : hold ? (sum.costRecovered ? "Free ride" : "Holding") : "Waiting";
+  $("title").textContent = `${sum.strategy} ${sum.resolution}`;
+  // The card: the trade (holding) or the next setup, then the checks, the backtest and notes.
   const rows = [
-    `<tr><td class="sub">Signal</td>${signal}</tr>`,
-    ...(sum.signal === "hold"
-      ? [
-          `<tr><td class="sub">Stop</td><td class="neg">${sum.stop === null ? "–" : fmt(sum.stop)}</td></tr>`,
-          `<tr><td class="sub">P/L</td><td class="${sum.openPnlPct! >= 0 ? "pos" : "neg"}">${pct(sum.openPnlPct!, 2)}</td></tr>`,
-        ]
+    ...(hold
+      ? [row("Bought", sum.entryPrice === null ? "–" : fmt(sum.entryPrice)), row("Stop", sum.stop === null ? "–" : fmt(sum.stop), "neg"), row("P/L", pct(pnl, 2), pnl >= 0 ? "pos" : "neg")]
       : []),
     ...(sum.plan
       ? sum.plan.kind === "zone"
         ? [
-            `<tr class="sep"><td class="sub">Next buy zone</td><td class="${sum.plan.inZone ? "pos" : ""}">${fmt(sum.plan.low)}–${fmt(sum.plan.high)}</td></tr>`,
-            `<tr><td class="sub">${sum.plan.inZone ? "In zone" : "Distance"}</td><td>${sum.plan.inZone ? (sum.strategy === "Quiet Accumulation" ? "wait for reversal" : "wait for MACD turn") : pct(sum.plan.distancePct)}</td></tr>`,
-            `<tr><td class="sub">Stop · Cost back</td><td>${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}</td></tr>`,
+            row("Next buy zone", `${fmt(sum.plan.low)}–${fmt(sum.plan.high)}`, sum.plan.inZone ? "pos" : ""),
+            row(sum.plan.inZone ? "In zone" : "Distance", sum.plan.inZone ? "wait for MACD turn" : pct(sum.plan.distancePct)),
+            row("Stop · Cost back", `${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}`),
           ]
         : sum.plan.kind === "below"
           ? [
-              `<tr class="sep"><td class="sub">Buy below</td><td class="${sum.plan.inZone ? "pos" : ""}">${fmt(sum.plan.high)}</td></tr>`,
-              `<tr><td class="sub">${sum.plan.inZone ? "Below now" : "Distance"}</td><td>${sum.plan.inZone ? "wait for MACD turn" : pct(sum.plan.distancePct)}</td></tr>`,
-              `<tr><td class="sub">Stop · Cost back</td><td>${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}</td></tr>`,
+              row("Buy below", fmt(sum.plan.high), sum.plan.inZone ? "pos" : ""),
+              row(sum.plan.inZone ? "Below now" : "Distance", sum.plan.inZone ? "wait for MACD turn" : pct(sum.plan.distancePct)),
+              row("Stop · Cost back", `${fmt(sum.plan.stop)} · ${sum.plan.target === null ? "–" : fmt(sum.plan.target)}`),
             ]
-          : [
-            `<tr class="sep"><td class="sub">Buy above</td><td>${fmt(sum.plan.high)} (${pct(sum.plan.distancePct)})</td></tr>`,
-            `<tr><td class="sub">Stop</td><td>${fmt(sum.plan.stop)}</td></tr>`,
-          ]
+          : [row("Buy above", `${fmt(sum.plan.high)} (${pct(sum.plan.distancePct)})`), row("Stop", fmt(sum.plan.stop))]
       : []),
-    ...sum.conditions.map(
-      (c, k) =>
-        `<tr${k === 0 ? ' class="sep"' : ""}><td class="sub">${shortLabels[k] ?? c.label}</td><td class="${c.ok ? "ok" : "no"}">${c.ok ? "✓" : "✕"} ${c.detail.split(" vs ")[0]}</td></tr>`,
+    ...sum.conditions.map((c, k) =>
+      row(`${c.ok ? "✓" : "○"} ${shortLabels[k] ?? c.label}`, c.detail.split(" vs ")[0]!, c.ok ? "ok" : "no", k === 0 && (hold || !!sum.plan)),
     ),
-    `<tr class="sep"><td class="sub">Backtest</td><td class="${sum.stats.returnPct >= 0 ? "pos" : "neg"}">${pct(sum.stats.returnPct)}</td></tr>`,
-    `<tr><td class="sub">Max DD · Trades</td><td>${sum.stats.maxDdPct.toFixed(1)}% · ${sum.stats.trades}</td></tr>`,
-    ...(errorText ? [`<tr class="sep"><td colspan="2" class="neg msg">${errorText}</td></tr>`] : []),
-    ...(historyNote ? [`<tr class="sep"><td colspan="2" class="sub msg">${historyNote}</td></tr>`] : []),
+    row("Backtest", `${pct(sum.stats.returnPct)} · ${sum.stats.trades} trades`, sum.stats.returnPct >= 0 ? "pos" : "neg", true),
+    ...(errorText ? [`<div class="msg neg sep">${errorText}</div>`] : []),
+    ...(historyNote ? [`<div class="msg sep">${historyNote}</div>`] : []),
   ];
   $("body").innerHTML = rows.join("");
 }

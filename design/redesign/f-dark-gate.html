@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F · Dark Gate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+  /* D's black radar, with C's check gate as the headline for the pair in this tab. */
+  :root {
+    --bg: #000; --row: #0d0d0d; --open: #161616; --line: #262626; --text: #f2f2f2; --text-2: #a3a3a3; --muted: #6b6b6b;
+    --buy: #4ade80; --sell: #f87171; --near: #fbbf24;
+    font-family: "Archivo", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0a0a0a; color: var(--text); padding: 32px 24px 64px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .page-head { max-width: 1560px; margin: 0 auto 24px; }
+  .page-head h1 { font-size: 22px; font-weight: 700; }
+  .page-head p { color: var(--text-2); font-size: 14px; margin-top: 6px; max-width: 72ch; line-height: 1.5; }
+  .board { display: flex; flex-wrap: wrap; gap: 32px; max-width: 1560px; margin: 0 auto; align-items: flex-start; }
+  figure { display: grid; gap: 10px; }
+  figcaption { color: var(--muted); font-size: 12px; }
+
+  .popup { width: 360px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .top { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 14px 0; }
+  .top b { font-size: 17px; font-weight: 700; font-stretch: 112%; }
+  .top span { color: var(--muted); }
+  .sub { padding: 2px 14px 0; color: var(--muted); font-size: 12px; }
+
+  /* The memorable part: one big gate, a segment per buy check, sized to fill the popup width. */
+  .gate { padding: 16px 14px 14px; }
+  .score { display: flex; align-items: baseline; gap: 10px; }
+  .score b { font-size: 56px; font-weight: 800; font-stretch: 70%; line-height: .9; }
+  .score span { color: var(--text-2); font-size: 14px; }
+  .meter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin: 14px 0 12px; }
+  .meter div { border-top: 4px solid var(--line); padding-top: 8px; }
+  .meter div.ok { border-color: var(--buy); }
+  .meter small { display: block; color: var(--muted); font-size: 11px; }
+  .meter b { font-size: 15px; font-weight: 700; font-stretch: 85%; }
+  .meter div.ok b { color: var(--buy); }
+  .meter div.need b { color: var(--near); }
+  .hint { background: var(--open); border-radius: 8px; padding: 10px 12px; color: var(--text-2); line-height: 1.45; }
+  .hint b { color: var(--near); font-weight: 600; }
+
+  .head2 { display: flex; justify-content: space-between; padding: 12px 14px 8px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  .rows { list-style: none; padding: 0; }
+  .rows li { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 9px 14px; border-top: 1px solid var(--line); background: var(--row); }
+  .rows .p { font-weight: 600; font-stretch: 90%; font-size: 14px; }
+  .rows small { display: block; color: var(--muted); font-size: 11.5px; }
+  .seg3 { display: flex; gap: 2px; }
+  .seg3 i { width: 10px; height: 4px; background: var(--line); }
+  .seg3 i.ok { background: var(--buy); }
+  .st { font-weight: 800; font-stretch: 75%; font-size: 16px; text-align: right; min-width: 56px; }
+  .go { color: var(--buy); } .no { color: var(--sell); } .ny { color: var(--near); } .mu { color: var(--muted); }
+  .bottom { display: flex; justify-content: space-between; padding: 12px 14px; border-top: 1px solid var(--line); color: var(--text-2); }
+  .bottom b { color: var(--text); font-weight: 600; }
+
+  .hold .score b { color: var(--buy); }
+  .plan { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-radius: 8px; overflow: hidden; margin-top: 12px; }
+  .plan div { background: var(--bg); padding: 8px 10px; }
+  .plan small { display: block; color: var(--muted); font-size: 11px; }
+  .plan b { font-size: 15px; font-weight: 700; font-stretch: 85%; }
+
+  .stage { width: 640px; height: 300px; position: relative; background: #131722; border-radius: 12px; overflow: hidden; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pill { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 10px; background: #000; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px 6px 10px; }
+  .pill b { font-weight: 800; font-stretch: 75%; font-size: 18px; }
+  .pill span { color: var(--text-2); font-size: 12px; }
+  .drop { position: absolute; top: 54px; right: 12px; width: 240px; background: #000; border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .drop .meter { margin: 0; }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>F · Dark Gate</h1>
+  <p>D's black radar with C's gate as the headline. The pair in this tab shows its buy checks as one big gate: each segment is a check with its value, and the line under it says what is still missing. The other pairs follow as a compact list with a mini gate each.</p>
+</header>
+<div class="board">
+  <figure>
+    <div class="popup">
+      <div class="top"><b>Ban / SOL</b><span>Sharp Low · 15m</span></div>
+      <div class="sub">This tab · last bar closed 10:15</div>
+      <div class="gate num">
+        <div class="score"><b>2/3</b><span>buy checks passed</span></div>
+        <div class="meter">
+          <div class="ok"><small>20-bar low</small><b>50.20M</b></div>
+          <div class="ok"><small>Close in bar</small><b>64%</b></div>
+          <div class="need"><small>Fall in 6 bars</small><b>6.2% / 10%</b></div>
+        </div>
+        <p class="hint">Needs <b>3.8% more fall</b> on a bar that still closes in its upper half.</p>
+      </div>
+      <div class="head2"><span>Other open pairs</span><span>4</span></div>
+      <ul class="rows num">
+        <li><div><span class="p">ASTEROID / SOL</span><small>15m</small></div><div class="seg3"><i class="ok"></i><i class="ok"></i><i class="ok"></i></div><div class="st go">Buy</div></li>
+        <li><div><span class="p">MOMO / SOL</span><small>15m · holding</small></div><div></div><div class="st go">+123.5%</div></li>
+        <li><div><span class="p">CASHCAT / ETH</span><small>1h · 2.1% to zone</small></div><div class="seg3"><i class="ok"></i><i class="ok"></i><i></i></div><div class="st ny">Near</div></li>
+        <li><div><span class="p">PENGU / SOL</span><small>1h</small></div><div class="seg3"><i></i><i></i><i></i></div><div class="st mu">Wait</div></li>
+      </ul>
+      <div class="bottom"><span>Alerts on</span><b>Settings</b></div>
+    </div>
+    <figcaption>Popup on a waiting pair</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup hold">
+      <div class="top"><b>MOMO / SOL</b><span>Sharp Low · 15m</span></div>
+      <div class="sub">This tab · holding since 21 Oct 08:15</div>
+      <div class="gate num">
+        <div class="score"><b>+123.5%</b><span>open</span></div>
+        <div class="plan"><div><small>Bought</small><b>74.30K</b></div><div><small>Stop</small><b class="no">54.58K</b></div><div><small>Sell 10% at</small><b>RSI 80</b></div></div>
+        <p class="hint" style="margin-top:12px">RSI is 73. The next 10% sells on the first close at 80 or higher.</p>
+      </div>
+      <div class="head2"><span>Other open pairs</span><span>4</span></div>
+      <ul class="rows num">
+        <li><div><span class="p">ASTEROID / SOL</span><small>15m</small></div><div class="seg3"><i class="ok"></i><i class="ok"></i><i class="ok"></i></div><div class="st go">Buy</div></li>
+        <li><div><span class="p">Ban / SOL</span><small>15m</small></div><div class="seg3"><i class="ok"></i><i class="ok"></i><i></i></div><div class="st mu">Wait</div></li>
+      </ul>
+      <div class="bottom"><span>Alerts on</span><b>Settings</b></div>
+    </div>
+    <figcaption>Same popup while holding: the gate becomes the trade plan</figcaption>
+  </figure>
+
+  <figure>
+    <div class="stage">
+      <svg class="chart"></svg>
+      <div class="pill num"><b class="mu">2/3</b><span>Sharp Low 15m · waiting</span></div>
+      <div class="drop num">
+        <div class="meter">
+          <div class="ok"><small>20-bar low</small><b>50.20M</b></div>
+          <div class="ok"><small>Close</small><b>64%</b></div>
+          <div class="need"><small>Fall</small><b>6.2%</b></div>
+        </div>
+      </div>
+    </div>
+    <figcaption>On-chart pill, opened into the gate</figcaption>
+  </figure>
+</div>
+<script src="chart.js"></script>
+</body>
+</html>

@@ -8,6 +8,6 @@ const { version } = JSON.parse(readFileSync("extension/manifest.json", "utf8"));
 const out = `dist/release/ea-signals-extension-v${version}.zip`;
 mkdirSync("extension/dist/release", { recursive: true });
 rmSync(`extension/${out}`, { force: true });
-const files = ["manifest.json", "popup.html", "icon.svg", "icon16.png", "icon32.png", "icon48.png", "icon128.png", "dist/background.js", "dist/content.js", "dist/inject.js", "dist/popup.js"];
+const files = ["manifest.json", "popup.html", "icon.svg", "icon16.png", "icon32.png", "icon48.png", "icon128.png", "dist/background.js", "dist/content.js", "dist/inject.js", "dist/popup.js", "fonts/manrope.ttf", "fonts/OFL.txt"];
 execFileSync("zip", ["-q", "-X", out, ...files], { cwd: "extension", stdio: "inherit" });
 console.log(`extension/${out}`);

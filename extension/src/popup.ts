@@ -2,73 +2,68 @@
 import { DEFAULT_SETTINGS, summaryKey, type CalcFrom, type FromPopup, type LoadResult, type Settings, type Summary } from "./messages.ts";
 
 const $ = (id: string) => document.getElementById(id)!;
-const fmt = (v: number) => (v === 0 ? "0" : Math.abs(v) >= 1e5 ? `${(v / 1e6).toFixed(3)}M` : Math.abs(v) >= 1 ? v.toFixed(4) : v.toPrecision(4));
+// Compact like the chart's axis: 54.58K, 50.20M, 1.234B; small prices keep 4 significant digits.
+const fmt = (v: number) => {
+  const a = Math.abs(v);
+  return v === 0 ? "0" : a >= 1e9 ? `${(v / 1e9).toFixed(3)}B` : a >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : a >= 1e3 ? `${(v / 1e3).toFixed(2)}K` : a >= 1 ? v.toFixed(4) : v.toPrecision(4);
+};
 const pct = (v: number, digits = 1) => `${v >= 0 ? "+" : ""}${v.toFixed(digits)}%`;
 const time = (t: number) => new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 function renderEmpty(onDexScreener: boolean): void {
+  $("title").textContent = "EA Signals";
+  $("subtitle").textContent = "DEX Screener signals";
   $("main").innerHTML = `<section class="empty">
     <p>${onDexScreener ? "Waiting for chart data. Reload the page if nothing shows up." : "Open a pair on DEX Screener to see signals."}</p>
     ${onDexScreener ? "" : `<a class="button-primary" href="https://dexscreener.com" target="_blank" rel="noopener">Open DEX Screener</a>`}
   </section>`;
 }
 
-function planHtml(s: Summary): string {
-  const pl = s.plan;
-  if (!pl) return `<p class="muted">No setup yet for this strategy.</p>`;
-  const rows =
-    pl.kind === "zone"
-      ? `<div class="row num"><span>Next buy zone</span><span class="${pl.inZone ? "pos" : ""}">${fmt(pl.low)} – ${fmt(pl.high)}</span></div>
-         <div class="row num"><span>${pl.inZone ? "Status" : "Distance"}</span><span>${pl.inZone ? "In zone now" : pct(pl.distancePct)}</span></div>`
-      : pl.kind === "below"
-        ? `<div class="row num"><span>Buy below</span><span class="${pl.inZone ? "pos" : ""}">${fmt(pl.high)}</span></div>
-           <div class="row num"><span>${pl.inZone ? "Status" : "Distance"}</span><span>${pl.inZone ? "Below now" : pct(pl.distancePct)}</span></div>`
-        : `<div class="row num"><span>Buy above</span><span>${fmt(pl.high)}</span></div>
-         <div class="row num"><span>Distance</span><span>${pct(pl.distancePct)}</span></div>`;
-  return `<p class="muted">Next setup — ${esc(pl.waitFor)}</p>${rows}
-    <div class="row num"><span>Stop</span><span class="neg">${fmt(pl.stop)}</span></div>
-    ${pl.target === null ? "" : `<div class="row num"><span>Cost back (3x)</span><span>${fmt(pl.target)}</span></div>`}`;
+/** How far a failing "Fell ≥10% in 6 bars" check still has to go, e.g. "3.8% more fall". */
+function missing(c: Summary["conditions"][number]): string {
+  const need = /^Fell ≥(\d+(?:\.\d+)?)%/.exec(c.label);
+  const now = parseFloat(c.detail);
+  if (need && Number.isFinite(now)) return `<b>${(Number(need[1]) - now).toFixed(1)}% more fall</b>`;
+  return `<b>${esc(c.label.toLowerCase())}</b>`;
 }
 
+/** The pair in this tab (design G): a gate of buy checks while waiting, the trade plan while holding. */
 function render(s: Summary): void {
-  $("title").textContent = `EA · ${s.strategy}`;
-  $("subtitle").textContent = `${s.pair} · ${s.resolution}`;
-  const signal =
-    s.signal === "buy"
-      ? `<p class="signal pos">▲ BUY signal</p><p class="muted">Buy at the open of the next bar</p>`
-      : s.signal === "hold"
-        ? `<p class="signal">${s.costRecovered ? "Free ride" : "Holding"}</p>
-           ${s.costRecovered ? `<p class="muted">Cost recovered · 10% kept free — ${esc(s.strategyNote)}</p>` : ""}
-           <div class="row num"><span>Entry ${s.entryTime ? time(s.entryTime) : ""}</span><span>${s.entryPrice === null ? "–" : fmt(s.entryPrice)}</span></div>
-           <div class="row num"><span>Stop</span><span class="neg">${s.stop === null ? "–" : fmt(s.stop)}</span></div>
-           <div class="row num"><span>Open P/L</span><span class="${s.openPnlPct! >= 0 ? "pos" : "neg"}">${pct(s.openPnlPct!, 2)}</span></div>`
-        : `<p class="signal">Waiting</p>${planHtml(s)}`;
+  $("title").textContent = s.pair;
+  $("subtitle").textContent = `${s.strategy} · ${s.resolution} · last bar closed ${time(s.lastClosed)}`;
   const st = s.stats;
-  $("main").innerHTML = `
-    <section>${signal}${s.error ? `<p class="neg">${esc(s.error)}</p>` : ""}</section>
-    <section>
-      <h2>Entry conditions · last closed bar ${time(s.lastClosed)}</h2>
-      ${s.conditions
-        .map((c) => `<div class="row num"><span>${c.ok ? '<span class="ok">✓</span>' : '<span class="muted">✕</span>'} ${esc(c.label)}</span><span>${esc(c.detail)}</span></div>`)
-        .join("")}
-    </section>
-    <section>
-      <h2>Backtest · ${st.bars} bars · ${esc(s.strategyNote)}</h2>
-      <div class="grid num">
-        <div class="stat"><small>Return</small><strong class="${st.returnPct >= 0 ? "pos" : "neg"}">${pct(st.returnPct)}</strong></div>
-        <div class="stat"><small>Max DD</small><strong>${st.maxDdPct.toFixed(1)}%</strong></div>
-        <div class="stat"><small>Trades</small><strong>${st.trades}</strong></div>
-        <div class="stat"><small>Win rate</small><strong>${st.winRate.toFixed(0)}%</strong></div>
-        <div class="stat"><small>PF</small><strong>${Number.isFinite(st.pf) ? st.pf.toFixed(2) : "∞"}</strong></div>
-        <div class="stat"><small>Avg W / L</small><strong>${st.avgWin.toFixed(1)} / ${st.avgLoss.toFixed(1)}</strong></div>
+  const backtest = `<p class="backtest num">Backtest ${st.bars.toLocaleString()} bars: <span class="${st.returnPct >= 0 ? "pos" : "neg"}">${pct(st.returnPct)}</span>, ${st.trades} trades, ${st.winRate.toFixed(0)}% won, max drawdown ${st.maxDdPct.toFixed(1)}%</p>`;
+  const error = s.error ? `<p class="note neg">${esc(s.error)}</p>` : "";
+  if (s.signal === "hold") {
+    const pnl = s.openPnlPct ?? 0;
+    $("main").innerHTML = `<div class="gate num">
+      <p class="score"><b class="${pnl >= 0 ? "pos" : "neg"}">${pct(pnl, 1)}</b><span>${s.costRecovered ? "free ride" : "open"}</span></p>
+      <div class="plan">
+        <div><small>Bought</small><b>${s.entryPrice === null ? "–" : fmt(s.entryPrice)}</b></div>
+        <div><small>Stop</small><b class="neg">${s.stop === null ? "–" : fmt(s.stop)}</b></div>
+        <div><small>Since</small><b>${s.entryTime ? new Date(s.entryTime).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }) : "–"}</b></div>
       </div>
-    </section>
-    <section class="muted">
-      <div class="row"><span>Chain · DEX</span><span>${esc(s.chain)}${s.dex ? ` · ${esc(s.dex)}` : ""}</span></div>
-      <div class="row"><span>Data</span><span>${esc(s.dataSource)}</span></div>
-      <div class="row"><span>Chart</span><span>${esc(s.chartStatus)}</span></div>
-    </section>`;
+      <p class="note">${esc(s.strategyNote)}</p>${error}${backtest}</div>`;
+    return;
+  }
+  const n = s.conditions.length;
+  const ok = s.conditions.filter((c) => c.ok).length;
+  const buy = s.signal === "buy";
+  const cells = s.conditions
+    .map((c) => `<div class="${c.ok ? "ok" : "need"}" title="${esc(c.label)}"><small>${esc(c.label)}</small><b>${esc(c.detail.split(" vs ")[0]!)}</b></div>`)
+    .join("");
+  const failing = s.conditions.filter((c) => !c.ok);
+  const pl = s.plan;
+  const note = buy
+    ? `<p class="note"><span class="pos">All checks passed.</span> Buy at the open of the next bar.</p>`
+    : failing.length
+      ? `<p class="note">Still needs ${failing.map(missing).join(", ")}${pl && !pl.inZone ? `. Next setup ${pct(pl.distancePct)} away.` : "."}</p>`
+      : `<p class="note">No setup yet for this strategy.</p>`;
+  $("main").innerHTML = `<div class="gate num">
+    <p class="score"><b class="${buy ? "pos" : ""}">${ok}/${n}</b><span>${buy ? "buy at the next open" : "buy checks passed"}</span></p>
+    <div class="meter" style="--n:${Math.min(Math.max(n, 1), 3)}">${cells}</div>
+    ${note}${error}${backtest}</div>`;
 }
 
 /**
@@ -260,8 +255,8 @@ function dropdown(id: string, initial: string, onChange: (value: string) => void
 
 const RANK = { buy: 0, zone: 1, hold: 2, flat: 3 } as const;
 
-async function renderWatchlist(): Promise<void> {
-  const tabs = await chrome.tabs.query({ url: "https://dexscreener.com/*" });
+async function renderWatchlist(currentTab?: number): Promise<void> {
+  const tabs = (await chrome.tabs.query({ url: "https://dexscreener.com/*" })).filter((t) => t.id !== currentTab);
   const stored = await chrome.storage.session.get(tabs.map((t) => summaryKey(t.id!)));
   const rows = tabs
     .map((t) => ({ tab: t, s: stored[summaryKey(t.id!)] as Summary | undefined }))
@@ -269,9 +264,9 @@ async function renderWatchlist(): Promise<void> {
     .map((r) => ({ ...r, rank: RANK[r.s.signal === "flat" && r.s.plan?.inZone ? "zone" : r.s.signal] }))
     // BUY first, then price in the buy zone, then open trades by P/L, then waiting.
     .sort((a, b) => a.rank - b.rank || (b.s.openPnlPct ?? 0) - (a.s.openPnlPct ?? 0));
-  $("watchCount").textContent = `${rows.length} of ${tabs.length} DEX Screener tab${tabs.length === 1 ? "" : "s"} with a chart`;
+  $("watchCount").textContent = rows.length ? String(rows.length) : "";
   if (!rows.length) {
-    $("watchlist").innerHTML = `<li><p class="watch-empty">Open pairs on DEX Screener in other tabs; each one shows up here with its signal.</p></li>`;
+    $("watchlist").innerHTML = `<li><p class="watch-empty">Open more pairs on DEX Screener in other tabs to watch them here.</p></li>`;
     return;
   }
   const ago = (t: number) => {
@@ -288,9 +283,10 @@ async function renderWatchlist(): Promise<void> {
             : rank === 2
               ? `<strong class="${(s.openPnlPct ?? 0) >= 0 ? "pos" : "neg"}">${pct(s.openPnlPct ?? 0, 2)}</strong><small>${s.costRecovered ? "Free ride" : "Holding"}</small>`
               : `<strong class="muted">Waiting</strong><small>${s.plan ? `${pct(s.plan.distancePct)} to zone` : "no setup"}</small>`;
+      const gate = s.signal === "hold" ? "" : `<span class="seg3" aria-hidden="true">${s.conditions.map((c) => `<i class="${c.ok ? "ok" : ""}"></i>`).join("")}</span>`;
       return `<li><button type="button" data-tab="${tab.id}" data-window="${tab.windowId}">
         <span class="name"><strong>${esc(s.pair)}</strong><small>${esc(s.resolution)} · ${esc(s.strategy)} · ${ago(s.updatedAt)}${s.error ? " · error" : ""}</small></span>
-        <span class="state">${state}</span></button></li>`;
+        ${gate}<span class="state">${state}</span></button></li>`;
     })
     .join("");
 }
@@ -383,22 +379,37 @@ async function main(): Promise<void> {
     });
   });
 
-  // Settings and Watchlist are their own pages inside the popup.
-  type Page = "home" | "settings" | "watchlist";
+  // Theme: the header switch and Settings → Appearance set the same setting.
+  const paintTheme = (t: Settings["theme"]) => {
+    document.documentElement.dataset.theme = t;
+    for (const b of document.querySelectorAll<HTMLButtonElement>("[data-theme-set]")) b.setAttribute("aria-pressed", String(b.dataset.themeSet === t));
+    for (const r of document.querySelectorAll<HTMLInputElement>('input[name="theme"]')) r.checked = r.value === t;
+  };
+  const setTheme = (t: Settings["theme"]) => {
+    paintTheme(t);
+    void chrome.storage.local.set({ theme: t });
+  };
+  paintTheme(settings.theme);
+  for (const b of document.querySelectorAll<HTMLButtonElement>("[data-theme-set]")) b.addEventListener("click", () => setTheme(b.dataset.themeSet as Settings["theme"]));
+  for (const r of document.querySelectorAll<HTMLInputElement>('input[name="theme"]')) r.addEventListener("change", () => r.checked && setTheme(r.value as Settings["theme"]));
+
+  const notifyInput = $("notify") as HTMLInputElement;
+  const paintAlerts = () => ($("alertState").textContent = notifyInput.checked ? "Alerts on" : "Alerts off");
+  paintAlerts();
+  notifyInput.addEventListener("change", paintAlerts);
+
+  // Settings is its own page inside the popup; the other open pairs live on the home page.
+  type Page = "home" | "settings";
   let page: Page = "home";
   const showPage = (next: Page) => {
-    const from = page;
     page = next;
     $("homePage").hidden = next !== "home";
     $("settingsPage").hidden = next !== "settings";
-    $("watchlistPage").hidden = next !== "watchlist";
-    if (next === "watchlist") void renderWatchlist();
-    $(next === "home" ? (from === "watchlist" ? "openWatchlist" : "openSettings") : next === "settings" ? "closeSettings" : "closeWatchlist").focus();
+    $(next === "home" ? "openSettings" : "closeSettings").focus();
   };
   $("openSettings").addEventListener("click", () => showPage("settings"));
   $("closeSettings").addEventListener("click", () => showPage("home"));
-  $("openWatchlist").addEventListener("click", () => showPage("watchlist"));
-  $("closeWatchlist").addEventListener("click", () => showPage("home"));
+  void renderWatchlist(tab?.id);
   // A row switches to its tab (and window).
   $("watchlist").addEventListener("click", (e) => {
     const b = (e.target as Element).closest<HTMLButtonElement>("button[data-tab]");
@@ -408,7 +419,7 @@ async function main(): Promise<void> {
     window.close();
   });
   chrome.storage.session.onChanged.addListener((changes) => {
-    if (page === "watchlist" && Object.keys(changes).some((k) => k.startsWith("summary:"))) void renderWatchlist();
+    if (Object.keys(changes).some((k) => k.startsWith("summary:"))) void renderWatchlist(tab?.id);
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && page !== "home" && $("strategyMenu").hidden) showPage("home");

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EA Signals redesign</title>
+<style>
+  :root { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: #f2f2f2; background: #000; }
+  body { margin: 0; padding: 40px 24px; }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 8px; }
+  p { color: #a3a3a3; line-height: 1.55; margin: 0 0 24px; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  a { display: grid; grid-template-columns: 2.2em 1fr; gap: 4px 12px; padding: 16px; border-radius: 12px; background: #111; color: inherit; text-decoration: none; }
+  a:hover { background: #1c1c1c; }
+  a:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  a b { font-size: 17px; font-weight: 600; }
+  a span { grid-column: 2; color: #a3a3a3; font-size: 14px; line-height: 1.5; }
+  a i { grid-row: span 2; font-style: normal; font-size: 22px; font-weight: 700; color: #6b6b6b; }
+</style>
+</head>
+<body>
+<main>
+  <h1>EA Signals redesign</h1>
+  <p>7 แบบให้เลือก แต่ละแบบมี popup หน้าหลัก, Watchlist, Settings และ panel บนกราฟ ข้อมูลในภาพเป็นตัวอย่าง (MOMO มาจาก screenshot จริง ที่เหลือแต่งขึ้น)</p>
+  <ul>
+    <li><a href="a-refined.html"><i>A</i><b>Refined</b><span>ระบบเดิม (ดำ-ขาว) จัดใหม่ให้อ่านง่ายขึ้น เสี่ยงน้อยที่สุด</span></a></li>
+    <li><a href="b-ladder.html"><i>B</i><b>Price Ladder</b><span>สีแบบ TradingView กลืนกับกราฟ วาดไม้ที่ถืออยู่เป็นบันไดราคา: ตอนนี้ / ราคาซื้อ / stop</span></a></li>
+    <li><a href="c-checklist.html"><i>C</i><b>Checklist</b><span>ธีมสว่าง เน้นช่วงรอเข้า: ผ่านกี่ข้อแล้ว และขาดอะไรอีกเท่าไหร่</span></a></li>
+    <li><a href="d-radar.html"><i>D</i><b>Radar</b><span>เปิด popup แล้วเห็นทุกเหรียญก่อน เรียงตามสิ่งที่ต้องทำ บนกราฟเหลือแค่ปุ่มเม็ดเล็ก</span></a></li>
+    <li><a href="e-light-radar.html"><i>E</i><b>Light Radar (C + D)</b><span>หน้าตาสว่างของ C จัดแบบ Radar ของ D: เปิดมาเห็นทุกเหรียญเป็นการ์ด แท็บนี้กางเป็น checklist เต็ม บนกราฟเป็นปุ่มเม็ดสว่าง</span></a></li>
+    <li><a href="f-dark-gate.html"><i>F</i><b>Dark Gate (D + C)</b><span>พื้นดำของ D เอา gate ของ C ขึ้นเป็นตัวเด่น: "2/3" ตัวใหญ่ แต่ละช่องบอกค่าจริง ใต้ลงมาเป็นรายการเหรียญอื่นแบบย่อ</span></a></li>
+    <li><a href="g-gate-themes.html"><i>G</i><b>Gate, dark / light (F + E)</b><span>โครงของ F ใช้ฟอนต์และปุ่มเม็ดบนกราฟแบบ E มีปุ่มสลับธีมมืด / สว่าง</span></a></li>
+  </ul>
+</main>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A · Refined</title>
+<style>
+  :root {
+    --bg: #000; --surface: #0a0a0a; --raised: #171717; --hover: #202020; --line: #2a2a2a;
+    --text: #fff; --text-2: #b4b4b4; --muted: #777;
+    --buy: #4ade80; --sell: #f87171; --warn: #fbbf24;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #050505; color: var(--text); padding: 32px 24px 64px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .page-head { max-width: 1560px; margin: 0 auto 24px; }
+  .page-head h1 { font-size: 22px; font-weight: 600; }
+  .page-head p { color: var(--text-2); font-size: 14px; margin-top: 6px; max-width: 72ch; line-height: 1.5; }
+  .board { display: flex; flex-wrap: wrap; gap: 32px; max-width: 1560px; margin: 0 auto; align-items: flex-start; }
+  figure { display: grid; gap: 10px; }
+  figcaption { color: var(--muted); font-size: 12px; }
+
+  .popup { width: 360px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .bar { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .bar .mark { width: 22px; height: 22px; border-radius: 6px; background: #fff; display: grid; place-items: center; }
+  .bar .mark::after { content: ""; width: 10px; height: 10px; border: 2px solid #000; border-radius: 2px; transform: rotate(45deg); }
+  .bar strong { font-size: 14px; font-weight: 600; flex: 1; }
+  .icon { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--text-2); }
+  .icon:hover { background: var(--hover); color: var(--text); }
+  .icon svg { width: 16px; height: 16px; }
+  .pair { padding: 16px 16px 12px; }
+  .pair h2 { font-size: 18px; font-weight: 600; }
+  .pair p { color: var(--text-2); margin-top: 2px; }
+  .picker { margin: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  .picker span { color: var(--muted); }
+  .status { margin: 16px; padding: 14px; border-radius: 12px; background: var(--raised); }
+  .status .state { display: flex; justify-content: space-between; align-items: baseline; }
+  .status .state b { font-size: 16px; }
+  .status .state .pnl { font-size: 22px; font-weight: 600; color: var(--buy); }
+  .rows { display: grid; gap: 8px; margin-top: 12px; }
+  .row { display: flex; justify-content: space-between; color: var(--text-2); }
+  .row span:last-child { color: var(--text); }
+  .sect { padding: 4px 16px 16px; }
+  .sect h3 { font-size: 12px; font-weight: 500; color: var(--muted); margin: 8px 0 10px; }
+  .check { display: flex; justify-content: space-between; padding: 6px 0; }
+  .check .ok { color: var(--buy); margin-right: 8px; }
+  .check .no { color: var(--muted); margin-right: 8px; }
+  .check span:last-child { color: var(--text-2); }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+  .stat small { display: block; color: var(--muted); font-size: 11px; }
+  .stat strong { font-size: 15px; font-weight: 600; }
+  .pos { color: var(--buy) !important; } .neg { color: var(--sell) !important; }
+
+  .list { list-style: none; padding: 8px; }
+  .list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 10px; border-radius: 8px; }
+  .list li:hover { background: var(--hover); }
+  .list li b { font-weight: 500; }
+  .list li small { color: var(--muted); }
+  .chip { justify-self: end; align-self: center; grid-row: span 2; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--raised); color: var(--text-2); }
+  .chip.buy { background: rgb(74 222 128 / 14%); color: var(--buy); }
+  .chip.hold { color: var(--buy); }
+  .chip.zone { background: rgb(251 191 36 / 12%); color: var(--warn); }
+
+  .set { padding: 8px 16px 16px; display: grid; gap: 4px; }
+  .set h3 { font-size: 12px; font-weight: 500; color: var(--muted); margin: 12px 0 6px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .seg span { text-align: center; padding: 7px; border-radius: 7px; color: var(--text-2); }
+  .seg .on { background: var(--raised); color: var(--text); }
+  .btn { margin-top: 8px; height: 40px; border-radius: 999px; background: #fff; color: #000; font-weight: 600; display: grid; place-items: center; }
+  .toggle { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; }
+  .sw { width: 34px; height: 20px; border-radius: 999px; background: #fff; position: relative; }
+  .sw::after { content: ""; position: absolute; right: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #000; }
+  .sw.off { background: #333; } .sw.off::after { left: 2px; right: auto; background: #888; }
+
+  .stage { width: 640px; height: 300px; position: relative; background: #131722; border-radius: 12px; overflow: hidden; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .panel { position: absolute; top: 14px; right: 14px; width: 220px; background: rgb(10 10 10 / 88%); border: 1px solid var(--line); border-radius: 10px; font-size: 12px; padding: 10px 12px; }
+  .panel .t { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 8px; }
+  .panel .t span { color: var(--muted); font-weight: 400; }
+  .panel .row { padding: 2px 0; }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>A · Refined</h1>
+  <p>The current black-and-white system, tidied: one status card answers "what do I do now", checks and backtest sit below it, and the chart panel keeps the same rows in a smaller box. Lowest risk; nothing new to learn.</p>
+</header>
+<div class="board">
+  <figure>
+    <div class="popup">
+      <div class="bar"><div class="mark"></div><strong>EA Signals</strong>
+        <span class="icon" title="Watchlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>
+        <span class="icon" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7.6 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.6 14H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 7.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3.6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.6 1.6 0 0 0 20.4 10H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/></svg></span>
+      </div>
+      <div class="pair"><h2>MOMO / SOL</h2><p>Solana, PumpSwap, 15m chart</p></div>
+      <div class="picker"><b>Sharp Low</b><span>Change</span></div>
+      <div class="status num">
+        <div class="state"><b>Holding</b><span class="pnl">+123.54%</span></div>
+        <div class="rows">
+          <div class="row"><span>Bought 21 Oct 08:15</span><span>74.30K</span></div>
+          <div class="row"><span>Stop</span><span class="neg">54.58K</span></div>
+          <div class="row"><span>Next sell</span><span>10% on a close with RSI ≥ 80</span></div>
+        </div>
+      </div>
+      <div class="sect num">
+        <h3>Buy checks on the last closed bar, 10:15</h3>
+        <div class="check"><span><span class="ok">✓</span>Fell 10% in 6 bars</span><span>12.4%</span></div>
+        <div class="check"><span><span class="ok">✓</span>Lowest low of 20 bars</span><span>71.92K</span></div>
+        <div class="check"><span><span class="no">✕</span>Closed in the upper half</span><span>38% of the bar</span></div>
+        <h3>Backtest, last 31 days</h3>
+        <div class="stats">
+          <div class="stat"><small>Return</small><strong class="pos">+7.5%</strong></div>
+          <div class="stat"><small>Max drawdown</small><strong>10.4%</strong></div>
+          <div class="stat"><small>Trades</small><strong>3</strong></div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Popup, holding a position</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup">
+      <div class="bar"><strong>Watchlist</strong><span class="icon">✕</span></div>
+      <ul class="list num">
+        <li><b>ASTEROID / SOL</b><span class="chip buy">Buy now</span><small>15m · Sharp Low · fell 14.2%</small></li>
+        <li><b>MOMO / SOL</b><span class="chip hold">+123.5%</span><small>15m · holding since 08:15</small></li>
+        <li><b>CASHCAT / ETH</b><span class="chip zone">In zone</span><small>1h · 2.1% above the buy zone</small></li>
+        <li><b>Ban / SOL</b><span class="chip">Waiting</span><small>15m · 1 of 3 checks</small></li>
+        <li><b>PENGU / SOL</b><span class="chip">Waiting</span><small>1h · 0 of 3 checks</small></li>
+      </ul>
+    </div>
+    <figcaption>Watchlist, every open DEX Screener tab</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup">
+      <div class="bar"><strong>Settings</strong><span class="icon">✕</span></div>
+      <div class="set">
+        <h3>History</h3>
+        <div class="seg"><span class="on">Last 31 days</span><span>Pair start</span></div>
+        <div class="btn">Recalculate</div>
+        <h3>Chart</h3>
+        <div class="toggle"><span>Signal table</span><span class="sw"></span></div>
+        <div class="toggle"><span>Buy and sell markers</span><span class="sw"></span></div>
+        <div class="toggle"><span>Stop line</span><span class="sw"></span></div>
+        <div class="toggle"><span>Indicators</span><span class="sw off"></span></div>
+        <h3>Alerts</h3>
+        <div class="toggle"><span>Notify on new signals</span><span class="sw"></span></div>
+      </div>
+    </div>
+    <figcaption>Settings</figcaption>
+  </figure>
+
+  <figure>
+    <div class="stage">
+      <svg class="chart"></svg>
+      <div class="panel num">
+        <div class="t">EA 15m <span>Sharp Low</span></div>
+        <div class="row"><span>Signal</span><span>Holding</span></div>
+        <div class="row"><span>P/L</span><span class="pos">+123.54%</span></div>
+        <div class="row"><span>Stop</span><span class="neg">54.58K</span></div>
+        <div class="row"><span>Fell 10%</span><span>✓ 12.4%</span></div>
+        <div class="row"><span>20-bar low</span><span>✓</span></div>
+        <div class="row"><span>Upper-half close</span><span>✕ 38%</span></div>
+      </div>
+    </div>
+    <figcaption>On-chart panel</figcaption>
+  </figure>
+</div>
+<script src="chart.js"></script>
+</body>
+</html>

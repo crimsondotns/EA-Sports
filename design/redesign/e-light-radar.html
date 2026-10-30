@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E · Light Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* C's light instrument and check gates, laid out as D's watchlist-first radar. */
+  :root {
+    --paper: #f5f6f8; --card: #fff; --line: #e3e6eb; --ink: #14161a; --ink-2: #5a606b; --faint: #9aa0aa;
+    --go: #0e9f6e; --go-soft: #e3f6ee; --stop: #d92d20; --near: #b54708; --near-soft: #fdf1e3;
+    font-family: "Manrope", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #e9ebef; color: var(--ink); padding: 32px 24px 64px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .page-head { max-width: 1560px; margin: 0 auto 24px; }
+  .page-head h1 { font-size: 22px; font-weight: 700; }
+  .page-head p { color: var(--ink-2); font-size: 14px; margin-top: 6px; max-width: 72ch; line-height: 1.55; }
+  .board { display: flex; flex-wrap: wrap; gap: 32px; max-width: 1560px; margin: 0 auto; align-items: flex-start; }
+  figure { display: grid; gap: 10px; }
+  figcaption { color: var(--ink-2); font-size: 12px; }
+
+  .popup { width: 360px; background: var(--paper); border-radius: 16px; overflow: hidden; font-size: 13.5px; box-shadow: 0 1px 2px rgb(20 22 26 / 8%), 0 8px 24px rgb(20 22 26 / 8%); }
+  .head { display: flex; justify-content: space-between; align-items: center; padding: 16px 16px 4px; }
+  .head h2 { font-size: 17px; font-weight: 800; }
+  .head span { font-size: 12px; font-weight: 600; color: var(--ink-2); padding: 6px 10px; border-radius: 999px; background: var(--card); }
+  .tally { display: flex; gap: 6px; padding: 8px 16px 12px; flex-wrap: wrap; }
+  .tally span { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--card); color: var(--ink-2); }
+  .tally .g { background: var(--go); color: #fff; } .tally .y { background: var(--near-soft); color: var(--near); }
+
+  .rows { list-style: none; padding: 0 12px 12px; display: grid; gap: 6px; }
+  .rows li { background: var(--card); border-radius: 12px; padding: 11px 14px; display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+  .rows b { font-weight: 700; }
+  .rows small { color: var(--ink-2); font-size: 12px; }
+  .mini { display: flex; gap: 3px; justify-self: end; }
+  .mini i { width: 12px; height: 6px; border-radius: 3px; background: var(--line); }
+  .mini i.ok { background: var(--go); }
+  .state { font-weight: 800; justify-self: end; }
+  .go { color: var(--go); } .st { color: var(--stop); } .nr { color: var(--near); } .fa { color: var(--faint); }
+
+  /* The current tab opens into C's full gate. */
+  .rows li.current { box-shadow: 0 0 0 2px var(--ink); padding: 14px; }
+  .gate { grid-column: span 2; margin-top: 8px; }
+  .gate .score { display: flex; align-items: baseline; gap: 8px; }
+  .gate .score b { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+  .meter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 10px 0 10px; }
+  .meter i { height: 8px; border-radius: 4px; background: var(--line); }
+  .meter i.ok { background: var(--go); }
+  .gate ol { list-style: none; padding: 0; display: grid; gap: 8px; }
+  .gate li { all: unset; display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: center; }
+  .dot { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; }
+  .dot.ok { background: var(--go-soft); color: var(--go); }
+  .dot.no { border: 2px solid var(--line); color: var(--faint); }
+  .need { color: var(--near); font-weight: 700; }
+  .foot { display: flex; justify-content: space-between; padding: 4px 16px 16px; color: var(--ink-2); font-size: 12px; }
+  .foot b { color: var(--ink); }
+
+  .set { padding: 4px 12px 16px; }
+  .group { background: var(--card); border-radius: 12px; padding: 4px 14px; margin-top: 8px; }
+  .group h3 { font-size: 12px; font-weight: 700; color: var(--ink-2); padding: 10px 0 2px; }
+  .line { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+  .group h3 + .line { border-top: 0; }
+  .sw { width: 36px; height: 22px; border-radius: 999px; background: var(--ink); position: relative; }
+  .sw::after { content: ""; position: absolute; right: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; }
+  .sw.off { background: var(--line); } .sw.off::after { left: 3px; right: auto; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 8px 0 4px; }
+  .seg span { text-align: center; padding: 9px; border-radius: 10px; border: 1px solid var(--line); font-weight: 600; color: var(--ink-2); }
+  .seg .on { border-color: var(--ink); color: var(--ink); }
+  .btn { margin: 8px 0 12px; height: 42px; border-radius: 12px; background: var(--ink); color: #fff; font-weight: 700; display: grid; place-items: center; }
+
+  .stage { width: 640px; height: 300px; position: relative; background: #131722; border-radius: 12px; overflow: hidden; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pill { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 10px; background: var(--paper); border-radius: 999px; padding: 6px 12px 6px 6px; font-size: 13px; }
+  .pill .m { display: flex; gap: 2px; }
+  .pill .m i { width: 10px; height: 6px; border-radius: 3px; background: var(--line); }
+  .pill .m i.ok { background: var(--go); }
+  .pill b { font-weight: 800; }
+  .pill span { color: var(--ink-2); font-size: 12px; }
+  .pill .badge { background: var(--ink); color: #fff; border-radius: 999px; padding: 3px 9px; font-weight: 800; font-size: 12px; }
+  .drop { position: absolute; top: 52px; right: 12px; width: 220px; background: var(--paper); border-radius: 12px; padding: 12px; font-size: 12.5px; display: grid; gap: 6px; }
+  .drop div { display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>E · Light Radar</h1>
+  <p>D's layout in C's light style. The popup opens on every pair as light cards, each with its check gate, and the pair in this tab opens into the full checklist. On the chart, one light pill with the gate and the state; click it for the checks.</p>
+</header>
+<div class="board">
+  <figure>
+    <div class="popup">
+      <div class="head"><h2>EA Signals</h2><span>Sharp Low</span></div>
+      <div class="tally"><span class="g">1 buy</span><span>1 holding</span><span class="y">1 near</span><span>2 waiting</span></div>
+      <ul class="rows num">
+        <li class="current"><div><b>Ban / SOL</b><br><small>This tab · 15m · bar closed 10:15</small></div><span class="state fa">Waiting</span>
+          <div class="gate">
+            <div class="score"><b>2 of 3</b><small>buy checks passed</small></div>
+            <div class="meter"><i class="ok"></i><i class="ok"></i><i></i></div>
+            <ol>
+              <li><span class="dot ok">✓</span><span>Lowest low of 20 bars</span><small>50.20M</small></li>
+              <li><span class="dot ok">✓</span><span>Closed in the upper half</span><small>64%</small></li>
+              <li><span class="dot no">3</span><span>Fell 10% in 6 bars</span><small class="need">6.2%, 3.8% to go</small></li>
+            </ol>
+          </div></li>
+        <li><div><b>ASTEROID / SOL</b><br><small>15m · buy at the next open</small></div><span class="state go">Buy</span></li>
+        <li><div><b>MOMO / SOL</b><br><small>15m · stop 54.58K</small></div><span class="state go">+123.5%</span></li>
+        <li><div><b>CASHCAT / ETH</b><br><small>1h · 2.1% from the zone</small></div><span class="state nr">Near</span></li>
+        <li><div><b>PENGU / SOL</b><br><small>1h · no checks passed</small></div><div class="mini"><i></i><i></i><i></i></div></li>
+      </ul>
+      <div class="foot"><span>Alerts on</span><b>Settings</b></div>
+    </div>
+    <figcaption>Popup: this tab (waiting) opened as a checklist, the rest as cards</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup">
+      <div class="head"><h2>EA Signals</h2><span>Sharp Low</span></div>
+      <div class="tally"><span class="g">1 buy</span><span>1 holding</span><span class="y">1 near</span><span>2 waiting</span></div>
+      <ul class="rows num">
+        <li class="current"><div><b>ASTEROID / SOL</b><br><small>This tab · 15m · bar closed 10:15</small></div><span class="state go">Buy</span>
+          <div class="gate">
+            <div class="score"><b class="go">3 of 3</b><small>buy at the next bar's open</small></div>
+            <div class="meter"><i class="ok"></i><i class="ok"></i><i class="ok"></i></div>
+            <ol>
+              <li><span class="dot ok">✓</span><span>Fell 10% in 6 bars</span><small>14.2%</small></li>
+              <li><span class="dot ok">✓</span><span>Lowest low of 20 bars</span><small>4.21M</small></li>
+              <li><span class="dot ok">✓</span><span>Closed in the upper half</span><small>71%</small></li>
+            </ol>
+          </div></li>
+        <li><div><b>MOMO / SOL</b><br><small>15m · stop 54.58K</small></div><span class="state go">+123.5%</span></li>
+        <li><div><b>Ban / SOL</b><br><small>15m · 3.8% more fall needed</small></div><div class="mini"><i class="ok"></i><i class="ok"></i><i></i></div></li>
+      </ul>
+      <div class="foot"><span>Alerts on</span><b>Settings</b></div>
+    </div>
+    <figcaption>Same popup on a tab with a buy signal</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup">
+      <div class="head"><h2>Settings</h2><span>Done</span></div>
+      <div class="set">
+        <div class="group"><h3>History</h3>
+          <div class="seg"><span class="on">Last 31 days</span><span>Pair start</span></div>
+          <div class="btn">Recalculate this pair</div></div>
+        <div class="group"><h3>On the chart</h3>
+          <div class="line"><span>Signal pill</span><span class="sw"></span></div>
+          <div class="line"><span>Buy and sell markers</span><span class="sw"></span></div>
+          <div class="line"><span>Stop line</span><span class="sw"></span></div>
+          <div class="line"><span>Indicators</span><span class="sw off"></span></div></div>
+        <div class="group"><h3>Alerts</h3>
+          <div class="line"><span>Notify on new signals</span><span class="sw"></span></div></div>
+      </div>
+    </div>
+    <figcaption>Settings</figcaption>
+  </figure>
+
+  <figure>
+    <div class="stage">
+      <svg class="chart"></svg>
+      <div class="pill num"><span class="badge">2/3</span><div class="m"><i class="ok"></i><i class="ok"></i><i></i></div><b>Waiting</b><span>Sharp Low 15m</span></div>
+      <div class="drop num">
+        <div><span>✓ 20-bar low</span><span>50.20M</span></div>
+        <div><span>✓ Upper-half close</span><span>64%</span></div>
+        <div><span class="nr">○ Fell 10%</span><span class="nr">6.2%</span></div>
+      </div>
+    </div>
+    <figcaption>On-chart pill, opened</figcaption>
+  </figure>
+</div>
+<script src="chart.js"></script>
+</body>
+</html>

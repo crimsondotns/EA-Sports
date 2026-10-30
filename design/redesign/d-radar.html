@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D · Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #000; --row: #0d0d0d; --open: #161616; --line: #262626; --text: #f2f2f2; --text-2: #a3a3a3; --muted: #6b6b6b;
+    --buy: #4ade80; --sell: #f87171; --near: #fbbf24;
+    font-family: "Archivo", system-ui, sans-serif; font-stretch: 100%;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0a0a0a; color: var(--text); padding: 32px 24px 64px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .page-head { max-width: 1560px; margin: 0 auto 24px; }
+  .page-head h1 { font-size: 22px; font-weight: 700; }
+  .page-head p { color: var(--text-2); font-size: 14px; margin-top: 6px; max-width: 72ch; line-height: 1.5; }
+  .board { display: flex; flex-wrap: wrap; gap: 32px; max-width: 1560px; margin: 0 auto; align-items: flex-start; }
+  figure { display: grid; gap: 10px; }
+  figcaption { color: var(--muted); font-size: 12px; }
+
+  .popup { width: 360px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 13px; }
+  .top { display: flex; align-items: center; gap: 8px; padding: 14px 14px 10px; }
+  .top b { font-size: 15px; font-weight: 700; font-stretch: 112%; flex: 1; }
+  .top span { color: var(--muted); }
+  .count { display: flex; gap: 14px; padding: 0 14px 12px; color: var(--text-2); }
+  .count b { font-size: 20px; font-weight: 800; font-stretch: 75%; margin-right: 4px; }
+  .count .g b { color: var(--buy); } .count .y b { color: var(--near); }
+
+  /* The memorable part: the popup opens on every pair at once; the current tab is the open row. */
+  .rows { list-style: none; padding: 0; border-top: 1px solid var(--line); }
+  .rows > li { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--line); background: var(--row); }
+  .rows > li .p { font-weight: 600; font-stretch: 90%; font-size: 15px; }
+  .rows > li small { display: block; color: var(--muted); font-size: 12px; font-stretch: 100%; font-weight: 400; }
+  .rows .st { font-weight: 800; font-stretch: 75%; font-size: 18px; text-align: right; }
+  .rows .st small { text-align: right; }
+  .rows > li.current { background: var(--open); grid-template-columns: 1fr auto; padding-bottom: 14px; box-shadow: inset 3px 0 0 var(--buy); }
+  .detail { grid-column: span 2; margin-top: 12px; display: grid; gap: 10px; }
+  .why { display: flex; gap: 6px; flex-wrap: wrap; }
+  .why span { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; color: var(--text-2); font-size: 12px; }
+  .why span.ok { color: var(--buy); border-color: rgb(74 222 128 / 35%); }
+  .plan { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-radius: 8px; overflow: hidden; }
+  .plan div { background: var(--bg); padding: 8px 10px; }
+  .plan small { display: block; color: var(--muted); font-size: 11px; }
+  .plan b { font-size: 15px; font-weight: 700; font-stretch: 85%; }
+  .go { color: var(--buy); } .no { color: var(--sell); } .ny { color: var(--near); } .mu { color: var(--muted); }
+  .bottom { display: flex; justify-content: space-between; padding: 12px 14px; color: var(--text-2); }
+  .bottom b { color: var(--text); font-weight: 600; }
+
+  .set { padding: 0 14px 14px; }
+  .set h3 { font-size: 12px; font-weight: 600; color: var(--muted); margin: 16px 0 6px; font-stretch: 100%; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg span { text-align: center; padding: 8px; color: var(--text-2); }
+  .seg .on { background: var(--text); color: #000; font-weight: 600; }
+  .btn { margin-top: 8px; height: 40px; border-radius: 8px; border: 1px solid var(--line); display: grid; place-items: center; font-weight: 600; }
+  .toggle { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .toggle b { font-weight: 600; } .toggle b.off { color: var(--muted); }
+
+  .stage { width: 640px; height: 300px; position: relative; background: #131722; border-radius: 12px; overflow: hidden; }
+  .stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pill { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 10px; background: #000; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px 6px 8px; }
+  .pill i { width: 22px; height: 22px; border-radius: 50%; background: var(--buy); color: #000; display: grid; place-items: center; font-style: normal; font-weight: 800; font-size: 12px; }
+  .pill b { font-weight: 800; font-stretch: 80%; font-size: 15px; }
+  .pill span { color: var(--text-2); font-size: 12px; }
+  .pill-open { position: absolute; top: 52px; right: 12px; width: 230px; background: #000; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--text-2); display: grid; gap: 4px; }
+  .pill-open div { display: flex; justify-content: space-between; }
+  .pill-open b { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>D · Radar</h1>
+  <p>Watchlist first. The popup opens on every pair you have open, sorted by what needs action, and the current tab is the expanded row. On the chart the panel shrinks to a single pill that opens on click, so it never covers candles.</p>
+</header>
+<div class="board">
+  <figure>
+    <div class="popup">
+      <div class="top"><b>EA Signals</b><span>Sharp Low</span></div>
+      <div class="count num"><span class="g"><b>1</b>buy</span><span><b>1</b>holding</span><span class="y"><b>1</b>near</span><span><b>2</b>waiting</span></div>
+      <ul class="rows num">
+        <li class="current"><div><span class="p">ASTEROID / SOL</span><small>This tab · 15m · bar closed 10:15</small></div>
+          <div class="st go">Buy<small>next open</small></div>
+          <div class="detail">
+            <div class="why"><span class="ok">Fell 14.2%</span><span class="ok">20-bar low</span><span class="ok">Closed at 71%</span></div>
+            <div class="plan"><div><small>Buy near</small><b>4.27M</b></div><div><small>Stop</small><b class="no">3.42M</b></div><div><small>Backtest</small><b class="go">+18%</b></div></div>
+          </div></li>
+        <li><div><span class="p">MOMO / SOL</span><small>15m · stop 54.58K</small></div><div class="st go">+123.5%</div></li>
+        <li><div><span class="p">CASHCAT / ETH</span><small>1h · in the buy zone soon</small></div><div class="st ny">2.1%<small>to zone</small></div></li>
+        <li><div><span class="p">Ban / SOL</span><small>15m · 2 of 3 checks</small></div><div class="st mu">Wait</div></li>
+        <li><div><span class="p">PENGU / SOL</span><small>1h · 0 of 3 checks</small></div><div class="st mu">Wait</div></li>
+      </ul>
+      <div class="bottom"><span>Alerts on</span><b>Settings</b></div>
+    </div>
+    <figcaption>Popup = watchlist, with this tab expanded (buy signal)</figcaption>
+  </figure>
+
+  <figure>
+    <div class="popup">
+      <div class="top"><b>Settings</b><span>Done</span></div>
+      <div class="set">
+        <h3>Calculate from</h3>
+        <div class="seg"><span class="on">Last 31 days</span><span>Pair start</span></div>
+        <div class="btn">Recalculate this pair</div>
+        <h3>Strategy</h3>
+        <div class="toggle"><span>Strategy for every pair</span><b>Sharp Low</b></div>
+        <h3>On the chart</h3>
+        <div class="toggle"><span>Signal pill</span><b>On</b></div>
+        <div class="toggle"><span>Buy and sell markers</span><b>On</b></div>
+        <div class="toggle"><span>Stop line</span><b>On</b></div>
+        <div class="toggle"><span>Indicators</span><b class="off">Off</b></div>
+        <h3>Alerts</h3>
+        <div class="toggle"><span>Notify on new signals</span><b>On</b></div>
+      </div>
+    </div>
+    <figcaption>Settings: values written out instead of switches</figcaption>
+  </figure>
+
+  <figure>
+    <div class="stage">
+      <svg class="chart"></svg>
+      <div class="pill num"><i>▲</i><b>Buy</b><span>Sharp Low 15m</span></div>
+      <div class="pill-open num">
+        <div><span>Fell 6 bars</span><b>14.2%</b></div>
+        <div><span>20-bar low</span><b>✓</b></div>
+        <div><span>Close in bar</span><b>71%</b></div>
+        <div><span>Stop if bought</span><b style="color:var(--sell)">−20%</b></div>
+      </div>
+    </div>
+    <figcaption>On-chart pill, opened</figcaption>
+  </figure>
+</div>
+<script src="chart.js"></script>
+</body>
+</html>

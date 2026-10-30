@@ -52,11 +52,10 @@ Node 24 runs the `.ts` files directly (type stripping), so code must use erasabl
 
 ## UI design system
 
-All UI in this project (extension panel, HTML reports, any future pages) follows the dark design system in `docs/design-system.md`. Key rules:
+All UI in this project (extension panel, HTML reports, any future pages) follows the design system in `docs/design-system.md`. The extension uses design G (`design/redesign/g-gate-themes.html`): the popup shows the pair in this tab as a gate of buy checks (or the trade plan while holding) above the other open pairs, and the chart shows a pill that opens into a details card. Key rules:
 
-- Page background `#000000`; surfaces `#0A0A0A` / `#171717`; borders `#2A2A2A`.
-- Primary button: white background, black text. Secondary: `#1A1A1A` with white text. One primary action per group.
-- System sans-serif font stack, 4px spacing grid, tabular numerals for prices and figures.
+- Two themes, chosen by the user (setting `theme`, switch in the popup header and Settings → Appearance); the popup and the chart pill follow it. Dark: page `#000000`, cards `#111111` / `#171717`, borders `#2A2A2A`, white primary button with black text. Light: page `#F5F6F8`, cards `#FFFFFF`, borders `#E3E6EB`, ink `#14161A` primary button with white text. Semantic colours per theme (dark / light): success `#4ADE80` / `#0E9F6E`, danger `#F87171` / `#D92D20`, warning `#FBBF24` / `#B54708`. One primary action per group.
+- Font: Manrope (variable, bundled in `extension/fonts/`, SIL OFL; never loaded from the web), falling back to the system sans-serif stack. 4px spacing grid, tabular numerals for prices and figures.
 - No decorative gradients, glows or bright accents. Color only where it carries meaning: in this project that means trading semantics (buy / sell, profit / loss, stop) and success / warning / danger states.
 - Every interactive control has hover, focus-visible, active and disabled states; respect `prefers-reduced-motion`.
 - Tooltips: one short line in a pill (project override): `#303030` surface, no border, 999px radius, white 12px / 16px text, 4px × 10px padding, never wraps; keep the text to a few words. Open after ~500ms hover, promptly on keyboard focus, close after 100ms; prefer top placement and flip to stay in view. `role="tooltip"` + `aria-describedby`, never interactive, never the only place essential info or a label lives.
