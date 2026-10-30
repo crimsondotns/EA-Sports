@@ -29,11 +29,12 @@
     --color-button-primary-bg: #ffffff;
     --color-button-primary-text: #000000;
     --color-button-primary-hover: #eaeaea;
-    --color-button-primary-pressed: #d6d6d6;
-    --color-button-secondary-bg: #1a1a1a;
+    --color-button-primary-pressed: #d7dbdc;
+    --color-button-disabled-bg: #272a2e; --color-button-disabled-text: #71767b; --color-button-border: #2f3336;
+    --color-button-secondary-bg: transparent;
     --color-button-secondary-text: #ffffff;
-    --color-button-secondary-hover: #262626;
-    --color-button-secondary-pressed: #303030;
+    --color-button-secondary-hover: #16181c;
+    --color-button-secondary-pressed: #272a2e;
     --color-trigger-hover-bg: #111111;
     --color-danger: #f87171;
     --color-success: #4ade80;
@@ -62,7 +63,7 @@
     --color-text-primary: #14161a; --color-text-secondary: #5a606b; --color-text-muted: #8a909a; --color-text-disabled: #a8adb5;
     --color-text-ghost: #14161a; --color-border: #e3e6eb; --color-border-strong: #c9ced6; --color-border-control: #d5d9df;
     --color-focus: #14161a; --color-button-primary-bg: #14161a; --color-button-primary-text: #ffffff;
-    --color-button-primary-hover: #2a2e35; --color-button-primary-pressed: #3a3f47; --color-button-secondary-bg: #ffffff;
+    --color-button-primary-hover: #2a2e35; --color-button-primary-pressed: #3a3f47; --color-button-secondary-bg: transparent; --color-button-border: #d5d9df; --color-button-disabled-bg: #e3e6eb; --color-button-disabled-text: #9aa0aa;
     --color-button-secondary-text: #14161a; --color-button-secondary-hover: #eef0f3; --color-button-secondary-pressed: #e3e6eb;
     --color-trigger-hover-bg: #f9fafb; --color-danger: #d92d20; --color-success: #0e9f6e; --color-warning: #b54708;
     --color-card: #ffffff; --color-success-soft: #e3f6ee; --shadow-picker: 0 8px 24px rgb(20 22 26 / 14%);
@@ -163,13 +164,13 @@
   label.switch input:disabled { cursor: not-allowed; opacity: .45; }
 
   /* Segmented choice (radio group) */
-  .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--color-surface);
-    border: 1px solid var(--color-border); border-radius: var(--radius-control); }
-  .segmented label { position: relative; display: flex; align-items: center; justify-content: center; min-height: 32px;
-    border-radius: 6px; color: var(--color-text-secondary); cursor: pointer; transition: background-color var(--transition-fast), color var(--transition-fast); }
+  .segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; background: var(--color-surface);
+    border: 1px solid var(--color-button-border); border-radius: var(--radius-pill); }
+  .segmented label { position: relative; display: flex; align-items: center; justify-content: center; min-height: 30px;
+    border-radius: var(--radius-pill); color: var(--color-text-secondary); cursor: pointer; transition: background-color var(--transition-fast), color var(--transition-fast); }
   .segmented input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
-  .segmented label:has(input:checked) { background: var(--color-surface-selected); color: var(--color-text-primary); font-weight: 600; }
-  .segmented label:active { background: var(--color-surface-pressed); }
+  .segmented label:has(input:checked) { background: var(--color-button-primary-bg); color: var(--color-button-primary-text); font-weight: 600; }
+  .segmented label:not(:has(input:checked)):active { background: var(--color-surface-pressed); }
   .segmented label:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: -2px; }
   .hint { display: block; color: var(--color-text-muted); font-size: var(--font-size-small); padding-top: 8px; }
 
@@ -180,14 +181,17 @@
     text-decoration: none; cursor: pointer; transition: background-color var(--transition-fast); }
   .button-primary:active:not(:disabled) { background: var(--color-button-primary-pressed); }
   .button-primary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
-  .button-primary:disabled { opacity: .45; cursor: not-allowed; }
+  .button-primary:disabled { background: var(--color-button-disabled-bg); color: var(--color-button-disabled-text); cursor: not-allowed; }
   .button-secondary { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 14px;
-    border: 1px solid var(--color-border-control); border-radius: var(--radius-control); background: var(--color-button-secondary-bg);
+    border: 1px solid var(--color-button-border); border-radius: var(--radius-pill); background: var(--color-button-secondary-bg);
     color: var(--color-button-secondary-text); font-family: inherit; font-size: var(--font-size-body); font-weight: 600; line-height: 1.2;
     cursor: pointer; transition: background-color var(--transition-fast); }
   .button-secondary:active:not(:disabled) { background: var(--color-button-secondary-pressed); }
   .button-secondary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
-  .button-secondary:disabled { opacity: .45; cursor: not-allowed; }
+  .button-secondary:disabled { color: var(--color-button-disabled-text); cursor: not-allowed; }
+  /* Press feedback (Grok-style): a short, soft scale on every button. */
+  .button-primary, .button-secondary, .icon-button, .theme button { transition: background-color var(--transition-fast), transform 110ms ease-out; }
+  .button-primary:active:not(:disabled), .button-secondary:active:not(:disabled), .icon-button:active, .theme button:active { transform: scale(.96); }
   .icon-button { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px;
     padding: 0; border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--color-text-ghost); cursor: pointer;
     transition: background-color var(--transition-fast); }
@@ -284,6 +288,7 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
     .tooltip, .tooltip.bottom { transform: none; }
+    .button-primary:active, .button-secondary:active, .icon-button:active, .theme button:active { transform: none !important; }
   }
 </style>
 </head>
