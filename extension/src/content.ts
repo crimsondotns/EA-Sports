@@ -152,7 +152,19 @@ root.innerHTML = `
   .ok, .pos { color: var(--go); } .no { color: var(--near); } .neg { color: var(--stop); }
   .msg { white-space: normal; color: var(--text-2); }
   .msg.neg { color: var(--stop); }
-  @media (prefers-reduced-motion: reduce) { #toggle, #toggle svg, #grip { transition: none; } }
+  /* Open / close: Drop down (design/redesign/hover-transitions.html, option 5). The panel fades in sliding
+     down 8px (220ms ease-out); closing plays it back up (140ms ease-in), then the tab fades in. */
+  #table.enter { animation: drop-in 220ms cubic-bezier(.16, 1, .3, 1); }
+  #table.leave { animation: drop-out 140ms cubic-bezier(.7, 0, .84, 0) forwards; pointer-events: none; }
+  #table.tab-in { animation: tab-in 120ms ease-out; }
+  @keyframes drop-in { from { opacity: 0; transform: translateY(-8px); } }
+  @keyframes drop-out { to { opacity: 0; transform: translateY(-8px); } }
+  @keyframes tab-in { from { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    #toggle, #toggle svg, #grip { transition: none; }
+    #table.enter { animation-name: tab-in; } #table.leave { animation-name: fade-out; }
+    @keyframes fade-out { to { opacity: 0; } }
+  }
 </style>
 <div id="table" role="group" aria-label="EA signals">
   <div class="pill"><span id="badge">EA</span><span id="seg" aria-hidden="true"></span><span id="brief">Loading</span><span id="title"></span><span id="tf"></span>
@@ -195,9 +207,31 @@ let peeking = false;
   });
 }
 
+let leaving: ReturnType<typeof setTimeout> | undefined;
+let painted = false;
 function paintCollapsed(): void {
   const collapsed = settings.tableCollapsed && !peeking;
-  $("table").classList.toggle("collapsed", collapsed);
+  const table = $("table");
+  const wasCollapsed = table.classList.contains("collapsed") && !table.classList.contains("leave");
+  clearTimeout(leaving);
+  table.classList.remove("enter", "leave", "tab-in");
+  void table.offsetWidth; // restart the animation
+  if (!painted) {
+    // First paint (page load): no animation.
+    painted = true;
+    table.classList.toggle("collapsed", collapsed);
+  } else if (collapsed && !table.classList.contains("collapsed")) {
+    // Play the panel out first, then swap to the tab.
+    table.classList.add("leave");
+    leaving = setTimeout(() => {
+      table.classList.remove("leave");
+      table.classList.add("collapsed", "tab-in");
+      positionTable();
+    }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 100 : 140);
+  } else if (!collapsed) {
+    table.classList.remove("collapsed");
+    if (wasCollapsed) table.classList.add("enter");
+  }
   const t = $("toggle");
   t.setAttribute("aria-expanded", String(!collapsed));
   t.setAttribute("aria-label", tr(collapsed ? "Show details" : "Hide details"));
