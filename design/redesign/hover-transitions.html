@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hover open transitions</title>
+<style>
+  @font-face { font-family: "Manrope"; src: url("../../extension/fonts/manrope.ttf") format("truetype"); font-weight: 200 800; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0a0a0a; color: #f2f2f2; font-family: "Manrope", system-ui, sans-serif; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 700; max-width: 1500px; margin: 0 auto 6px; }
+  .lead { max-width: 1500px; margin: 0 auto 24px; color: #a3a3a3; font-size: 14px; line-height: 1.55; }
+  .row { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 24px; max-width: 1500px; margin: 0 auto; }
+  figcaption b { font-size: 15px; } figcaption p { color: #a3a3a3; font-size: 13px; line-height: 1.5; margin-top: 2px; } figcaption small { color: #6b6b6b; font-size: 12px; }
+  figure { display: grid; gap: 8px; }
+
+  .stage { position: relative; height: 340px; border-radius: 12px; overflow: hidden; background: #131722; font-variant-numeric: tabular-nums; }
+  .stage svg { position: absolute; inset: 0 72px 0 0; width: calc(100% - 72px); height: 100%; }
+  .axis { position: absolute; top: 0; right: 0; bottom: 0; width: 72px; border-left: 1px solid #2a2e39; }
+  .axis i { position: absolute; right: 8px; font: 500 11px/1 Manrope; font-style: normal; color: #8a8f99; }
+
+  /* the panel: one element; .open shows the details. Each option animates the change differently. */
+  .p { position: absolute; top: 20px; right: 72px; color: #f2f2f2; font-size: 13px; line-height: 20px;
+       background: rgb(0 0 0 / 40%); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
+       box-shadow: 0 12px 40px rgb(0 0 0 / 45%); border-radius: 14px 0 0 14px; overflow: hidden; }
+  .tab { display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 8px 0 12px; white-space: nowrap; }
+  .tab b { font-weight: 800; color: #4ade80; } .tab small { font-size: 11px; color: #a3a3a3; }
+  .det { width: 268px; padding: 0 16px 16px; }
+  .det .h { display: flex; align-items: baseline; gap: 8px; padding: 4px 0 8px; } .det .h b { font-size: 22px; font-weight: 800; color: #4ade80; } .det .h span { font-size: 12px; color: #a3a3a3; }
+  .r { display: flex; justify-content: space-between; } .r > :first-child { color: #a3a3a3; }
+  .lbl { font-size: 11px; font-weight: 700; color: #6b6b6b; margin: 12px 0 4px; line-height: 16px; }
+  .c { display: grid; grid-template-columns: 16px 1fr auto; gap: 8px; align-items: center; }
+  .c i { width: 14px; height: 14px; border-radius: 50%; background: #4ade80; } .c i.no { background: none; box-shadow: inset 0 0 0 1.5px #6b6b6b; }
+  .go { color: #4ade80; } .st { color: #f87171; } .nr { color: #fbbf24; }
+
+  /* 1 · Instant: no animation (today) */
+  .t1 .det { display: none; } .t1.open .tab { display: none; } .t1.open .det { display: block; }
+
+  /* 2 · Fade + scale: details fade in growing from the tab's corner (top right), 160ms */
+  .t2 .det { display: none; } .t2.open .tab { display: none; }
+  .t2.open .det { display: block; animation: t2 160ms cubic-bezier(.16, 1, .3, 1); transform-origin: top right; }
+  @keyframes t2 { from { opacity: 0; transform: scale(.94); } }
+
+  /* 3 · Unfold: width then height grow from the tab (grid 0fr → 1fr), content fades in after, 220ms */
+  .t3 { display: grid; grid-template-rows: 28px 0fr; grid-template-columns: 96px; transition: grid-template-rows 220ms cubic-bezier(.16,1,.3,1), grid-template-columns 180ms cubic-bezier(.16,1,.3,1); }
+  .t3 .det { min-height: 0; overflow: hidden; opacity: 0; transition: opacity 120ms; }
+  .t3.open { grid-template-rows: 0px 1fr; grid-template-columns: 268px; } .t3.open .tab { overflow: hidden; opacity: 0; }
+  .t3.open .det { opacity: 1; transition: opacity 160ms 80ms; }
+
+  /* 4 · Slide out of the scale: the panel is revealed right-to-left with a clip, as if pulled out of the axis, 200ms */
+  .t4 .det { display: none; } .t4.open .tab { display: none; }
+  .t4.open .det { display: block; animation: t4 200ms cubic-bezier(.16, 1, .3, 1); }
+  @keyframes t4 { from { clip-path: inset(0 0 calc(100% - 28px) calc(100% - 96px) round 14px 0 0 14px); } to { clip-path: inset(0 0 0 0 round 14px 0 0 14px); } }
+
+  /* 5 · Drop down: details slide down 8px and fade below a header that stays in place, 180ms */
+  .t5 .det { display: none; } .t5.open .tab { display: none; }
+  .t5.open .det { display: block; animation: t5 180ms ease-out; }
+  @keyframes t5 { from { opacity: 0; transform: translateY(-8px); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .t2.open .det, .t4.open .det, .t5.open .det { animation: fade 120ms; } .t3, .t3 .det { transition: none !important; }
+    @keyframes fade { from { opacity: 0; } }
+  }
+</style>
+</head>
+<body>
+<h1>Hover open: pick a transition</h1>
+<p class="lead">Hover each minimized tab (it opens after 150ms and closes 300ms after you leave, like the extension). Under reduced motion every option becomes a short fade.</p>
+<div class="row" id="row"></div>
+<script>
+const det = `<div class="det"><div class="h"><b>+62.6%</b><span>Holding · Deep Dip 15m</span></div>
+  <div class="r"><span>Bought</span><span>398.20K</span></div><div class="r"><span>Stop</span><span class="st">332.82K</span></div>
+  <div class="lbl">Buy checks · 4 of 4</div>
+  <div class="c"><i></i><span>Under EMAs</span><span class="go">561.0K</span></div><div class="c"><i></i><span>MACD turn</span><span class="go">hist +13.8K</span></div>
+  <div class="c"><i></i><span>RSI</span><span class="go">48</span></div><div class="c"><i></i><span>Support</span><span class="go">279–332K</span></div>
+  <div class="lbl">Backtest</div><div class="r"><span>13 trades</span><span class="go">+5.8%</span></div></div>`;
+const tab = `<div class="tab"><b>+62.6%</b><small>15m</small><small>‹</small></div>`;
+const opts = [
+  ["t1","1 · Instant","Swaps at once, no motion. Fastest, but the jump from a 96px tab to a 268px panel feels abrupt.","0ms"],
+  ["t2","2 · Fade + scale","Details fade in while growing from the tab's top-right corner, like the popup dropdowns.","160ms · opacity 0→1 · scale .94→1 · origin top right · ease-out (.16,1,.3,1)"],
+  ["t3","3 · Unfold","The tab itself widens, then grows down into the panel; the content fades in once there is room. Reads as one object changing shape.","width 180ms + height 220ms · content fade 160ms after 80ms"],
+  ["t4","4 · Slide out of the scale","The panel is revealed right-to-left and top-to-bottom from the tab, as if pulled out of the price scale it is docked on.","200ms · clip-path from the tab's box to full · ease-out (.16,1,.3,1)"],
+  ["t5","5 · Drop down","Details fade and slide down 8px from the top. Quiet and familiar.","180ms · opacity 0→1 · translateY −8→0 · ease-out"],
+];
+const svg = `<svg viewBox="0 0 400 340" preserveAspectRatio="none"><polyline fill="none" stroke="#26a69a" stroke-width="1.5" points="0,260 50,220 100,240 150,170 200,200 250,120 300,150 350,90 400,110"/></svg>`;
+document.getElementById("row").innerHTML = opts.map(([c,t,d,s]) => `<figure><div class="stage">${svg}
+  <div class="axis"><i style="top:30px">1.20M</i><i style="top:110px">800.0K</i><i style="top:190px">400.0K</i><i style="top:270px">0.00</i></div>
+  <div class="p ${c}">${tab}${det}</div></div><figcaption><b>${t}</b><p>${d}</p><small>${s}</small></figcaption></figure>`).join("");
+for (const p of document.querySelectorAll(".p")) {
+  let timer;
+  p.addEventListener("pointerenter", () => { clearTimeout(timer); timer = setTimeout(() => p.classList.add("open"), 150); });
+  p.addEventListener("pointerleave", () => { clearTimeout(timer); timer = setTimeout(() => p.classList.remove("open"), 300); });
+}
+</script>
+</body>
+</html>

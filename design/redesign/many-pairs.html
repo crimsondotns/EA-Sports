@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Many open pairs</title>
+<style>
+  @font-face { font-family: "Manrope"; src: url("../../extension/fonts/manrope.ttf") format("truetype"); font-weight: 200 800; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0a0a0a; color: #f2f2f2; font-family: "Manrope", system-ui, sans-serif; padding: 24px; }
+  h1 { font-size: 18px; font-weight: 700; max-width: 1500px; margin: 0 auto 6px; }
+  .lead { max-width: 1500px; margin: 0 auto 24px; color: #a3a3a3; font-size: 14px; line-height: 1.55; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; max-width: 1500px; margin: 0 auto; align-items: flex-start; }
+  figure { display: grid; gap: 10px; width: 340px; }
+  figcaption b { font-size: 15px; } figcaption p { color: #a3a3a3; font-size: 13px; line-height: 1.5; margin-top: 2px; }
+
+  /* the popup: Chrome caps it at 600px tall */
+  .pop { --line: #2a2a2a; --muted: #777; --sec: #b4b4b4; --go: #4ade80; --stop: #f87171; --near: #fbbf24;
+         width: 340px; height: 600px; background: #000; border: 1px solid #222; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; font-size: 13px; }
+  .pop .scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #333 transparent; }
+  .top { padding: 16px 16px 0; display: flex; justify-content: space-between; align-items: baseline; }
+  .top b { font-size: 17px; font-weight: 800; } .top span { color: var(--muted); font-size: 12px; }
+  .gate { padding: 12px 16px 12px; }
+  .gate .score { display: flex; align-items: baseline; gap: 8px; } .gate .score b { font-size: 40px; font-weight: 800; line-height: 1; } .gate .score span { color: var(--sec); }
+  .gate .meter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 12px; }
+  .gate .meter div { border-top: 4px solid var(--line); padding-top: 6px; } .gate .meter div.ok { border-color: var(--go); }
+  .gate .meter small { display: block; color: var(--muted); font-size: 11px; } .gate .meter b { font-size: 14px; }
+  .others { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; font-weight: 600; padding: 12px 16px 4px; border-top: 1px solid var(--line); }
+  .bottom { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line); color: var(--sec); }
+  .bottom button { all: unset; padding: 6px 14px; border-radius: 999px; box-shadow: inset 0 0 0 1px #2f3336; font-weight: 600; color: #fff; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  ul { list-style: none; padding: 0 6px; }
+  li { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border-radius: 10px; }
+  li .n { flex: 1; min-width: 0; } li .n strong { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  li .n small { display: block; color: var(--muted); font-size: 12px; }
+  li .s { text-align: right; } li .s small { display: block; color: var(--muted); font-size: 12px; }
+  .seg3 { display: flex; gap: 3px; } .seg3 i { width: 10px; height: 5px; border-radius: 3px; background: var(--line); } .seg3 i.ok { background: var(--go); }
+  .go { color: var(--go); } .neg { color: var(--stop); } .mu { color: var(--muted); }
+  /* compact one-line rows */
+  .compact li { min-height: 32px; padding: 4px 10px; } .compact li .n small { display: none; }
+  .compact li .tf { color: var(--muted); font-size: 12px; margin-left: 6px; }
+
+  /* grouped */
+  .grp { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; padding: 8px 16px 4px; background: #000; color: var(--muted); font-size: 11px; font-weight: 700; }
+  /* chips */
+  .chips { display: flex; gap: 6px; padding: 4px 16px 8px; overflow-x: auto; }
+  .chips button { all: unset; flex: none; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: var(--sec); box-shadow: inset 0 0 0 1px #2f3336; }
+  .chips button[aria-pressed="true"] { background: #fff; color: #000; box-shadow: none; }
+  .chips button span { color: inherit; opacity: .6; margin-left: 4px; }
+  .search { margin: 4px 16px 6px; height: 32px; border-radius: 999px; box-shadow: inset 0 0 0 1px #2f3336; display: flex; align-items: center; padding: 0 12px; color: var(--muted); font-size: 12px; }
+  .more { all: unset; display: block; margin: 4px 16px 8px; padding: 8px 0; text-align: center; border-radius: 999px; box-shadow: inset 0 0 0 1px #2f3336; color: #fff; font-weight: 600; font-size: 12px; }
+  .collapsedGate { display: flex; align-items: center; gap: 10px; padding: 8px 16px 10px; }
+  .collapsedGate b { font-size: 22px; font-weight: 800; }
+</style>
+</head>
+<body>
+<h1>Many open pairs in the popup</h1>
+<p class="lead">24 DEX Screener tabs open. Chrome caps the popup at 600px tall, so this is all you see without scrolling. "Now" is how the popup behaves today; A–D are ways to keep it usable. Order everywhere: buy now, in zone, holding (by P/L), waiting.</p>
+<div class="row" id="row"></div>
+<script>
+const pairs = [
+  ["ASTEROID / SOL","15m","buy"],["WOFL / SOL","5m","buy"],["CASHCAT / ETH","1h","zone",2.1],["GATO / SOL","15m","zone",0.8],
+  ["MOMO / SOL","15m","hold",123.5],["HEXN / SOL","15m","hold",62.6],["AI / NVDA","15m","hold",-5.5],["RUNE / SOL","5m","hold",-12.4],
+  ["PENGU / SOL","1h","wait",3,2],["FOREVER / SOL","15m","wait",6,2],["TETRA / SOL","5m","wait",9,1],["REBATE / BASE","15m","wait",11,1],
+  ["POTATCHI / SOL","1h","wait",4,2],["NIO / SOL","15m","wait",15,0],["Foxii / SOL","5m","wait",7,1],["jeff / SOL","15m","wait",22,0],
+  ["HI / SOL","1h","wait",8,1],["HYPERCHAN / SOL","15m","wait",12,1],["PONS / ETH","4h","wait",5,2],["Ban / SOL","15m","wait",3.8,2],
+  ["KITTY / BASE","15m","wait",18,0],["ZORA / BASE","1h","wait",9,1],["DOGE2 / BSC","5m","wait",30,0],["LUNA9 / SOL","15m","wait",14,1],
+];
+const seg = (n) => `<span class="seg3">${[0,1,2].map((k)=>`<i class="${k<n?"ok":""}"></i>`).join("")}</span>`;
+const state = ([, , k, a, b]) => k === "buy" ? `<span class="s"><b class="go">▲ BUY</b><small>next bar open</small></span>`
+  : k === "zone" ? `<span class="s"><b class="go">In zone</b><small>${a}% to trigger</small></span>`
+  : k === "hold" ? `<span class="s"><b class="${a>=0?"go":"neg"}">${a>=0?"+":""}${a}%</b><small>Holding</small></span>`
+  : `<span class="s"><b class="mu">Waiting</b><small>${a}% to zone</small></span>`;
+const gate = (p) => p[2] === "hold" ? "" : seg(p[2] === "wait" ? p[4] : p[2] === "zone" ? 2 : 3);
+const rowFull = (p) => `<li><span class="n"><strong>${p[0]}</strong><small>${p[1]} · Deep Dip · now</small></span>${gate(p)}${state(p)}</li>`;
+const short = (p) => p[2] === "buy" ? `<b class="go">BUY</b>` : p[2] === "zone" ? `<b class="go">Zone</b>` : p[2] === "hold" ? `<b class="${p[3]>=0?"go":"neg"}">${p[3]>=0?"+":""}${p[3]}%</b>` : `<b class="mu">${p[3]}%</b>`;
+const rowCompact = (p) => `<li><span class="n"><strong>${p[0]}<span class="tf">${p[1]}</span></strong></span>${gate(p)}<span class="s num">${short(p)}</span></li>`;
+const head = `<div class="top"><b>Ban / SOL</b><span>Sharp Low · 15m</span></div>`;
+const bigGate = `<div class="gate num"><p class="score"><b>2/3</b><span>buy checks passed</span></p><div class="meter"><div class="ok"><small>20-bar low</small><b>50.20M</b></div><div class="ok"><small>Close in bar</small><b>64%</b></div><div><small>Fall in 6 bars</small><b>6.2%</b></div></div></div>`;
+const bottom = `<div class="bottom"><span>Alerts on</span><button>Settings</button></div>`;
+const groups = [["Buy now","buy"],["In buy zone","zone"],["Holding","hold"],["Waiting","wait"]];
+
+const opts = [
+  ["Now", "Today: every pair is a 44px row and the whole popup scrolls. With 24 pairs only about 7 fit; Settings and the alert state end up 1,100px down, and the list pushes the tab's own gate off screen as you scroll.",
+    `<div class="pop"><div class="scroll">${head}${bigGate}<p class="others"><span>Other open pairs</span><span>24</span></p><ul>${pairs.map(rowFull).join("")}</ul>${bottom}</div></div>`],
+  ["A · Own scroll area", "The pair in this tab and the footer stay put; only the list scrolls inside its own area (no page scroll). Same rows as now. Smallest change.",
+    `<div class="pop">${head}${bigGate}<p class="others"><span>Other open pairs</span><span>24</span></p><div class="scroll" style="flex:1"><ul>${pairs.map(rowFull).join("")}</ul></div>${bottom}</div>`],
+  ["B · Grouped, compact rows", "Rows shrink to one 32px line (pair, timeframe, gate, one figure) and sit under sticky group headings with counts. About 12 pairs fit, and the actionable ones are always on top.",
+    `<div class="pop">${head}${bigGate}<p class="others"><span>Other open pairs</span><span>24</span></p><div class="scroll compact" style="flex:1">${groups.map(([t,k])=>{const g=pairs.filter(p=>p[2]===k);return g.length?`<div class="grp"><span>${t}</span><span>${g.length}</span></div><ul>${g.map(rowCompact).join("")}</ul>`:""}).join("")}</div>${bottom}</div>`],
+  ["C · Filter chips + search", "Chips with counts (All · Signals · Holding · Waiting) and a search box filter the list; the list scrolls on its own. Best once you keep 30+ tabs; adds two controls.",
+    `<div class="pop">${head}${bigGate}<p class="others"><span>Other open pairs</span><span>24</span></p><div class="chips"><button>All<span>24</span></button><button aria-pressed="true">Signals<span>4</span></button><button>Holding<span>4</span></button><button>Waiting<span>16</span></button></div><div class="search">Search pairs</div><div class="scroll" style="flex:1"><ul>${pairs.filter(p=>p[2]==="buy"||p[2]==="zone").map(rowFull).join("")}</ul></div>${bottom}</div>`],
+  ["D · Top signals + show all", "Only what needs attention shows (buy, in zone, holding: 8 here); the 16 waiting pairs fold into one button that expands them in compact rows. The tab's gate shrinks to one line while the list is open.",
+    `<div class="pop">${head}<div class="collapsedGate num"><b>2/3</b>${seg(2)}<span class="mu">buy checks · Sharp Low</span></div><p class="others"><span>Needs attention</span><span>8 of 24</span></p><div class="scroll compact" style="flex:1"><ul>${pairs.filter(p=>p[2]!=="wait").map(rowCompact).join("")}</ul><button class="more">Show 16 waiting pairs</button></div>${bottom}</div>`],
+];
+document.getElementById("row").innerHTML = opts.map(([t,d,h])=>`<figure>${h}<figcaption><b>${t}</b><p>${d}</p></figcaption></figure>`).join("");
+</script>
+</body>
+</html>
