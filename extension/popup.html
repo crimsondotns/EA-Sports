@@ -230,9 +230,9 @@
      get the same text when the option becomes active, screen readers via aria-describedby). */
   /* Frosted glass panel (Grok-style): see-through tint, blur, hairline edge, soft deep shadow; rows lift with a white wash. */
   :root { --dd-bg: rgb(22 24 28 / 78%); --dd-border: rgb(255 255 255 / 10%); --dd-shadow: 0 12px 40px rgb(0 0 0 / 45%);
-    --dd-hover: rgb(255 255 255 / 7%); --dd-pressed: rgb(255 255 255 / 10%); --dd-selected: rgb(255 255 255 / 12%); --dd-selected-hover: rgb(255 255 255 / 15%); --dd-solid: #1e2126; }
+    --dd-hover: rgb(255 255 255 / 7%); --dd-pressed: rgb(255 255 255 / 10%); --dd-solid: #1e2126; }
   :root[data-theme="light"] { --dd-bg: rgb(255 255 255 / 78%); --dd-border: rgb(20 22 26 / 8%); --dd-shadow: 0 12px 40px rgb(20 22 26 / 14%);
-    --dd-hover: rgb(20 22 26 / 5%); --dd-pressed: rgb(20 22 26 / 8%); --dd-selected: rgb(20 22 26 / 8%); --dd-selected-hover: rgb(20 22 26 / 11%); --dd-solid: #ffffff; }
+    --dd-hover: rgb(20 22 26 / 5%); --dd-pressed: rgb(20 22 26 / 8%); --dd-solid: #ffffff; }
   .dropdown-menu { padding: 6px; background: var(--dd-bg); border: 1px solid var(--dd-border); border-radius: 16px; box-shadow: var(--dd-shadow);
     -webkit-backdrop-filter: blur(24px) saturate(140%); backdrop-filter: blur(24px) saturate(140%);
     transform-origin: top center; animation: dropdown-in 160ms cubic-bezier(.16, 1, .3, 1); }
@@ -240,9 +240,9 @@
   @keyframes dropdown-fade { from { opacity: 0; } }
   @keyframes dropdown-in { from { opacity: 0; transform: scale(.96) translateY(-4px); } }
   .dropdown-menu li { border-radius: 10px; }
-  .dropdown-menu li[aria-selected="true"] { background: var(--dd-selected); }
-  .dropdown-menu li.active { background: var(--dd-hover); }
-  .dropdown-menu li[aria-selected="true"].active { background: var(--dd-selected-hover); }
+  /* The selected row shows only its checkmark; hover is the same wash for every row. */
+  .dropdown-menu li[aria-selected="true"] { background: transparent; }
+  .dropdown-menu li.active, .dropdown-menu li[aria-selected="true"].active { background: var(--dd-hover); }
   .dropdown-menu li:active { background: var(--dd-pressed); }
   .dropdown-menu li[aria-disabled="true"] { background: transparent; }
   @media (prefers-reduced-transparency: reduce) {
