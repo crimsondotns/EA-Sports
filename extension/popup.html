@@ -150,7 +150,10 @@
   .theme button:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
   .theme svg { width: 14px; height: 14px; }
   /* Language switch: the same segmented pill with TH / EN labels. */
-  .theme.lang button { font-family: inherit; font-size: 11px; font-weight: 700; line-height: 1; }
+  /* Language: a compact select trigger in the header; the menu opens to the right edge and is wider than the trigger. */
+  .dropdown.lang { flex: none; } .dropdown.lang .dropdown-trigger { width: auto; height: 32px; padding: 0 10px 0 12px; font-weight: 600; }
+  .dropdown.lang .dropdown-menu { left: auto; right: 0; min-width: 160px; }
+  .dropdown.lang li small { margin-left: auto; color: var(--color-text-secondary); }
 
   /* Switch rows: the whole label is clickable */
   label.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 10px;
@@ -339,9 +342,15 @@
 <body>
   <div id="homePage">
   <div class="top"><h1 id="title">EA Signals</h1>
-    <div class="theme lang" role="group" aria-label="Language" data-no-i18n>
-      <button type="button" data-lang-set="th" aria-pressed="false" lang="th" aria-label="ภาษาไทย">TH</button>
-      <button type="button" data-lang-set="en" aria-pressed="true" lang="en" aria-label="English">EN</button>
+    <div class="dropdown lang" data-no-i18n>
+      <button type="button" class="dropdown-trigger" id="langTrigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="langMenu" aria-label="Language / ภาษา">
+        <span id="langValue">EN</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <ul class="dropdown-menu" id="langMenu" role="listbox" aria-label="Language / ภาษา" tabindex="-1" hidden>
+        <li role="option" id="opt-lang-th" data-value="th" aria-selected="false" lang="th"><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="name">TH</span><small>ไทย</small></li>
+        <li role="option" id="opt-lang-en" data-value="en" aria-selected="false" lang="en"><svg class="check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="name">EN</span><small>English</small></li>
+      </ul>
     </div>
     <div class="theme" role="group" aria-label="Theme">
       <button type="button" data-theme-set="dark" aria-pressed="true" aria-label="Dark theme" title="Dark"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>

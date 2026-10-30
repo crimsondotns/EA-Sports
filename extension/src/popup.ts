@@ -471,21 +471,20 @@ async function main(): Promise<void> {
   const paintLang = (l: Settings["lang"]) => {
     setLang(l);
     document.documentElement.lang = l;
-    for (const b of document.querySelectorAll<HTMLButtonElement>("[data-lang-set]")) b.setAttribute("aria-pressed", String(b.dataset.langSet === l));
   };
   paintLang(settings.lang);
-  for (const b of document.querySelectorAll<HTMLButtonElement>("[data-lang-set]"))
-    b.addEventListener("click", () => {
-      paintLang(b.dataset.langSet as Settings["lang"]);
-      translatePage(document.body);
-      show(current);
-      void renderWatchlist(tab?.id);
-      paintCalc(calcFrom);
-      paintBlur();
-      paintAlerts();
-      if (recalc.disabled) $("recalcStatus").textContent = tr("Open a pair's chart first.");
-      void chrome.storage.local.set({ lang: b.dataset.langSet });
-    });
+  dropdown("lang", settings.lang, (value) => {
+    const l = value as Settings["lang"];
+    paintLang(l);
+    translatePage(document.body);
+    show(current);
+    void renderWatchlist(tab?.id);
+    paintCalc(calcFrom);
+    paintBlur();
+    paintAlerts();
+    if (recalc.disabled) $("recalcStatus").textContent = tr("Open a pair's chart first.");
+    void chrome.storage.local.set({ lang: l });
+  });
 
   const notifyInput = $("notify") as HTMLInputElement;
   const paintAlerts = () => ($("alertState").textContent = tr(notifyInput.checked ? "Alerts on" : "Alerts off"));
