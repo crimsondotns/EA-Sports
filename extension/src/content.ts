@@ -88,16 +88,27 @@ root.innerHTML = `
   /* One panel: the pill row is its header and the details open inside it, under a hairline. */
   #table { display: grid; pointer-events: auto; color: var(--text); width: max-content;
     border-radius: 16px; background: rgb(var(--bg) / clamp(.2, var(--table-opacity, .4), .88)); overflow: hidden;
-    /* Frosted glass, like the popup dropdowns: blur what is behind, hairline edge, soft deep shadow. */
+    /* Frosted glass: blur what is behind and a soft deep shadow; no hairline around it. */
     -webkit-backdrop-filter: saturate(180%) blur(var(--table-blur, 24px)); backdrop-filter: saturate(180%) blur(var(--table-blur, 24px));
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%), 0 12px 40px rgb(0 0 0 / 45%);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 45%);
     font: 600 12px/16px "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-variant-numeric: tabular-nums; }
 
   /* A see-through light card over the dark chart turns grey and the dark text drowns in it, so light stays at least 80% (white glass). */
   :host(.light) #table { background: rgb(255 255 255 / max(var(--table-opacity, .4), .6));
-    box-shadow: inset 0 0 0 1px rgb(20 22 26 / 8%), 0 12px 40px rgb(0 0 0 / 30%); }
-  #table.collapsed { min-width: 0; border-radius: 999px; }
+    box-shadow: 0 12px 40px rgb(0 0 0 / 30%); }
+  /* Collapsed = axis tab (design/redesign/axis-dock-options.html, A3 holding / A4 waiting): short, square on the
+     price-scale side and flush against it. Holding: P/L + timeframe; waiting: check count + mini gate. */
+  #table.collapsed { min-width: 0; border-radius: 999px 0 0 999px; }
+  #table.collapsed .pill { height: 28px; padding: 0 4px 0 12px; gap: 4px; }
+  #table.collapsed #badge { background: none; padding: 0; font-size: 13px; color: var(--text); }
+  #table.collapsed #badge.pos { color: var(--go); } #table.collapsed #badge.neg { color: var(--stop); }
+  #table.collapsed #brief, #table.collapsed #title, #table.collapsed #grip { display: none; }
+  #table.collapsed #seg { margin: 0 2px; } #table.collapsed #seg i { width: 8px; }
+  #tf { display: none; font-size: 11px; font-weight: 500; color: var(--text-2); }
+  #table.collapsed #tf:not(:empty) { display: inline; }
+  #table.collapsed #toggle { width: 20px; height: 20px; }
+  #table.collapsed #toggle[aria-expanded="false"] svg { transform: rotate(90deg); }
   .pill { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; }
   #table:not(.collapsed) .pill { padding: 12px 12px 8px 16px; align-items: baseline; }
   #table:not(.collapsed) #grip, #table:not(.collapsed) #toggle { align-self: center; }
@@ -144,7 +155,7 @@ root.innerHTML = `
   @media (prefers-reduced-motion: reduce) { #toggle, #toggle svg, #grip { transition: none; } }
 </style>
 <div id="table" role="group" aria-label="EA signals">
-  <div class="pill"><span id="badge">EA</span><span id="seg" aria-hidden="true"></span><span id="brief">Loading</span><span id="title"></span>
+  <div class="pill"><span id="badge">EA</span><span id="seg" aria-hidden="true"></span><span id="brief">Loading</span><span id="title"></span><span id="tf"></span>
   <button type="button" id="grip" aria-label="Move up or down" title="Drag to move · double-click to reset">
     <svg viewBox="0 0 8 12" aria-hidden="true"><g fill="currentColor"><circle cx="2" cy="2" r="1"/><circle cx="6" cy="2" r="1"/><circle cx="2" cy="6" r="1"/><circle cx="6" cy="6" r="1"/><circle cx="2" cy="10" r="1"/><circle cx="6" cy="10" r="1"/></g></svg>
   </button><button type="button" id="toggle" aria-expanded="true" aria-controls="body" aria-label="Hide details" title="Hide details">
@@ -206,7 +217,8 @@ function positionTable(): void {
   const maxOffset = Math.max(0, r.bottom - INSET - host.offsetHeight - base);
   const offset = Math.min(Math.max(0, dragOffset ?? settings.tableOffsetY), maxOffset);
   host.style.top = `${Math.max(0, base + offset)}px`;
-  host.style.right = `${Math.max(0, window.innerWidth - r.right + PRICE_SCALE + INSET)}px`;
+  // Collapsed, the tab sits flush on the price scale; opened, the panel keeps clear of it.
+  host.style.right = `${Math.max(0, window.innerWidth - r.right + PRICE_SCALE + (settings.tableCollapsed ? 0 : INSET))}px`;
 }
 setInterval(positionTable, 500);
 
@@ -329,6 +341,7 @@ function renderTable(): void {
   brief.className = sum.signal === "buy" ? "pos" : "";
   brief.textContent = tr(sum.signal === "buy" ? "Buy" : hold ? (sum.costRecovered ? "Free ride" : "Holding") : "Waiting");
   $("title").textContent = `${sum.strategy} ${sum.resolution}`;
+  $("tf").textContent = hold ? sum.resolution : "";
   // The card: the trade (holding) or the next setup, then the checks, the backtest and notes.
   const rows = [
     ...(hold
