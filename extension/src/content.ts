@@ -87,7 +87,7 @@ root.innerHTML = `
   #table { display: grid; justify-items: end; gap: 6px; pointer-events: none; color: var(--text);
     font: 600 12.5px/1.4 "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-variant-numeric: tabular-nums; }
-  .pill, #body { pointer-events: auto; background: rgb(var(--bg) / var(--table-opacity, .9)); box-shadow: 0 0 0 1px var(--line); }
+  .pill, #body { pointer-events: auto; background: rgb(var(--bg) / var(--table-opacity, .9));}
   /* A see-through light card over the dark chart turns grey and the dark text drowns in it, so light stays near solid. */
   :host(.light) .pill, :host(.light) #body { background: rgb(var(--bg) / max(var(--table-opacity, .9), .95)); }
   .pill { display: flex; align-items: center; gap: 8px; border-radius: 999px; padding: 4px 6px 4px 4px; }
