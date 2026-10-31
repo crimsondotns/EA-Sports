@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "EA Volume Breakout for DEX Screener",
-  "version": "0.1.5",
-  "description": "Runs the Volume Breakout strategy on the DEX Screener chart you are viewing and marks entries and exits.",
+  "name": "EA Volume Breakout",
+  "version": "0.1.6",
+  "description": "Marks Volume Breakout entries and exits on dexscreener.com charts. Not affiliated with DEX Screener. Not financial advice.",
   "permissions": [
     "webRequest",
     "notifications",

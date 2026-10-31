@@ -62,7 +62,8 @@ const TH: Record<string, string> = {
   "Alert when a closed bar gives a buy, a 10% sell or an exit, while the chart tab is open": "แจ้งเมื่อแท่งปิดแล้วให้สัญญาณซื้อ ขาย 10% หรือออก ขณะที่แท็บกราฟเปิดอยู่",
   "Send test notification": "ส่งการแจ้งเตือนทดสอบ",
   "Notifications are blocked for this extension.": "การแจ้งเตือนของ extension นี้ถูกบล็อกอยู่",
-  "Backtest signals only, not financial advice.": "เป็นสัญญาณจาก backtest เท่านั้น ไม่ใช่คำแนะนำการลงทุน",
+  "Backtest signals only, not financial advice. Not affiliated with or endorsed by DEX Screener.":
+    "เป็นสัญญาณจาก backtest เท่านั้น ไม่ใช่คำแนะนำการลงทุน ไม่มีส่วนเกี่ยวข้องหรือได้รับการรับรองจาก DEX Screener",
   // Strategy descriptions in the drawer (names stay in English)
   "Buys a 10% fall that closes high": "ซื้อเมื่อร่วง 10% แล้วปิดสูง",
   "Sharp Low, stretched under EMA 50": "Sharp Low ที่ลงไปไกลใต้ EMA 50",

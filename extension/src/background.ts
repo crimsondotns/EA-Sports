@@ -12,12 +12,17 @@ const MIN_BARS = 999;
 
 // Recalculate pages back with `bbn` (one request at a time, PAGE_DELAY_MS apart) to about 31
 // days plus warm-up, or to the pair's first bar. Each run is capped; after a failed request no
-// loading for COOLDOWN_MS.
+// loading for COOLDOWN_MS. History loaded within FRESH_MS that already covers the request is reused.
 const PAGE_DELAY_MS = 1500;
 const COOLDOWN_MS = 10 * 60_000;
+const FRESH_MS = 5 * 60_000;
 const MAX_PAGES = { "31d": 12, start: 60 } as const;
 const inFlight = new Map<string, Promise<LoadResult>>();
-let blockedUntil = 0;
+
+// The cooldown lives in session storage: the MV3 service worker is stopped when idle, which
+// would reset a plain variable.
+const BLOCKED_KEY = "blockedUntil";
+const getBlockedUntil = async () => ((await chrome.storage.session.get(BLOCKED_KEY))[BLOCKED_KEY] as number | undefined) ?? 0;
 
 const histKey = (s: BarsSource) => `hist:${s.chain}:${s.pairId.toLowerCase()}:${s.resolution}:${s.marketCap}`;
 interface StoredHistory { at: number; bars: Bar[]; complete: boolean }
@@ -47,10 +52,15 @@ function loadHistory(source: BarsSource, from: CalcFrom): Promise<LoadResult> {
 }
 
 async function pageBack(source: BarsSource, from: CalcFrom): Promise<LoadResult> {
+  const blockedUntil = await getBlockedUntil();
   if (Date.now() < blockedUntil) {
     return { ok: false, bars: 0, firstTime: null, complete: false, error: `DEX Screener refused a request; try again in ${Math.ceil((blockedUntil - Date.now()) / 60_000)} min.` };
   }
   const need = Math.ceil((31 * 1440) / source.resolution) + 250;
+  const fresh = await storedHistory(source);
+  if (fresh?.bars.length && Date.now() - fresh.at < FRESH_MS && (fresh.complete || (from === "31d" && fresh.bars.length >= need))) {
+    return { ok: true, bars: fresh.bars.length, firstTime: fresh.bars[0]!.timestamp, complete: fresh.complete, error: null };
+  }
   const pages: Bar[][] = [];
   let total = 0;
   let before: number | null = null;
@@ -62,7 +72,7 @@ async function pageBack(source: BarsSource, from: CalcFrom): Promise<LoadResult>
     try {
       page = await fetchPage(source, before);
     } catch (e) {
-      blockedUntil = Date.now() + COOLDOWN_MS;
+      await chrome.storage.session.set({ [BLOCKED_KEY]: Date.now() + COOLDOWN_MS });
       error = `DEX Screener refused a request (${(e as Error).message}); try again in 10 min.`;
       break;
     }

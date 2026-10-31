@@ -1,0 +1,73 @@
+# Publishes the extension to Microsoft Edge Add-ons when a tag like v0.1.6 is pushed.
+# The tag must match "version" in extension/manifest.json.
+# Secrets: EDGE_PRODUCT_ID, EDGE_CLIENT_ID, EDGE_API_KEY (Partner Center > Publish API).
+name: Publish to Edge Add-ons
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      API: https://api.addons.microsoftedge.microsoft.com/v1/products/${{ secrets.EDGE_PRODUCT_ID }}
+      AUTH: "Authorization: ApiKey ${{ secrets.EDGE_API_KEY }}"
+      CLIENT: "X-ClientID: ${{ secrets.EDGE_CLIENT_ID }}"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check tag matches manifest version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(node -p "require('./extension/manifest.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match manifest version $version"
+            exit 1
+          fi
+
+      - name: Build zip
+        id: zip
+        run: echo "path=$(npm run --silent ext:zip | tail -n 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload package
+        run: |
+          op=$(curl -sS --fail-with-body -D - -o /dev/null -X POST "$API/submissions/draft/package" \
+            -H "$AUTH" -H "$CLIENT" -H "Content-Type: application/zip" \
+            --data-binary @"${{ steps.zip.outputs.path }}" \
+            | grep -i '^location:' | awk '{print $2}' | tr -d '\r')
+          echo "Upload operation: $op"
+          for i in $(seq 1 30); do
+            res=$(curl -sS --fail-with-body "$API/submissions/draft/package/operations/$op" -H "$AUTH" -H "$CLIENT")
+            status=$(echo "$res" | jq -r .status)
+            echo "Status: $status"
+            [ "$status" = "Succeeded" ] && exit 0
+            [ "$status" = "Failed" ] && { echo "$res"; exit 1; }
+            sleep 10
+          done
+          echo "::error::Upload timed out"; exit 1
+
+      - name: Submit for review
+        run: |
+          op=$(curl -sS --fail-with-body -D - -o /dev/null -X POST "$API/submissions" \
+            -H "$AUTH" -H "$CLIENT" -H "Content-Type: application/json" \
+            -d "{\"notes\": \"Automated release $GITHUB_REF_NAME\"}" \
+            | grep -i '^location:' | awk '{print $2}' | tr -d '\r')
+          echo "Publish operation: $op"
+          for i in $(seq 1 30); do
+            res=$(curl -sS --fail-with-body "$API/submissions/operations/$op" -H "$AUTH" -H "$CLIENT")
+            status=$(echo "$res" | jq -r .status)
+            echo "Status: $status"
+            [ "$status" = "Succeeded" ] && exit 0
+            [ "$status" = "Failed" ] && { echo "$res"; exit 1; }
+            sleep 10
+          done
+          echo "::error::Submit timed out"; exit 1
